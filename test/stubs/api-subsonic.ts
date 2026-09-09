@@ -9,7 +9,13 @@ export const COVER = { thumb: 200, card: 600, full: 1200 } as const;
 export const subsonic = {
   /** What `getSong` finds, by id. */
   songsById: new Map<string, Song>(),
+  /** Whether ids shaped like the proxy's online tracks count as such. */
+  proxyActive: false,
 };
+
+export function isOnlineTrackId(id: string | undefined): boolean {
+  return subsonic.proxyActive && !!id && (id.startsWith('yt_') || id.startsWith('sc_'));
+}
 
 export async function getSong(_auth: unknown, id: string): Promise<Song> {
   const song = subsonic.songsById.get(id);

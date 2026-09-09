@@ -26,12 +26,13 @@ import ReorderableList, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COVER, createPlaylist, getPlaylists, reorderPlaylist, songCoverUrl } from '@/api/data';
-import { type Song } from '@/api/subsonic';
+import { isOnlineTrackId, type Song } from '@/api/subsonic';
 import { Cover } from '@/components/Cover';
 import { PlayingBars } from '@/components/PlayingBars';
 import { Dialog } from '@/components/Dialog';
 import { EmptyState } from '@/components/EmptyState';
 import { ExplicitBadge, useExplicitBadge } from '@/components/ExplicitBadge';
+import { OnlineBadge, useOnlineBadge } from '@/components/OnlineBadge';
 import { SheetModal } from '@/components/SheetModal';
 import { useListPadding } from '@/hooks/useScreenSize';
 import { songsLabel, useT } from '@/i18n';
@@ -65,10 +66,12 @@ function SectionHeader({ title, gap }: { title: string; gap?: boolean }) {
  */
 function ArtistLine({ song }: { song: Song }) {
   const explicit = useExplicitBadge(song.explicitStatus);
-  if (!explicit && !song.artist) return null;
+  const online = useOnlineBadge(song.id);
+  if (!explicit && !online && !song.artist) return null;
   return (
     <View style={styles.subRow}>
       <ExplicitBadge status={song.explicitStatus} />
+      <OnlineBadge id={song.id} />
       {song.artist ? (
         <Text style={styles.artist} numberOfLines={1}>
           {song.artist}
@@ -272,9 +275,10 @@ export default function QueueScreen() {
    * then given its songs in one request (`reorderPlaylist` sets the list),
    * which is what the library's own creation does and works offline too.
    *
-   * Only what the server holds goes in: a radio stream has no id, and one in
-   * the list fails the whole request, and what was left behind was an empty
-   * playlist under the name just typed.
+   * Only what the server holds goes in: a radio stream has no id, and a track
+   * the proxy found online has one the server does not know yet. Either one
+   * in the list fails the whole request, and what was left behind was an
+   * empty playlist under the name just typed.
    *
    * A name already taken is asked about first. `reorderPlaylist` replaces
    * the songs of whichever playlist carries the id it is given, and on a
@@ -291,7 +295,7 @@ export default function QueueScreen() {
     if (!name) return;
     const songIds = usePlayerStore
       .getState()
-      .queue.filter((s) => !s.url)
+      .queue.filter((s) => !s.url && !isOnlineTrackId(s.id))
       .map((s) => s.id);
     if (songIds.length === 0) {
       toast(t('None of these songs can be saved to a playlist'));

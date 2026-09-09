@@ -35,6 +35,7 @@ import { AudioQualityBadge } from '@/components/AudioQualityBadge';
 import { SeekBar } from '@/components/SeekBar';
 import { Cover, useRedrawOnReturn, useSettledSource } from '@/components/Cover';
 import { ExplicitBadge } from '@/components/ExplicitBadge';
+import { OnlineBadge } from '@/components/OnlineBadge';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { CoverLyrics, LyricsCard } from '@/components/LyricsCard';
 import { MarqueeText } from '@/components/MarqueeText';
@@ -1162,6 +1163,7 @@ export default function PlayerScreen() {
                         would be dragged along by the scroll. */}
                     <View style={styles.artistRow}>
                       <ExplicitBadge status={song.explicitStatus} />
+                      <OnlineBadge id={song.id} />
                       <Text
                         style={styles.artist}
                         numberOfLines={1}

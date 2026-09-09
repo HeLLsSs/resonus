@@ -221,4 +221,4 @@ missing, so it is much better said early than translated around.
 | Italiano | [Anakin-bb8](https://github.com/Anakin-bb8) |
 | 简体中文 | [xcdmrCHP](https://github.com/xcdmrCHP) |
 | Українська | [albedych](https://github.com/albedych) |
-| Français | [HeLLsSs](https://github.com/HeLLsSs) |
+| Français | Gaëtan |

@@ -5,6 +5,7 @@ import { isLanguage, LANGUAGE_NAMES, type Language } from '@/i18n/languages';
 import { type TabSegment } from '@/lib/tabOrigin';
 import { hashKey } from '@/lib/localLibrary';
 import { getSystemAccent } from '@/lib/materialYou';
+import { setNavifindActive } from '@/lib/navifind';
 import { setPerfEnabled } from '@/lib/perfLog';
 import { profileScopeGuard } from '@/lib/profileScope';
 import { queryClient } from '@/lib/query';
@@ -770,6 +771,13 @@ interface SettingsState {
   /** Subtle vibration on key actions (favorite, long-press, drag…). */
   hapticsEnabled: boolean;
   /**
+   * The navifind proxy's features: online tracks in searches, the badge that
+   * marks them, the menu entry that copies one into the library, the import
+   * page. Off unless turned on, since none of it exists on a plain server
+   * (see `lib/navifind.ts`).
+   */
+  navifind: boolean;
+  /**
    * The ListenBrainz user token the app sends loves with, and whose it is
    * (see `lib/listenBrainz.ts`). Both empty until a token has been checked,
    * and both go together: the name is what the screen shows and what the
@@ -1001,6 +1009,7 @@ interface SettingsState {
   setSkipSilence: (value: boolean) => void;
   setSpeedKeepsPitch: (value: boolean) => void;
   setHapticsEnabled: (value: boolean) => void;
+  setNavifind: (value: boolean) => void;
   /** Both at once, empty to forget: they are only ever set from a token that
    *  ListenBrainz has just said whose it is. */
   setListenBrainzLoves: (token: string, user: string) => void;
@@ -1139,6 +1148,7 @@ function snapshot(get: () => SettingsState) {
     skipSilence: s.skipSilence,
     speedKeepsPitch: s.speedKeepsPitch,
     hapticsEnabled: s.hapticsEnabled,
+    navifind: s.navifind,
     listenBrainzToken: s.listenBrainzToken,
     listenBrainzUser: s.listenBrainzUser,
     lyricsBackground: s.lyricsBackground,
@@ -1264,6 +1274,7 @@ const DEFAULTS = {
   skipSilence: false,
   speedKeepsPitch: true,
   hapticsEnabled: false,
+  navifind: false,
   listenBrainzToken: '',
   listenBrainzUser: '',
   // Same as the player's: the blurred artwork, which is what the screen it
@@ -1560,6 +1571,15 @@ export const useSettings = create<SettingsState>((set, get) => ({
   setHapticsEnabled: (hapticsEnabled) => {
     set({ hapticsEnabled });
     persist(snapshot(get));
+  },
+
+  setNavifind: (navifind) => {
+    set({ navifind });
+    setNavifindActive(navifind);
+    persist(snapshot(get));
+    // Titles and badges are settled as the answers come in, so what is on
+    // screen was read under the other setting: ask again.
+    void queryClient.invalidateQueries();
   },
 
   setListenBrainzLoves: (listenBrainzToken, listenBrainzUser) => {
@@ -1907,6 +1927,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
   resetToDefaults: () => {
     // Language is preserved: resetting shouldn't change your language.
     set({ ...DEFAULTS, language: get().language });
+    setNavifindActive(DEFAULTS.navifind);
     applyChosenAccent(DEFAULTS);
     applyThemePreference(DEFAULTS.themeMode);
     applyPureBlack(DEFAULTS.pureBlack);
@@ -1938,6 +1959,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
       // appearance are applied manually because they're side effects (the blob
       // re-applies them if present); the font is reactive and doesn't need it.
       set({ ...DEFAULTS, language: get().language });
+      // The flag too, or a profile with nothing saved keeps the previous
+      // profile's answer while the switch shows it off.
+      setNavifindActive(DEFAULTS.navifind);
       applyChosenAccent(DEFAULTS);
       applyThemePreference(DEFAULTS.themeMode);
       applyPureBlack(DEFAULTS.pureBlack);
@@ -1980,6 +2004,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           skipSilence: boolean;
           speedKeepsPitch: boolean;
           hapticsEnabled: boolean;
+          navifind: boolean;
           listenBrainzToken?: string;
           listenBrainzUser?: string;
           lyricsBackground: ScreenBackground;
@@ -2186,6 +2211,10 @@ export const useSettings = create<SettingsState>((set, get) => ({
         if (typeof parsed.hapticsEnabled === 'boolean') {
           set({ hapticsEnabled: parsed.hapticsEnabled });
         }
+        // Mirrored down to the flag, the way the defaults above were.
+        const navifind = typeof parsed.navifind === 'boolean' ? parsed.navifind : false;
+        set({ navifind });
+        setNavifindActive(navifind);
         // Only as a pair: a token whose user is unknown cannot import, and a
         // user without a token cannot send, so half of one is none of it.
         if (
@@ -2510,6 +2539,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
       // hydration has taken over.
       if (!applied && scope.accept(token, key)) {
         set({ ...DEFAULTS, language: get().language });
+        setNavifindActive(DEFAULTS.navifind);
         applyChosenAccent(DEFAULTS);
         applyThemePreference(DEFAULTS.themeMode);
         applyPureBlack(DEFAULTS.pureBlack);

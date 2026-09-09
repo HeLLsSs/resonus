@@ -16,6 +16,7 @@ import { useDownloads } from '@/store/downloads';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
 import { Cover } from './Cover';
 import { ExplicitBadge, useExplicitBadge } from './ExplicitBadge';
+import { OnlineBadge, useOnlineBadge } from './OnlineBadge';
 
 interface Props {
   song: Song;
@@ -52,6 +53,7 @@ export const SongCard = memo(function SongCard({
     ? !song.url && !song.localUri && !downloaded
     : !!song.unavailable;
   const explicit = useExplicitBadge(song.explicitStatus);
+  const online = useOnlineBadge(song.id);
   return (
     <Pressable
       style={[styles.container, { width }]}
@@ -77,9 +79,10 @@ export const SongCard = memo(function SongCard({
       <Text style={[styles.title, isCurrent && { color: accent }]} numberOfLines={1}>
         {song.title}
       </Text>
-      {explicit || song.artist ? (
+      {explicit || online || song.artist ? (
         <View style={styles.subRow}>
           <ExplicitBadge status={song.explicitStatus} />
+          <OnlineBadge id={song.id} />
           {song.artist ? (
             <Text style={styles.artist} numberOfLines={1}>
               {song.artist}

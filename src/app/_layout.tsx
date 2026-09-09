@@ -30,6 +30,7 @@ import { installAppFont, setAppFont } from '@/lib/appFont';
 import { startIntentsApi } from '@/lib/intentsApi';
 import { removeLegacyRadioCovers } from '@/lib/legacyRadioCovers';
 import { systemAccentAvailable } from '@/lib/materialYou';
+import { startNavifindWatch } from '@/lib/navifindWatch';
 import { startPerfLog } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
@@ -119,6 +120,7 @@ export default function RootLayout() {
   // With downloads, the local profile works without having chosen a music source.
   const hasDownloads = useDownloads(anyDownloads);
   const downloadsHydrated = useDownloads((s) => s.hydrated);
+  const settingsHydrated = useSettings((s) => s.hydrated);
   const ready = !!auth || (offline && (!!offlineSource || hasDownloads));
   // Active profile identified to reload recent searches when switching.
   // Depends on the profile's own name, not the active URL: when switching
@@ -155,6 +157,8 @@ export default function RootLayout() {
     // Control from other apps (Tasker and the like, docs/INTENTS.md): the
     // phone's too, and its commands wait for the profile on their own.
     startIntentsApi();
+    // Word from the Navifind proxy once what it was asked to fetch is in.
+    startNavifindWatch();
   }, []);
 
   /**
@@ -228,10 +232,12 @@ export default function RootLayout() {
   // (without playing): first the device copy, then the server copy if not.
   // Never before the downloads are in memory: a server profile is ready as
   // soon as the session is restored, which is earlier, and offline a queue
-  // loaded against an empty map looks like nothing in it was downloaded.
+  // loaded against an empty map looks like nothing in it was downloaded. Nor
+  // before the settings, which say whether a title from the proxy is read
+  // with its source or without.
   useEffect(() => {
-    if (ready && downloadsHydrated) void usePlayerStore.getState().restoreQueue();
-  }, [ready, downloadsHydrated, activeProfile]);
+    if (ready && downloadsHydrated && settingsHydrated) void usePlayerStore.getState().restoreQueue();
+  }, [ready, downloadsHydrated, settingsHydrated, activeProfile]);
 
   // The wallpaper is changed outside the app, and Android does not say when.
   // Asking again on the way back to the foreground is enough: one resource
@@ -330,6 +336,7 @@ export default function RootLayout() {
                 <Stack.Screen name="settings/index" />
                 <Stack.Screen name="settings/downloads" />
                 <Stack.Screen name="settings/download-activity" />
+                <Stack.Screen name="settings/navifind" />
                 <Stack.Screen name="settings/library" />
                 <Stack.Screen name="settings/playback" />
                 <Stack.Screen name="settings/player" />

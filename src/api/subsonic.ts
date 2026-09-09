@@ -16,6 +16,7 @@ import { fetch } from 'expo/fetch';
 import { canonicalId, idWouldChange } from '@/lib/navidromeIds';
 import { timed } from '@/lib/perfLog';
 import { assertCanRequest } from './netGate';
+import { navifindActive } from '@/lib/navifind';
 
 export const CLIENT_NAME = 'Resonus';
 const API_VERSION = '1.16.1';
@@ -831,7 +832,7 @@ export async function getAlbumsByGenre(
 export async function getSong(auth: SubsonicAuth, id: string): Promise<Song | null> {
   try {
     const res = await request<{ song?: Song }>(auth, 'getSong.view', { id });
-    return res.song ?? null;
+    return res.song ? withoutSourceSuffix(res.song) : null;
   } catch (e) {
     if (e instanceof SubsonicRequestError && e.code === ERR_NOT_FOUND) return null;
     throw e;
@@ -850,7 +851,7 @@ export async function getSongsByGenre(
     'getSongsByGenre.view',
     { genre, count, offset, ...(musicFolderId ? { musicFolderId } : {}) },
   );
-  return res.songsByGenre?.song ?? [];
+  return (res.songsByGenre?.song ?? []).map(withoutSourceSuffix);
 }
 
 export async function getAlbum(
@@ -863,7 +864,7 @@ export async function getAlbum(
     { id },
   );
   const { song, ...album } = res.album;
-  return { album, songs: song ?? [] };
+  return { album, songs: (song ?? []).map(withoutSourceSuffix) };
 }
 
 export async function getPlaylists(auth: SubsonicAuth): Promise<Playlist[]> {
@@ -889,7 +890,7 @@ export async function getPlaylist(
   );
   // Ampache 6 returns `playlist` as a one-element array (out of spec).
   const { entry, ...playlist } = Array.isArray(res.playlist) ? res.playlist[0] : res.playlist;
-  return { playlist, songs: entry ?? [] };
+  return { playlist, songs: (entry ?? []).map(withoutSourceSuffix) };
 }
 
 /** Adds a song to an existing playlist. */
@@ -1008,7 +1009,7 @@ export async function search(
   return {
     artists: r.artist ?? [],
     albums: r.album ?? [],
-    songs: r.song ?? [],
+    songs: (r.song ?? []).map(withoutSourceSuffix),
   };
 }
 
@@ -1048,7 +1049,7 @@ export async function searchSongs(
     artistCount: 0,
     ...(musicFolderId ? { musicFolderId } : {}),
   });
-  return res.searchResult3?.song ?? [];
+  return (res.searchResult3?.song ?? []).map(withoutSourceSuffix);
 }
 
 export async function getArtists(auth: SubsonicAuth, musicFolderId?: string): Promise<Artist[]> {
@@ -1181,7 +1182,7 @@ export async function getRandomSongs(
       ...(years?.toYear != null ? { toYear: years.toYear } : {}),
     },
   );
-  return res.randomSongs?.song ?? [];
+  return (res.randomSongs?.song ?? []).map(withoutSourceSuffix);
 }
 
 /**
@@ -1214,7 +1215,7 @@ export async function getSongList(
     artistCount: 0,
     ...(musicFolderId ? { musicFolderId } : {}),
   });
-  return res.searchResult3?.song ?? [];
+  return (res.searchResult3?.song ?? []).map(withoutSourceSuffix);
 }
 
 /** Most popular songs by an artist (by name). */
@@ -1228,7 +1229,7 @@ export async function getTopSongs(
     'getTopSongs.view',
     { artist, count },
   );
-  return res.topSongs?.song ?? [];
+  return (res.topSongs?.song ?? []).map(withoutSourceSuffix);
 }
 
 /** Songs similar to a given one (getSimilarSongs2): autoplay / radio. */
@@ -1242,7 +1243,7 @@ export async function getSimilarSongs(
     'getSimilarSongs2.view',
     { id, count },
   );
-  return res.similarSongs2?.song ?? [];
+  return (res.similarSongs2?.song ?? []).map(withoutSourceSuffix);
 }
 
 export interface ArtistInfo {
@@ -1292,7 +1293,7 @@ export async function getStarred(auth: SubsonicAuth, musicFolderId?: string): Pr
   }>(auth, 'getStarred2.view', musicFolderId ? { musicFolderId } : undefined);
   const s = res.starred2 ?? {};
   return {
-    songs: s.song ?? [],
+    songs: (s.song ?? []).map(withoutSourceSuffix),
     albums: s.album ?? [],
     artists: s.artist ?? [],
   };
@@ -1489,7 +1490,7 @@ export async function getPlayQueue(auth: SubsonicAuth): Promise<SavedQueue | nul
   if (!pq?.entry || pq.entry.length === 0) return null;
   const changed = pq.changed ? Date.parse(pq.changed) : NaN;
   return {
-    entries: pq.entry,
+    entries: pq.entry.map(withoutSourceSuffix),
     current: pq.current,
     position: pq.position ?? 0,
     changed: Number.isFinite(changed) ? changed : undefined,
@@ -1540,10 +1541,84 @@ export async function getNowPlaying(auth: SubsonicAuth): Promise<NowPlayingEntry
         (e.minutesAgo ?? 0) <= NOW_PLAYING_MAX_MINUTES,
     )
     .map(({ username: _user, playerName, minutesAgo, ...song }) => ({
-      song: song as Song,
+      song: withoutSourceSuffix(song as Song),
       playerName,
       minutesAgo: minutesAgo ?? 0,
     }));
+}
+
+// ── navifind ─────────────────────────────────────────────────────────────────
+// A proxy that sits in front of Navidrome and answers searches with tracks it
+// can fetch from the web. Those carry ids of its own, and once one has been
+// heard for a while it copies it into the library, where Navidrome scans it
+// and it becomes an ordinary song. Nothing here is Subsonic; the app keeps to
+// what the ids tell it and to one endpoint of the proxy's.
+
+/** Where the proxy found a track, read off the id it gave it; nothing for a
+ *  song of the server's own. */
+export type OnlineSource = 'youtube' | 'soundcloud';
+
+export function onlineSource(id: string | undefined): OnlineSource | null {
+  // Only with the proxy switched on for this profile: an id like these on a
+  // plain server is that server's own, whatever it looks like.
+  if (!id || !navifindActive()) return null;
+  if (id.startsWith('yt_')) return 'youtube';
+  if (id.startsWith('sc_')) return 'soundcloud';
+  return null;
+}
+
+/** A track the proxy found online, not one the server holds (yet). */
+export function isOnlineTrackId(id: string | undefined): boolean {
+  return onlineSource(id) !== null;
+}
+
+/**
+ * The proxy writes the source into the title, "(YT)" or "(SC)" at the end,
+ * so that any client shows it. This one draws a badge from the id instead
+ * (see `OnlineBadge`), and the words come off the title here, at the door:
+ * the notification, the car and its voice search all read the title, and none
+ * of them can show a badge.
+ */
+const SOURCE_SUFFIX = /\s*\((?:YT|SC)\)\s*$/;
+
+function withoutSourceSuffix<T extends Song>(song: T): T {
+  if (!isOnlineTrackId(song.id) || !SOURCE_SUFFIX.test(song.title)) return song;
+  return { ...song, title: song.title.replace(SOURCE_SUFFIX, '') };
+}
+
+/**
+ * Asks the proxy to copy an online track into the library now, rather than
+ * after the ten seconds of listening that do it on their own. Fails on a
+ * server with no proxy in front, which is what the menu that offers it
+ * reports.
+ */
+export async function addOnlineTrackToLibrary(auth: SubsonicAuth, id: string): Promise<void> {
+  await request(auth, 'navifind/download.view', { id });
+}
+
+/**
+ * Hands the proxy a link (a YouTube, SoundCloud or Spotify playlist, album or
+ * track) to fetch into the library, as a playlist of the same name where it
+ * is a list. Answers how many tracks it set out to fetch.
+ */
+export async function importIntoLibrary(auth: SubsonicAuth, url: string): Promise<number> {
+  const res = await request<{ navifind?: { queued?: number } }>(auth, 'navifind/import.view', {
+    url: url.trim(),
+  });
+  return res.navifind?.queued ?? 0;
+}
+
+export interface NavifindStatus {
+  /** Tracks copied into the library so far, by the name of their file. */
+  done: string[];
+  /** Transfers under way on the proxy right now. */
+  inProgress: number;
+}
+
+/** What the proxy has fetched and what it is fetching. */
+export async function navifindStatus(auth: SubsonicAuth): Promise<NavifindStatus> {
+  const res = await request<{ navifind?: Partial<NavifindStatus> }>(auth, 'navifind/status.view');
+  return { done: res.navifind?.done ?? [], inProgress: res.navifind?.inProgress ?? 0 };
 }
 
 /** Notifies the server that a song has been played (scrobble). */
@@ -1939,7 +2014,7 @@ export async function getBookmarks(auth: SubsonicAuth): Promise<Bookmark[]> {
     const entry = Array.isArray(raw.entry) ? raw.entry[0] : raw.entry;
     if (!entry) continue;
     out.push({
-      song: entry,
+      song: withoutSourceSuffix(entry),
       position: raw.position,
       comment: raw.comment || undefined,
       created: raw.created,

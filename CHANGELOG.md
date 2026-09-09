@@ -7,23 +7,65 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
-## [Unreleased]
+## [0.8.0] - 2026-09-08
 
 ### Added
 
 - An animated cover can fill the player behind the controls, with a still copy of it beside the title, instead of playing inside the square; it starts off, under Settings > Player > Cover art, and comes from @Anakin-bb8 (#190).
 - Ukrainian is complete again, thanks to @albedych (#191).
 - The sections of Explore can be reordered from Settings > Appearance > Explore sections.
+- Smart playlists: rules you write (genre, year, rating, plays, when it was added or last played, and more), a live list that follows them and a snapshot you can push to the server as a playlist. They are under Your library and in Android Auto.
+- Listening stats, under Settings and from the history screen: what you played this week, this month and all time, by song, album and artist, kept on the phone.
+- A "Made for you" shelf on Home with mixes for the time of day, the decades you play and the genres you come back to, and a card that shows what is playing on another device with a button to pick it up here.
+- French.
+- Any colour as the accent, typed as hex under the swatches; and on Android 12+ a switch to take the system's own colours from the wallpaper.
+- Pure black backgrounds for OLED screens, under Settings > Appearance > Theme, in the dark appearance only.
+- Play links: `resonus://play/album/<id>`, `/playlist/<id>` and `/artist/<id>` start playback from an NFC tag, a shortcut or another app.
+- Google Cast: Chromecast and Nest speakers and groups are listed in the Output sheet next to the UPnP renderers, with queue, volume and session resume.
+- A home screen widget with the cover, the title and play, previous and next.
+- A download activity screen under Settings > Downloads: what is transferring and how fast, what waits, what failed with a way to retry, and what recently arrived.
+- Search inside the lyrics you have, and lyrics in landscape.
+- Composers and Labels in Explore on a Navidrome server, with a label's albums on their own page and an "As composer" shelf on the artist page for records they wrote rather than performed.
+- A Downloaded chip in Your library that lists the albums and playlists on this phone while you are online, the same list offline shows.
+- An Account screen under Settings: change your password and see, share or delete your share links.
+- ListenBrainz and Last.fm can be linked from Settings > Scrobbling without opening Navidrome's web page, and Scrobbling has its own row in Settings. The same ListenBrainz token also keeps your favourites in step with your loves there, both ways, with an import of the tracks you already loved.
+- Custom HTTP headers per profile, under Advanced when signing in, for a server behind Cloudflare Access or a similar proxy; they go with every request, stream, cover and download.
+- Bookmarks: a song longer than twenty minutes resumes where you left it, any song can be bookmarked from its menu, and the Bookmarks section of Explore lists them.
+- The queue can be saved as a playlist, and the last ten queues you replaced are kept under "Past queues" in its menu, ready to be restored.
+- Backup and restore of your profiles and every setting, pin and smart playlist, under Settings, as one file you can encrypt with a passphrase; passwords never leave the phone.
+- The Output sheet lists the phone's own outputs, wired, Bluetooth and USB, with the media volume, and opens the system's output picker to switch between them.
+- Skip silence, under Settings > Quality & playback, cuts the quiet gaps inside and between tracks; the speed sheet can let the pitch follow the speed like a turntable; and the equaliser gained a bass boost and a volume boost.
+- An intents API for Tasker, MacroDroid and shell scripts: play, pause, next, seek, volume, shuffle, repeat, play an album, a playlist, an artist, a search, your favourites or something random, and a sleep timer, with a broadcast of what is playing. See `docs/INTENTS.md`.
+- Playlists can be exported as M3U from their menu and imported from an M3U file through the "New playlist" dialog, matched by id, path, then artist and title, with a list of what could not be found.
+- Mixes and smart playlists in Android Auto.
+- Android Auto has a Home tab at last: continue listening (the queue and the bookmarked long tracks), shuffle everything, favourites, the "Made for you" mixes, recently added and the pinned playlists; the Library tab gained artists, genres, what is downloaded, past queues and bookmarks, and everything the phone holds is there offline. Voice requests understand "play the album…", "play artist…", "play playlist…" and "play some jazz", and a collection whose name matches wins over a song.
+- Launcher shortcuts on a long press of the icon: shuffle all, favourites, resume and search, each a play link (`resonus://play/random`, `/favorites`, `/resume`) usable from an NFC tag as well.
+- The home screen widget comes in three sizes: a square with the cover and play, the wide one, and a tall one that lists the next songs of the queue; it takes the system's colours on Android 12+ and follows dark and light.
+- Word-by-word lyrics: when a lyrics file carries word timings, the word being sung lights up and a tap on a word seeks to it. Off under Settings > Player > Highlight words.
+- The proxy says when a fetch is done: a toast in the app, a notification when it has been put away.
+- A switch for the Navifind proxy under Settings, off by default: on, tracks the proxy finds online carry a YT or SC badge, can be copied into the library from their menu, and a link can be sent to the proxy to fetch.
 
 ### Changed
 
 - "Your library" opens on everything you have, playlists, favourite albums and favourite artists in one list saying which is which, and the chips narrow it from there instead of being the only way to see any of it.
 - The chip you press in "Your library" is now the only one left in the row, behind an X that gives the whole library back, and Playlists brings Yours and Public with it, each when it has something to leave out; picking one of those leaves the two words sitting together as one answer.
 - The search box of Explore is now behind the same magnifier "Your library" has, at the top right, where it becomes the X that puts the box away; Back closes it too, and a section opens on its list rather than on a box you were not looking for.
+- UPnP/DLNA discovery was rewritten: it holds the multicast lock for the whole search, sends from the Wi-Fi interface, asks three times over multicast and broadcast, listens for the renderers' own announcements and logs each step under the `UpnpCast` tag.
+- The "playing elsewhere" card refreshes on its own while Home is on screen, not only when you come back to the tab.
+- Reading the whole library, for smart playlists and the loved-tracks import, asks for several pages at once instead of one after the other.
+- The colour taken from a cover follows a server behind custom headers too.
+- Custom headers now reach the speakers and the car: Google Cast and UPnP/DLNA renderers are handed an address on the phone, which fetches from the server with the headers on and relays the stream, and Android Auto draws the covers the phone fetched with them. See the FAQ.
+- German, Italian, Russian, Ukrainian and Simplified Chinese are complete again, and Chinese counts its songs, albums and playlists in Chinese.
 
 ### Fixed
 
 - An animated cover no longer stutters in the player: only the copy you are looking at plays, and the blurred background behind it holds still.
+- The battery optimisation reminder no longer comes back on every cold start after "Don't remind me".
+- The queue is restored only once the profile's settings are read, so a track from the proxy keeps the title it should have.
+- Switching to a profile with nothing saved yet no longer keeps the previous profile's Navifind switch.
+- Signing in again on a known profile keeps its custom headers.
+- The header of a mix block in the queue names the song the mix grew from.
+- The Bookmarks chip of Explore follows bookmarks made or removed elsewhere.
 
 ## [0.7.6] - 2026-08-26
 

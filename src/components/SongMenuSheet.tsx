@@ -50,6 +50,8 @@ import { exportToFolder, shareSongFile } from '@/lib/exportSong';
 import { useSharePicker } from '@/store/sharePicker';
 import { normKey, pickFolder } from '@/lib/localLibrary';
 import { useArtistPicker } from '@/store/artistPicker';
+import { addOnlineTrackToLibrary, isOnlineTrackId } from '@/api/subsonic';
+import { navifindWorkStarted } from '@/lib/navifindWatch';
 import { useAuthStore } from '@/store/auth';
 import { useAutoDownloads } from '@/store/autoDownloads';
 import { useDownloads } from '@/store/downloads';
@@ -62,6 +64,7 @@ import { colors, fontSize, radius, SHEET_MAX_WIDTH, spacing, themed } from '@/th
 import { Cover } from './Cover';
 import { Dialog } from './Dialog';
 import { ExplicitBadge, useExplicitBadge } from './ExplicitBadge';
+import { OnlineBadge, useOnlineBadge } from './OnlineBadge';
 import { StarRating } from './StarRating';
 
 /** Maximum height of the playlist list: proportional to the screen so it
@@ -212,6 +215,7 @@ export function SongMenuSheet() {
   // Before the early return, the way every hook here has to be: the sheet
   // stays mounted with no song between openings.
   const explicit = useExplicitBadge(song?.explicitStatus);
+  const online = useOnlineBadge(song?.id);
 
   if (!song) return null;
 
@@ -381,9 +385,10 @@ export function SongMenuSheet() {
                   <Text style={styles.title} numberOfLines={1}>
                     {song.title}
                   </Text>
-                  {explicit || song.artist ? (
+                  {explicit || online || song.artist ? (
                     <View style={styles.subRow}>
                       <ExplicitBadge status={song.explicitStatus} />
+                      <OnlineBadge id={song.id} />
                       {song.artist ? (
                         <Text style={styles.artist} numberOfLines={1}>
                           {song.artist}
@@ -636,6 +641,26 @@ export function SongMenuSheet() {
                         }
                         const id = targets[0]?.id ?? (song.artist ? normKey(song.artist) : '');
                         if (id) go(`/artist/${id}`);
+                      }}
+                    />
+                  ) : null}
+                  {/* A track the proxy found online: the library does not hold
+                      it until it has been listened to for a while, and this is
+                      the way to have it now. */}
+                  {!!auth && !offline && isOnlineTrackId(song.id) ? (
+                    <Action
+                      icon="cloud-download-outline"
+                      label={t('Add to my library')}
+                      onPress={() => {
+                        close();
+                        // The watcher says when the copy is in, here or as a
+                        // notification if the app has been put away by then.
+                        const work = addOnlineTrackToLibrary(auth, song.id);
+                        navifindWorkStarted(work.then(() => 1));
+                        work.then(
+                          () => toast(t('Copying to the library; it shows up once the server has scanned it.')),
+                          () => toast(t("Couldn't add it to the library")),
+                        );
                       }}
                     />
                   ) : null}

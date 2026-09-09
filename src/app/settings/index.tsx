@@ -101,6 +101,9 @@ export default function SettingsScreen() {
     // a ping, which is one of the two requests offline mode lets through. A
     // local profile has no server, so there is nothing for it here.
     ...(auth ? [{ key: 'network', title: 'Network', icon: 'git-network-outline' as const }] : []),
+    // Only with a server: the proxy sits in front of one. Its own name, not
+    // translated, and off by default (see `lib/navifind.ts`).
+    ...(auth ? [{ key: 'navifind', title: 'Navifind', icon: 'cloud-download-outline' as const }] : []),
     ...(auth ? [{ key: 'account', title: 'Account', icon: 'person-circle-outline' as const }] : []),
     // Scrobbling is also reachable from Quality & playback, where the thresholds
     // live; the accounts to link are what people come looking for.

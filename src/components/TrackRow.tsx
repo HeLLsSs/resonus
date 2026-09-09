@@ -27,6 +27,7 @@ import { Cover } from './Cover';
 import { usePressFeedback } from '@/hooks/usePressFeedback';
 import { PlayingBars } from './PlayingBars';
 import { ExplicitBadge, useExplicitBadge } from './ExplicitBadge';
+import { OnlineBadge, useOnlineBadge } from './OnlineBadge';
 import { FavoriteButton } from './FavoriteButton';
 
 interface Props {
@@ -151,6 +152,7 @@ function TrackRowBase({
     ? !song.url && !song.localUri && !downloaded
     : !!song.unavailable;
   const explicit = useExplicitBadge(song.explicitStatus);
+  const online = useOnlineBadge(song.id);
 
   // Swipe right = configurable action (Spotify-style gesture). The row returns
   // on its own; the background strip only peaks during the gesture.
@@ -292,7 +294,7 @@ function TrackRowBase({
         >
           {song.title}
         </Text>
-        {downloaded || explicit || song.artist ? (
+        {downloaded || explicit || online || song.artist ? (
           <View style={styles.subRow}>
             {downloaded ? (
               <Ionicons name="arrow-down-circle" size={13} color={colors.accent} />
@@ -301,6 +303,7 @@ function TrackRowBase({
                 is about the track, and an artist name long enough to be cut
                 would take the badge off the row with it. */}
             <ExplicitBadge status={song.explicitStatus} />
+            <OnlineBadge id={song.id} />
             {song.artist ? (
               <Text style={styles.artist} numberOfLines={1}>
                 {song.artist}

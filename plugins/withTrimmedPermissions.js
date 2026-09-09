@@ -10,6 +10,9 @@
  * - CAMERA, declared by expo-image-picker. Both places that pick an image
  *   (a station's artwork, a playlist cover) call `launchImageLibraryAsync`,
  *   never the camera.
+ * - RECEIVE_BOOT_COMPLETED, declared by expo-notifications so that scheduled
+ *   notifications survive a reboot. The one notification here is sent on the
+ *   spot, never scheduled, so there is nothing to restore after a boot.
  * - SYSTEM_ALERT_WINDOW, which comes in the Expo template's own manifest and is
  *   for React Native's development overlay.
  *
@@ -18,8 +21,8 @@
  * A music player whose store listing reads "can record audio" and "can take
  * pictures" invites exactly the question nobody wants to keep answering.
  *
- * The first two arrive from libraries, so they need an explicit `tools:node
- * ="remove"` to survive the merge. The third is in the app's own manifest and
+ * The first three arrive from libraries, so they need an explicit `tools:node
+ * ="remove"` to survive the merge. The last is in the app's own manifest and
  * only has to be taken out of it, which leaves debug builds alone: React
  * Native's debug manifest puts it back there, and the dev overlay keeps
  * working while release builds ship without it.
@@ -32,7 +35,11 @@ const { withAndroidManifest } = require('@expo/config-plugins');
 const TOOLS_NS = 'http://schemas.android.com/tools';
 
 /** Comes from a library: has to be removed at merge time. */
-const BLOCKED = ['android.permission.RECORD_AUDIO', 'android.permission.CAMERA'];
+const BLOCKED = [
+  'android.permission.RECORD_AUDIO',
+  'android.permission.CAMERA',
+  'android.permission.RECEIVE_BOOT_COMPLETED',
+];
 
 /** Ours to begin with: dropping it from the manifest is enough. */
 const DROPPED = ['android.permission.SYSTEM_ALERT_WINDOW'];

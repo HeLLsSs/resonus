@@ -18,7 +18,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 import { createPlaylist, reorderPlaylist, searchSongs } from '@/api/data';
-import { getSong, type Song } from '@/api/subsonic';
+import { getSong, isOnlineTrackId, type Song } from '@/api/subsonic';
 import { tg } from '@/i18n';
 import { clearExportCache } from '@/lib/exportSong';
 import { useAuthStore } from '@/store/auth';
@@ -279,9 +279,14 @@ function normalise(text: string): string {
     .trim();
 }
 
-/** The library's answer to a query. */
+/**
+ * The library's answer to a query. A proxy that adds online tracks to a
+ * search puts them in the same list; they are not in the library and have
+ * no path, so they are not what a playlist file can point at.
+ */
 async function libraryHits(query: string): Promise<ServerSong[]> {
-  return searchSongs(query, 5);
+  const hits: ServerSong[] = await searchSongs(query, 5);
+  return hits.filter((song) => !isOnlineTrackId(song.id));
 }
 
 /** The exact song, when the file came from this server and it still has it. */

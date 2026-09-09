@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 990 of them.
+Every string the app can show, under the screen it shows up on. 1017 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -29,10 +29,13 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `{n} minutes` | A value of the sleep timer, in minutes from now |
 | `{n} songs, {size}, copied into a folder of their own.` | The line under that title |
+| `{n} tracks are in the library now` |  |
 | `1 day` | How long a shared link lasts, counted from the moment it is made |
 | `1 hour` | How long a shared link lasts, counted from the moment it is made. Not a time of day |
 | `1 month` | How long a shared link lasts, counted from the moment it is made |
+| `1 track is in the library now` |  |
 | `1 week` | How long a shared link lasts, counted from the moment it is made |
+| `Add to my library` |  |
 | `Allow downloads` | Whether whoever gets the link can download the music, not only listen to it |
 | `Android may stop playback in the background, interrupt downloads or delay the sleep timer. Allowing unrestricted battery use fixes it.` |  |
 | `Artist` | In search results, the little word under a result saying what kind of thing it is |
@@ -49,6 +52,8 @@ you are actually typing into, which is easier than reading it here.
 | `Comment` | The file's comment tag, where people keep notes about a recording |
 | `Content` | Label of the parental advisory row: whether the recording is explicit. Not the song's lyrics, not what it is about |
 | `Continue listening` |  |
+| `Copying to the library; it shows up once the server has scanned it.` |  |
+| `Couldn't add it to the library` |  |
 | `Couldn't create the link` | The server would not make a share link |
 | `Couldn't find anything to mix with this song` | Toast: the server had nothing similar to carry on with |
 | `Couldn't remove the bookmark` |  |
@@ -74,6 +79,7 @@ you are actually typing into, which is easier than reading it here.
 | `Made for you` |  |
 | `Mix started` | The toast that says the app is now picking the songs |
 | `Moods` | Mood tags the server has on the song: mellow, energetic… |
+| `Nothing new in the library` |  |
 | `Open settings` | Its confirm button: goes to Android's own settings, not the app's |
 | `Past queues` |  |
 | `Pick a date…` | Opens the calendar to choose the day the link stops working |
@@ -516,6 +522,8 @@ you are actually typing into, which is easier than reading it here.
 | `Devices` | The audio output devices to cast to |
 | `Explicit` | A value of `Content`: the recording carries a parental advisory (strong language). Also read out for the E badge next to a title |
 | `Forward {n} seconds` | Read out by the screen reader for the seek button. `{n}` is how many seconds it is set to |
+| `From SoundCloud` |  |
+| `From YouTube` |  |
 | `Google Cast` |  |
 | `Hearing aid` |  |
 | `Keep pitch` |  |
@@ -597,6 +605,8 @@ you are actually typing into, which is easier than reading it here.
 | `Clear all` | Throw away the whole list: the history, the queue, or what you searched for |
 | `Clear queue` | Menu action: empty the list of what is coming |
 | `Explicit` | A value of `Content`: the recording carries a parental advisory (strong language). Also read out for the E badge next to a title |
+| `From SoundCloud` |  |
+| `From YouTube` |  |
 | `Get the server's queue` | Queue screen action: replace what is playing here with the queue the server has, which is the one left on another player |
 | `Next from {name}` | Heading on the queue screen: what is coming, and where it comes from. `{name}` is an album, a playlist or a mix |
 | `Next in queue` | Queue screen header: the track that plays next |
@@ -955,6 +965,33 @@ you are actually typing into, which is easier than reading it here.
 | `That folder is already there` | The folder just picked is already in the local profile's list |
 | `We need permission to read your device music.` | Android has not granted access to the phone's files yet |
 | `Where should we get your music?` | Heading when choosing where the phone's own music is read from |
+
+## Settings › Navifind
+
+| String | What it is |
+| --- | --- |
+| `{n} tracks are in the library now` |  |
+| `1 track is in the library now` |  |
+| `A YouTube, SoundCloud or Spotify link. A playlist or an album becomes a playlist of the same name on the server once its tracks are in.` |  |
+| `About Navifind` |  |
+| `Fetching {n} tracks into the library` |  |
+| `Fetching 1 track into the library` |  |
+| `Fetching now` |  |
+| `Import` |  |
+| `Import into the library` |  |
+| `In the library` |  |
+| `Link` |  |
+| `Marks online tracks in searches and lets them be copied into the library.` | The line under “Use Navifind”, explaining it |
+| `Navifind sits in front of Navidrome and answers searches with tracks it can fetch from YouTube and SoundCloud. Only turn it on if your server address points at it.` |  |
+| `Nothing new in the library` |  |
+| `Nothing to fetch at that link` |  |
+| `Offline: nothing to ask.` |  |
+| `On the proxy` |  |
+| `Sending…` |  |
+| `The proxy couldn't take that link` |  |
+| `The server did not answer as Navifind would. Check the address, or turn this off.` |  |
+| `Tracks the proxy has fetched so far. Navidrome picks them up on its next scan.` | The line under “In the library”, explaining it |
+| `Use Navifind` |  |
 
 ## Settings › Navigation bar
 

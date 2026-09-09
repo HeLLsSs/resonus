@@ -235,6 +235,7 @@ describe('importM3u', () => {
   beforeEach(() => {
     data.reset();
     subsonic.songsById.clear();
+    subsonic.proxyActive = false;
     useAuthStore.setState({ auth: serverProfile(), offline: false });
   });
 
@@ -279,6 +280,13 @@ describe('importM3u', () => {
     useAuthStore.setState({ auth: serverProfile({ serverType: 'jellyfin' }) });
     subsonic.songsById.set('srv1', onServer);
     const result = await importM3u('#RESONUS:id=srv1\nnowhere.mp3\n', 'x');
+    assert.equal(result.found, 0);
+  });
+
+  it('leaves out online tracks the proxy adds to a search', async () => {
+    subsonic.proxyActive = true;
+    data.searchResults = [song({ id: 'yt_abc', title: 'Feeling Good' })];
+    const result = await importM3u('#EXTINF:1,Feeling Good\nx.mp3\n', 'x');
     assert.equal(result.found, 0);
   });
 
