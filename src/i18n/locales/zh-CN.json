@@ -989,6 +989,10 @@
   "Couldn't save the bookmark": "无法保存书签",
   "Keep pitch": "保持音调",
   "Resumed at {time}": "已从 {time} 处继续",
+  "at {time}": "{time} 处",
+  "Continue listening": "继续收听",
+  "Shuffle everything": "随机播放全部",
+  "Pinned": "已置顶",
   "That file is too big to be a playlist.": "该文件太大，不像是播放列表。",
   "Queue of {date}": "{date} 的队列"
 }

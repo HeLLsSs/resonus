@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useIsFocused, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -181,6 +181,16 @@ export default function PlayerScreen() {
   const shuffle = usePlayerStore((s) => s.shuffle);
   const repeat = usePlayerStore((s) => s.repeat);
   const toggle = usePlayerStore((s) => s.toggle);
+  // `play=1` is the home screen widget's play button with nothing to press
+  // it on: the app was closed, the queue is back but nothing has started it.
+  // Once, and only if there is a song to start and it is not already going.
+  const { play: playParam } = useLocalSearchParams<{ play?: string }>();
+  const autoPlayed = useRef(false);
+  useEffect(() => {
+    if (playParam !== '1' || autoPlayed.current || !song || isPlaying) return;
+    autoPlayed.current = true;
+    toggle();
+  }, [playParam, song, isPlaying, toggle]);
   const next = usePlayerStore((s) => s.next);
   const previous = usePlayerStore((s) => s.previous);
   const seekTo = usePlayerStore((s) => s.seekTo);

@@ -992,6 +992,10 @@
   "A playlist called “{name}” already exists. Replace its songs?": "Une playlist nommée « {name} » existe déjà. Remplacer ses titres ?",
   "Replace": "Remplacer",
   "That file is too big to be a playlist.": "Ce fichier est trop gros pour être une playlist.",
+  "Continue listening": "Reprendre l'écoute",
+  "Shuffle everything": "Tout en aléatoire",
+  "Pinned": "Épinglés",
+  "at {time}": "à {time}",
   "Highlight words": "Surligner les mots",
   "When the lyrics carry word timings, the word being sung lights up.": "Quand les paroles portent le minutage des mots, le mot chanté s'allume."
 }

@@ -2,6 +2,7 @@
 package expo.modules.carauto
 
 import android.os.Bundle
+import android.provider.MediaStore
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -310,9 +311,22 @@ class ResonusCarBrowserService : MediaLibraryService() {
      * than the spinner that is already there.
      */
     private fun spokenPick(item: MediaItem?): BrowseNode? {
-      val query = item?.requestMetadata?.searchQuery
-      val node = BrowseTreeCache.voicePick(query?.toString())
-      CarAutoLog.d("voice q=$query pick=${node?.id}")
+      val meta = item?.requestMetadata
+      // What the assistant made of the words, when it made anything: media3
+      // hands `playFromSearch`'s extras over as they came, and they carry the
+      // kind of thing asked for and the names picked out of the sentence.
+      val extras = meta?.extras
+      val request = BrowseTreeCache.VoiceRequest(
+        query = meta?.searchQuery?.toString(),
+        focus = extras?.getString(MediaStore.EXTRA_MEDIA_FOCUS),
+        artist = extras?.getString(MediaStore.EXTRA_MEDIA_ARTIST),
+        album = extras?.getString(MediaStore.EXTRA_MEDIA_ALBUM),
+        title = extras?.getString(MediaStore.EXTRA_MEDIA_TITLE),
+        playlist = extras?.getString(MediaStore.EXTRA_MEDIA_PLAYLIST),
+        genre = extras?.getString(MediaStore.EXTRA_MEDIA_GENRE),
+      )
+      val node = BrowseTreeCache.voicePick(request)
+      CarAutoLog.d("voice q=${request.query} focus=${request.focus} pick=${node?.id}")
       if (node == null) return null
       if (node.playable) jsPlayer?.applyTappedItem(node)
       emitPlay(node.id)

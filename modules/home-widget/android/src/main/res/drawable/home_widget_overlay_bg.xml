@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The play/pause button of the square widget, laid over the cover: a dark
+     disc whatever the theme, since what is under it is a picture. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#33FFFFFF">
+  <item>
+    <shape android:shape="oval">
+      <solid android:color="#99000000" />
+    </shape>
+  </item>
+</ripple>

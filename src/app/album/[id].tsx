@@ -124,7 +124,7 @@ export default function AlbumScreen() {
   // Repaints on a change of appearance or accent: a stack keeps this screen
   // mounted while you are on another one, out of reach of anything else.
   useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, play } = useLocalSearchParams<{ id: string; play?: string }>();
   const router = useRouter();
   const canFetch = useAuthStore((s) => !!s.auth || s.offline);
   const offline = useAuthStore((s) => s.offline);
@@ -169,10 +169,24 @@ export default function AlbumScreen() {
   // not instant (animates ~300 ms) and the effect runs after painting, so the
   // screen stays mounted for a bit with the album already deleted: without this
   // "Unknown album" and 0 songs would flash before going away. Freezing it, the
-  // screen simply slides out as it was.
-  const lastGood = useRef(fresh);
-  if (fresh && fresh.songs.length > 0) lastGood.current = fresh;
-  const data = vanished ? (lastGood.current ?? fresh) : fresh;
+  // screen simply slides out as it was. State adjusted while rendering rather
+  // than a ref, so the render that reads it is never behind it.
+  const [lastGood, setLastGood] = useState(fresh);
+  if (fresh && fresh.songs.length > 0 && lastGood !== fresh) setLastGood(fresh);
+  const data = vanished ? (lastGood ?? fresh) : fresh;
+
+  // Opened by `resonus://play/album/<id>` (see `+native-intent`): play it as
+  // soon as the songs are here. The query waits for the session by itself, so
+  // a cold start from an NFC tag lands here with the data still on its way and
+  // this fires when it arrives. Once only: the param stays in the route, and a
+  // refetch is not a second tap on the tag.
+  const playedFromLink = useRef(false);
+  useEffect(() => {
+    if (play !== '1' || playedFromLink.current || !fresh || fresh.songs.length === 0) return;
+    playedFromLink.current = true;
+    // playQueue already shows a failure toast when it can; keep the UI alive.
+    playQueue(fresh.songs, 0, fresh.album.name, `/album/${id}`).catch(() => {});
+  }, [play, fresh, id, playQueue]);
 
   const discHeaders = useMemo(
     () =>

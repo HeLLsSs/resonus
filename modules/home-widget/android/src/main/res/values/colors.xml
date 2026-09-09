@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The light set, for phones before Android 12 that are not in dark mode.
+     The green is the app icon's, darkened enough to carry white on it. -->
+<resources>
+  <color name="widget_background">#F2F7F7F7</color>
+  <color name="widget_accent">#FF139C4C</color>
+  <color name="widget_on_accent">#FFFFFFFF</color>
+  <color name="widget_highlight">#1F000000</color>
+  <color name="widget_text_primary">#DE000000</color>
+  <color name="widget_text_secondary">#8A000000</color>
+  <color name="widget_tile">#14000000</color>
+</resources>

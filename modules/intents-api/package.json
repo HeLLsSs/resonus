@@ -1,0 +1,7 @@
+{
+  "name": "intents-api",
+  "version": "0.0.1",
+  "description": "Broadcast intents that control Resonus from other apps (Tasker, Automate, MacroDroid, NFC tools, adb shell), and the state it broadcasts back (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

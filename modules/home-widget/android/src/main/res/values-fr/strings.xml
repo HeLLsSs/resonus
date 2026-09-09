@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="widget_label">Lecture en cours</string>
+  <string name="widget_description">Pochette, titre et commandes de ce qui est en cours de lecture ; la taille haute ajoute les titres suivants de la file.</string>
+  <string name="widget_nothing_playing">Aucune lecture</string>
+  <string name="widget_open_app">Touchez pour ouvrir Resonus</string>
+  <string name="widget_open_player">Ouvrir le lecteur</string>
+  <string name="widget_previous">Précédent</string>
+  <string name="widget_play">Lecture</string>
+  <string name="widget_pause">Pause</string>
+  <string name="widget_next">Suivant</string>
+  <string name="widget_play_song">Lire %1$s</string>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What stands in for the cover: nothing playing yet, or a cover that could
+     not be fetched. A note on a grey tile, the same shape the real cover gets. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <item android:drawable="@drawable/home_widget_artwork_bg" />
+  <item
+      android:drawable="@drawable/ic_widget_note"
+      android:gravity="center"
+      android:width="32dp"
+      android:height="32dp" />
+</layer-list>

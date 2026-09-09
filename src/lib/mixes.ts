@@ -311,6 +311,10 @@ export function genreMixes(genres: Genre[], artOf: (genre: string) => Album[] | 
 
 /**
  * What the cards above are made from, gathered by whoever wants the shelf.
+ * Home reads these through hooks and the car through the stores and the query
+ * cache directly; the choosing itself is the same in both places and lives in
+ * `allMixes`, so a mix on the phone and its twin in the car have one name and
+ * play one thing.
  */
 export interface MixSources {
   entries: HistoryEntry[];

@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 986 of them.
+Every string the app can show, under the screen it shows up on. 990 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -37,15 +37,18 @@ you are actually typing into, which is easier than reading it here.
 | `Android may stop playback in the background, interrupt downloads or delay the sleep timer. Allowing unrestricted battery use fixes it.` |  |
 | `Artist` | In search results, the little word under a result saying what kind of thing it is |
 | `Artists` | A heading over a list of them, never a count |
+| `at {time}` |  |
 | `Battery optimization is on` | Title of the card warning that Android may cut playback off |
 | `Bookmark here` |  |
 | `Bookmark removed` |  |
 | `Bookmarked at {time}` |  |
+| `Bookmarks` |  |
 | `BPM` | A property of the audio: beats per minute |
 | `Channels` | A property of the audio: mono, stereo |
 | `Clean` | A value of `Content`: the edited version, with the explicit language taken out. Not "tidy" and not "free of noise" |
 | `Comment` | The file's comment tag, where people keep notes about a recording |
 | `Content` | Label of the parental advisory row: whether the recording is explicit. Not the song's lyrics, not what it is about |
+| `Continue listening` |  |
 | `Couldn't create the link` | The server would not make a share link |
 | `Couldn't find anything to mix with this song` | Toast: the server had nothing similar to carry on with |
 | `Couldn't remove the bookmark` |  |
@@ -63,19 +66,24 @@ you are actually typing into, which is easier than reading it here.
 | `Export as M3U` |  |
 | `Format` | The file format (FLAC, MP3…), written as the player writes it |
 | `Genre` | Label of a field in the song information sheet |
+| `Genres` | A heading over a list of them, never a count |
 | `Go to album` | Leave this sheet and open the album the song is on |
 | `Go to artist` | Leave this sheet and open the artist |
 | `Home` | The first tab, and a folder in the car |
 | `Library` | The settings section, and a folder in the car |
+| `Made for you` |  |
 | `Mix started` | The toast that says the app is now picking the songs |
 | `Moods` | Mood tags the server has on the song: mellow, energetic… |
 | `Open settings` | Its confirm button: goes to Android's own settings, not the app's |
+| `Past queues` |  |
 | `Pick a date…` | Opens the calendar to choose the day the link stops working |
 | `Pin to top` | Keep this at the top of its list, above everything else. `Unpin` undoes it |
+| `Pinned` |  |
 | `Playback stopped` | The mini player when there is nothing playing any more |
 | `Plays` | How many times the song has been played |
 | `Rate` | Verb: give it stars. Used for a song and for an artist. Not "bitrate" |
 | `Rating` | The stars given to the song. Not a bitrate, not a review |
+| `Recently added` | A sort order, and a section: newest first (in Favorites, last favorited first) |
 | `Recents` | Library section and its sort order: recently opened items |
 | `Remove bookmark` |  |
 | `Remove from playlist` | Menu action: take this song out of the playlist it was opened from |
@@ -90,11 +98,14 @@ you are actually typing into, which is easier than reading it here.
 | `Server didn't allow downloads` | Warning after sharing: the link was made and works, but the call that turns downloading on did not go through |
 | `Share` | Make a link on the server that others can open. Getting the file itself out is `Export` |
 | `Share “{name}”` | The sheet's title, with what is being shared |
+| `Shuffle everything` |  |
 | `Size` | The size of the quick grid tiles |
 | `Sleep timer` | Stop playing after a while, for falling asleep to |
 | `Sleep timer ({n} min left)` | The menu row while it is counting down. `{n}` is minutes still to go |
 | `Sleep timer (end of song)` | The same row when it is set to stop at the end of this song |
 | `Sleep timer off` | The toast that says it was turned off |
+| `Smart playlist` |  |
+| `Smart playlists` |  |
 | `Something went wrong` |  |
 | `Song information` | The menu action and the sheet's title: what is known about the track |
 | `Start mix` | Start an auto-generated radio mix from this song |
@@ -519,7 +530,6 @@ you are actually typing into, which is easier than reading it here.
 | `Playback stopped` | The mini player when there is nothing playing any more |
 | `PLAYING FROM` | Small label above the cover, followed by the name of the album, playlist or mix it is playing from, or by `Queue` while the song is one that was added to the queue by hand. Written in capitals by the design, so it can be capitals in your language too, or not, whichever reads right |
 | `Previous` | Player control: the previous track (accessibility label) |
-| `Queue` | The list of songs waiting to play. Not a playlist |
 | `Radio` | Internet radio stations. Most languages keep the word |
 | `Remove from the group` | The − beside `Add to the group`, and the same in reverse: it takes that room out of the group so it stops playing along. Read out by the screen reader, never shown, and Sonos only |
 | `Repeat` | Start again at the end |
@@ -594,7 +604,6 @@ you are actually typing into, which is easier than reading it here.
 | `Now playing` | Heading on the queue screen over the song sounding right now. The player's own label is `NOW PLAYING`, a different string |
 | `Past queues` |  |
 | `Play a song or album to start the queue.` | The line under the empty queue |
-| `Queue` | The list of songs waiting to play. Not a playlist |
 | `Queue brought over` | The toast that says it worked |
 | `Queue cleared` | Toast |
 | `Removed from queue` | Toast |
@@ -1107,7 +1116,6 @@ you are actually typing into, which is easier than reading it here.
 | `Prefer online search` | A value of `Lyrics source`: look them up on the internet first |
 | `Previous button` | What the previous button does when a song is already playing. Its values are the two lines below it |
 | `Put the ⋯ menu next to the title and the heart in the top bar, easier to reach one-handed.` |  |
-| `Queue` | The list of songs waiting to play. Not a playlist |
 | `Restart, then previous track` | A value of `Previous button`: the first press goes back to the start of this song, the second to the one before |
 | `Scroll long titles` | A title too long to fit slides sideways, over and over, instead of being cut off |
 | `Show a star rating bar to rate the current song.` | The line under “Show rating”, explaining it |
@@ -1422,9 +1430,9 @@ you are actually typing into, which is easier than reading it here.
 | `Playing next` | The toast that says `Play next` worked. Not the same string, and not a heading |
 | `Playlist name` | The name field when making or renaming a playlist |
 | `Playlists` | A section on Home and in the library, and a folder in the car |
+| `Queue` | The list of songs waiting to play. Not a playlist |
 | `Random` |  |
 | `Rate {n} stars` | Read out by the screen reader for each star. `{n}` is which star it is |
-| `Recently added` | A sort order, and a section: newest first (in Favorites, last favorited first) |
 | `Remove` | Take something out of a list. Deleting for good is `Delete` |
 | `Remove download` | Delete the downloaded file, keeping the song in the library |
 | `Remove download?` | Dialog title: delete the files of something already downloaded |

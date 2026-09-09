@@ -1,0 +1,7 @@
+{
+  "name": "home-widget",
+  "version": "0.0.1",
+  "description": "Android home-screen \"Now playing\" widget for Resonus (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

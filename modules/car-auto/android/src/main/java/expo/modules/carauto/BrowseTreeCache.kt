@@ -7,6 +7,7 @@ import org.json.JSONObject
 import java.io.File
 import java.text.Normalizer
 import java.util.Locale
+import java.util.concurrent.Executors
 
 data class BrowseNode(
   val id: String,
@@ -32,6 +33,11 @@ object BrowseTreeCache {
   // event so JS can queue the whole collection (the album, the playlist, the
   // section of Home) rather than only the track that was tapped.
   @Volatile private var lastBrowsedParent: String? = null
+  // One thread, so the snapshots land on disk in the order they were pushed.
+  // `setNodes` is a plain module function, which runs on the JavaScript
+  // thread: the tree is parsed there, and writing it out as well, hundreds of
+  // songs of JSON, is a pause in everything that thread draws.
+  private val snapshotWriter = Executors.newSingleThreadExecutor()
 
   /**
    * Takes a tree from JS, whole or in part.
@@ -60,14 +66,16 @@ object BrowseTreeCache {
     nodes = if (keepWhatWeHave) nodes + incoming.nodes else incoming.nodes
     profile = incoming.profile ?: profile.takeIf { sameAccount }
     loaded = true
-    runCatching {
-      val file = File(context.filesDir, SNAPSHOT_FILE)
-      // Only a whole tree is worth keeping for the next time the car starts
-      // the service on its own. A partial one holds no songs, and the point of
-      // the snapshot is precisely the songs.
-      if (!incoming.partial) file.writeText(json)
-      // Nothing to lay this over, so what is on disk is another account's.
-      else if (!sameAccount) file.delete()
+    val file = File(context.filesDir, SNAPSHOT_FILE)
+    snapshotWriter.execute {
+      runCatching {
+        // Only a whole tree is worth keeping for the next time the car starts
+        // the service on its own. A partial one holds no songs, and the point
+        // of the snapshot is precisely the songs.
+        if (!incoming.partial) file.writeText(json)
+        // Nothing to lay this over, so what is on disk is another account's.
+        else if (!sameAccount) file.delete()
+      }
     }
   }
 
@@ -136,7 +144,11 @@ object BrowseTreeCache {
    * by id, and for a track by the song it points at, since its id carries the
    * parent it was found in.
    */
-  fun search(query: String): List<BrowseNode> {
+  fun search(query: String): List<BrowseNode> = ranked(query).take(MAX_RESULTS).map { it.first }
+
+  /** Every node worth something for `query` with what it is worth, best
+   *  first. What `search` and the spoken requests both read. */
+  private fun ranked(query: String): List<Pair<BrowseNode, Int>> {
     val q = fold(query)
     if (q.isEmpty()) return emptyList()
     val tokens = q.split(' ').filter { it.isNotEmpty() }
@@ -152,10 +164,7 @@ object BrowseTreeCache {
     // Sorting is stable, so nodes of equal worth stay in the order the tree
     // holds them, and a collection comes before a single track: it is the
     // shorter way to say the same thing, and one tap plays all of it.
-    return hits
-      .sortedWith(compareByDescending<Pair<BrowseNode, Int>> { it.second }.thenBy { it.first.playable })
-      .take(MAX_RESULTS)
-      .map { it.first }
+    return hits.sortedWith(compareByDescending<Pair<BrowseNode, Int>> { it.second }.thenBy { it.first.playable })
   }
 
   /** The song a track id points at, or the node's own id. */
@@ -175,6 +184,10 @@ object BrowseTreeCache {
     return score(node.subtitle, q, tokens) / 2
   }
 
+  /** What a title is worth when every word said starts a word of it. Below
+   *  this the match is somewhere inside the words, or under the title. */
+  private const val WORD_MATCH = 60
+
   private fun score(text: String?, q: String, tokens: List<String>): Int {
     val t = fold(text ?: return 0)
     if (t.isEmpty()) return 0
@@ -183,7 +196,7 @@ object BrowseTreeCache {
     val words = t.split(' ')
     // "dark side" finds "The Dark Side of the Moon", and so does "moon": every
     // word typed has to start a word of the title, in any order.
-    if (tokens.all { tok -> words.any { it.startsWith(tok) } }) return 60
+    if (tokens.all { tok -> words.any { it.startsWith(tok) } }) return WORD_MATCH
     if (tokens.all { t.contains(it) }) return 40
     return 0
   }
@@ -200,22 +213,92 @@ object BrowseTreeCache {
     return stripped.lowercase(Locale.ROOT).replace(SPACES, " ").trim()
   }
 
+  // ── Spoken requests ─────────────────────────────────────────────────────────
+
   /**
-   * The one thing to start playing for a spoken request, or null if the tree
-   * holds nothing that could answer it.
-   *
-   * Only what JS knows how to resolve: a track, an album, an artist, a playlist
-   * or the favourites. The tabs and the shelves are places to browse, not
-   * answers to "play something", and offering one would start silence.
+   * What the assistant understood of "play ...": the words themselves, and
+   * when it managed to parse them, which kind of thing was asked for and the
+   * names it picked out. "Play the album Abbey Road" arrives with the album
+   * focus and `album` filled in; "play Abbey Road" arrives as words alone.
    */
-  fun voicePick(query: String?): BrowseNode? {
+  data class VoiceRequest(
+    val query: String?,
+    val focus: String? = null,
+    val artist: String? = null,
+    val album: String? = null,
+    val title: String? = null,
+    val playlist: String? = null,
+    val genre: String? = null,
+  )
+
+  /** The focus values `MediaStore.EXTRA_MEDIA_FOCUS` carries, as the platform
+   *  spells them. Literal, because the `Playlists` and `Genres` classes that
+   *  used to hold them are deprecated and the strings are not. */
+  private const val FOCUS_ARTIST = "vnd.android.cursor.item/artist"
+  private const val FOCUS_ALBUM = "vnd.android.cursor.item/album"
+  private const val FOCUS_SONG = "vnd.android.cursor.item/audio"
+  private const val FOCUS_PLAYLIST = "vnd.android.cursor.item/playlist"
+  private const val FOCUS_GENRE = "vnd.android.cursor.item/genre"
+
+  /**
+   * The one thing to start playing for a spoken request.
+   *
+   * A request the assistant parsed is answered in kind: an artist asked for
+   * by name is looked for among the artists, an album among the albums, and
+   * only failing that among everything. Words alone go to everything, where
+   * a playlist, an album or an artist called what was said comes before a
+   * song called the same, and an exact name before a near one: "play Abbey
+   * Road" means the record, not its title track. What the tree cannot answer
+   * is handed to JS as a search of the library (`search:<words>`), which is
+   * a request over the network and may come back to nothing with the screen
+   * off, but beats saying nothing at all.
+   *
+   * Only what JS knows how to resolve: a track, a mix, an album, an artist, a
+   * playlist, smart or not, a genre, a past queue, a resume point or the
+   * favourites. The tabs and the drawers are places to browse, not answers
+   * to "play something", and offering one would start silence.
+   */
+  fun voicePick(request: VoiceRequest): BrowseNode? {
+    val query = request.query?.trim().orEmpty()
     // "Play music", with nothing said about what. The favourites are the
     // closest thing to an answer the tree has.
-    val hit =
-      if (query.isNullOrBlank()) firstPlayableCollection()
-      else search(query).firstOrNull { it.canBePlayed() }
-    return hit?.let { intoSomethingToPlay(it) }
+    if (query.isEmpty()) return firstPlayableCollection()?.let { intoSomethingToPlay(it) }
+    val hit = focusedPick(request, query) ?: namedPick(query)
+    return hit?.let { intoSomethingToPlay(it) } ?: searchNode(query)
   }
+
+  /** A request the assistant parsed, answered among the kind it named. */
+  private fun focusedPick(request: VoiceRequest, query: String): BrowseNode? {
+    val (text, kind) = when (request.focus) {
+      FOCUS_ARTIST -> (request.artist ?: query) to { n: BrowseNode -> n.id.startsWith("artist:") }
+      FOCUS_ALBUM -> (request.album ?: query) to { n: BrowseNode -> n.id.startsWith("album:") }
+      FOCUS_PLAYLIST -> (request.playlist ?: query) to { n: BrowseNode -> n.isPlaylist() }
+      FOCUS_GENRE -> (request.genre ?: query) to { n: BrowseNode -> n.id.startsWith("genre:") }
+      FOCUS_SONG -> (request.title ?: query) to { n: BrowseNode -> n.id.startsWith("track|") }
+      else -> return null
+    }
+    return ranked(text).firstOrNull { (node, score) -> score >= WORD_MATCH && kind(node) }?.first
+  }
+
+  /** Words alone: a collection named for them first, then the best of the rest. */
+  private fun namedPick(query: String): BrowseNode? {
+    val hits = ranked(query)
+    return hits.firstOrNull { (node, score) -> score >= WORD_MATCH && node.isCollection() }?.first
+      ?: hits.firstOrNull { (node, _) -> node.canBePlayed() }?.first
+  }
+
+  /** A leaf JS answers by searching the library for the words. */
+  private fun searchNode(query: String): BrowseNode =
+    BrowseNode(
+      id = "search:$query",
+      title = query,
+      subtitle = null,
+      artworkUrl = null,
+      playable = true,
+      contentStyle = null,
+      mediaType = null,
+      group = null,
+    )
 
   /**
    * An album or an artist becomes the first song the tree holds for it.
@@ -239,12 +322,14 @@ object BrowseTreeCache {
     return null
   }
 
-  private fun BrowseNode.canBePlayed(): Boolean =
-    playable ||
-      id.startsWith("album:") ||
-      id.startsWith("artist:") ||
-      id.startsWith("playlist:") ||
-      id == "favorites"
+  private fun BrowseNode.isPlaylist(): Boolean =
+    id.startsWith("playlist:") || id.startsWith("smart:") || id == "favorites"
+
+  /** A thing with songs inside it that JS can queue whole. */
+  private fun BrowseNode.isCollection(): Boolean =
+    id.startsWith("album:") || id.startsWith("artist:") || isPlaylist()
+
+  private fun BrowseNode.canBePlayed(): Boolean = playable || isCollection()
 
   /** A tree as it arrives: the nodes, whether it is only part of one, and the
    *  account it was built for. */

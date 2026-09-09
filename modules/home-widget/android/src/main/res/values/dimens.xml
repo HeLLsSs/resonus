@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The corners. From Android 12 the launcher clips every widget to a radius
+     of its own, and the system names it (values-v31); before that the widget
+     chooses. -->
+<resources>
+  <dimen name="widget_corner_radius">20dp</dimen>
+  <dimen name="widget_inner_radius">10dp</dimen>
+</resources>

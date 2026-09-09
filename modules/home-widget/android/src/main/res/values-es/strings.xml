@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="widget_label">Reproduciendo</string>
+  <string name="widget_description">Carátula, título y controles de lo que se está reproduciendo; el tamaño alto añade las siguientes canciones de la cola.</string>
+  <string name="widget_nothing_playing">Nada en reproducción</string>
+  <string name="widget_open_app">Toca para abrir Resonus</string>
+  <string name="widget_open_player">Abrir el reproductor</string>
+  <string name="widget_previous">Anterior</string>
+  <string name="widget_play">Reproducir</string>
+  <string name="widget_pause">Pausar</string>
+  <string name="widget_next">Siguiente</string>
+  <string name="widget_play_song">Reproducir %1$s</string>
+</resources>

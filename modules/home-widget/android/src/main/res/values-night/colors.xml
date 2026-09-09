@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The dark set, for phones before Android 12 in dark mode. -->
+<resources>
+  <color name="widget_background">#F2141414</color>
+  <color name="widget_accent">#FF1CD667</color>
+  <color name="widget_on_accent">#FF0B2A17</color>
+  <color name="widget_highlight">#33FFFFFF</color>
+  <color name="widget_text_primary">#FFFFFFFF</color>
+  <color name="widget_text_secondary">#B3FFFFFF</color>
+  <color name="widget_tile">#FF2C2C2C</color>
+</resources>

@@ -40,6 +40,7 @@
       "./plugins/withReleaseSigning",
       "./plugins/withoutFontWeightAdjustment",
       "./plugins/withTrimmedPermissions",
+      "./plugins/withShortcuts",
       "expo-router",
       [
         "expo-splash-screen",

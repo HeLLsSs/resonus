@@ -86,7 +86,7 @@ export interface SubsonicAuth {
    * profile, and read only through `authHeaders()`. They travel with every
    * request this app makes itself: the API, the streams, the covers and the
    * downloads. They cannot travel with a URL handed to another device (UPnP,
-   * Google Cast), which fetches for itself; see `store/remoteTrack`.
+   * Google Cast, the car), which fetches for itself; see `store/remoteTrack`.
    */
   headers?: Record<string, string>;
 }

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The wide widget (4x2): cover, title, artist and the three buttons.
+
+     Drawn by the launcher from a RemoteViews, so only the views RemoteViews
+     knows: Linear/Frame/RelativeLayout, ImageView, TextView, ImageButton. The
+     cover's rounded corners are baked into the bitmap (WidgetArtwork), since
+     nothing here can clip. Colours come from HomeWidgetTheme through the
+     android:theme on the root, never spelt out. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/home_widget_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="12dp"
+    android:theme="@style/HomeWidgetTheme">
+
+  <ImageView
+      android:id="@+id/widget_artwork"
+      android:layout_width="76dp"
+      android:layout_height="76dp"
+      android:contentDescription="@string/widget_open_player"
+      android:scaleType="centerCrop"
+      android:src="@drawable/ic_widget_artwork" />
+
+  <LinearLayout
+      android:id="@+id/widget_body"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="12dp"
+      android:layout_weight="1"
+      android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/widget_nothing_playing"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_artist"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="1dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/widget_open_app"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="13sp" />
+
+    <LinearLayout
+        android:id="@+id/widget_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+      <ImageButton
+          android:id="@+id/widget_prev"
+          android:layout_width="44dp"
+          android:layout_height="40dp"
+          android:background="?android:attr/selectableItemBackgroundBorderless"
+          android:contentDescription="@string/widget_previous"
+          android:scaleType="center"
+          android:src="@drawable/ic_widget_prev"
+          android:tint="?android:attr/textColorPrimary" />
+
+      <ImageButton
+          android:id="@+id/widget_play_pause"
+          android:layout_width="40dp"
+          android:layout_height="40dp"
+          android:layout_marginStart="4dp"
+          android:layout_marginEnd="4dp"
+          android:background="@drawable/home_widget_play_bg"
+          android:contentDescription="@string/widget_play"
+          android:scaleType="center"
+          android:src="@drawable/ic_widget_play"
+          android:tint="@color/widget_on_accent" />
+
+      <ImageButton
+          android:id="@+id/widget_next"
+          android:layout_width="44dp"
+          android:layout_height="40dp"
+          android:background="?android:attr/selectableItemBackgroundBorderless"
+          android:contentDescription="@string/widget_next"
+          android:scaleType="center"
+          android:src="@drawable/ic_widget_next"
+          android:tint="?android:attr/textColorPrimary" />
+    </LinearLayout>
+  </LinearLayout>
+</LinearLayout>

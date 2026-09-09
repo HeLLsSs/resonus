@@ -995,6 +995,10 @@
   "Couldn't save the bookmark": "Не удалось сохранить закладку",
   "Keep pitch": "Сохранять высоту тона",
   "Resumed at {time}": "Продолжено с {time}",
+  "at {time}": "на {time}",
+  "Continue listening": "Продолжить прослушивание",
+  "Shuffle everything": "Перемешать всё",
+  "Pinned": "Закреплённое",
   "That file is too big to be a playlist.": "Этот файл слишком большой для плейлиста.",
   "Queue of {date}": "Очередь от {date}"
 }

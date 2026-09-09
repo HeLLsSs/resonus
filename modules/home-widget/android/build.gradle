@@ -1,0 +1,22 @@
+// See the note in modules/audio-eq/android/build.gradle: the plugin is what
+// brings the compiler plugin the module DSL needs from SDK 56 on.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.homewidget'
+version = '0.0.1'
+
+android {
+  namespace "expo.modules.homewidget"
+  defaultConfig {
+    versionCode 1
+    versionName "0.0.1"
+  }
+}
+
+dependencies {
+  // Nothing beyond the platform: the buttons press media keys through the
+  // system, and the artwork is fetched with what the SDK already has.
+}

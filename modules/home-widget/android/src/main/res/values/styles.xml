@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The theme the widget layouts are inflated with (android:theme on their
+     root). The layouts and drawables name nothing but these attributes, so
+     the colours follow the system: the fixed light and dark sets in
+     values/colors.xml and values-night/colors.xml before Android 12, and the
+     wallpaper's own palette from Android 12 on (values-v31, values-night-v31). -->
+<resources>
+  <style name="HomeWidgetTheme" parent="@android:style/Theme.DeviceDefault">
+    <item name="android:colorBackground">@color/widget_background</item>
+    <item name="android:colorAccent">@color/widget_accent</item>
+    <item name="android:colorControlHighlight">@color/widget_highlight</item>
+    <item name="android:textColorPrimary">@color/widget_text_primary</item>
+    <item name="android:textColorSecondary">@color/widget_text_secondary</item>
+  </style>
+</resources>

@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!-- The command receiver of the intents API (docs/INTENTS.md). Exported on
+         purpose and guarded by nothing: it is what Tasker, MacroDroid, an NFC
+         app or `adb shell am broadcast` send to, none of which share a
+         signature with the app, and the most it can do is what the headset
+         buttons already can. -->
+    <receiver
+      android:name="expo.modules.intentsapi.IntentsApiReceiver"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="com.juananzzz.resonus.COMMAND" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

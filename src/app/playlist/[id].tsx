@@ -47,7 +47,7 @@ export default function PlaylistScreen() {
   // Repaints on a change of appearance or accent: a stack keeps this screen
   // mounted while you are on another one, out of reach of anything else.
   useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, play } = useLocalSearchParams<{ id: string; play?: string }>();
   const router = useRouter();
   const auth = useAuthStore((s) => s.auth);
   const offline = useAuthStore((s) => s.offline);
@@ -88,6 +88,19 @@ export default function PlaylistScreen() {
     queryFn: () => getPlaylist(id),
     enabled: (!!auth || offline) && !!id,
   });
+
+  // Opened by `resonus://play/playlist/<id>` (see `+native-intent`): play it
+  // in its own order as soon as the songs are here. The query waits for the
+  // session by itself, so a cold start from an NFC tag lands here with the data
+  // still on its way and this fires when it arrives. Once only: the param
+  // stays in the route, and a refetch is not a second tap on the tag.
+  const playedFromLink = useRef(false);
+  useEffect(() => {
+    if (play !== '1' || playedFromLink.current || !data || data.songs.length === 0) return;
+    playedFromLink.current = true;
+    // playQueue already shows a failure toast when it can; keep the UI alive.
+    playQueue(data.songs, 0, data.playlist.name, `/playlist/${id}`).catch(() => {});
+  }, [play, data, id, playQueue]);
 
   const songIds = (data?.songs ?? []).map((s) => s.id);
   // Exact, unlike the album menu's guess: the songs are right here, so the

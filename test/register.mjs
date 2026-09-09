@@ -32,6 +32,7 @@ const STUBS_DIR = path.join(ROOT, 'test', 'stubs');
  */
 const STUBS = new Map([
   ['react-native', 'react-native.ts'],
+  ['expo-modules-core', 'expo-modules-core.ts'],
   ['expo-constants', 'expo-constants.ts'],
   ['expo-crypto', 'expo-crypto.ts'],
   ['expo-document-picker', 'expo-document-picker.ts'],
@@ -44,12 +45,14 @@ const STUBS = new Map([
   ['@/lib/exportSong', 'lib-exportSong.ts'],
   ['@/lib/localLibrary', 'lib-localLibrary.ts'],
   ['@/lib/localQueries', 'lib-localQueries.ts'],
+  ['@/lib/playShuffle', 'lib-playShuffle.ts'],
   ['@/lib/query', 'lib-query.ts'],
   ['@/lib/storage', 'lib-storage.ts'],
   ['@/store/auth', 'store-auth.ts'],
   ['@/store/autoDownloads', 'store-hydrated.ts'],
   ['@/store/equalizer', 'store-hydrated.ts'],
   ['@/store/pins', 'store-hydrated.ts'],
+  ['@/store/player', 'store-player.ts'],
   ['@/store/settings', 'store-settings.ts'],
   ['@/store/smartPlaylists', 'store-hydrated.ts'],
   ['@/store/sortPrefs', 'store-hydrated.ts'],

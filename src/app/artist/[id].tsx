@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import {
   ActivityIndicator,
@@ -100,7 +100,7 @@ export default function ArtistScreen() {
   // Repaints on a change of appearance or accent: a stack keeps this screen
   // mounted while you are on another one, out of reach of anything else.
   useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, play } = useLocalSearchParams<{ id: string; play?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const canFetch = useAuthStore((s) => !!s.auth || s.offline);
@@ -189,7 +189,7 @@ export default function ArtistScreen() {
   });
   const name = data?.artist.name;
 
-  const { data: topSongs } = useQuery({
+  const { data: topSongs, isPending: topSongsPending } = useQuery({
     queryKey: ['topSongs', name],
     queryFn: () => getTopSongs(name!, 20),
     enabled: canFetch && !!name,
@@ -213,6 +213,37 @@ export default function ArtistScreen() {
 
   // Only for an artist the server credits as a composer (see the hook).
   const { data: composed } = useComposedAlbums(id, !!data?.artist.roles?.includes('composer'));
+
+  // Opened by `resonus://play/artist/<id>` (see `+native-intent`): what the
+  // header's play button does, without the tap. The popular tracks once they
+  // have been asked for (a server that keeps no play counts answers with none,
+  // and then it is the discography from the earliest album on, the way the
+  // button falls back). Both queries wait for the session by themselves, so a
+  // cold start from an NFC tag lands here with the data still on its way and
+  // this fires when it arrives. Once only: the param stays in the route.
+  const playedFromLink = useRef(false);
+  useEffect(() => {
+    if (play !== '1' || playedFromLink.current || !data || topSongsPending) return;
+    playedFromLink.current = true;
+    const artistName = data.artist.name;
+    const href = `/artist/${id}`;
+    const start = async () => {
+      if (topSongs && topSongs.length > 0) {
+        await playQueue(topSongs, 0, artistName, href);
+        return;
+      }
+      const chrono = [...data.albums].sort((a, b) => (a.year ?? Infinity) - (b.year ?? Infinity));
+      const parts = await Promise.all(
+        chrono.map((a) =>
+          queryClient.fetchQuery({ queryKey: ['album', a.id], queryFn: () => getAlbum(a.id) }),
+        ),
+      );
+      const songs = parts.flatMap((p) => p.songs);
+      if (songs.length > 0) await playQueue(songs, 0, artistName, href);
+    };
+    // playQueue already shows a failure toast when it can; keep the UI alive.
+    start().catch(() => {});
+  }, [play, data, topSongs, topSongsPending, id, playQueue, queryClient]);
 
   if (isLoading) {
     return (

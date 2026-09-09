@@ -989,6 +989,10 @@
   "Couldn't save the bookmark": "Couldn't save the bookmark",
   "Keep pitch": "Keep pitch",
   "Resumed at {time}": "Resumed at {time}",
+  "at {time}": "at {time}",
+  "Continue listening": "Continue listening",
+  "Shuffle everything": "Shuffle everything",
+  "Pinned": "Pinned",
   "That file is too big to be a playlist.": "That file is too big to be a playlist.",
   "Queue of {date}": "Queue of {date}"
 }

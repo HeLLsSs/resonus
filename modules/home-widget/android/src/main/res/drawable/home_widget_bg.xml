@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The widget's own ground, in the theme's colour (HomeWidgetTheme), so it
+     is light or dark with the system and, from Android 12, in the
+     wallpaper's tone. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+  <solid android:color="?android:attr/colorBackground" />
+  <corners android:radius="@dimen/widget_corner_radius" />
+</shape>

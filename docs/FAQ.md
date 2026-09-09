@@ -23,8 +23,9 @@ Sign in with the header under **Advanced**, one `Name: value` per line. It goes
 with every request the app makes: browsing, streaming, covers, downloads,
 lyrics.
 
-Casting is the one place where something else does the fetching, and the
-speaker cannot be told about the header, so the app goes round it:
+Casting, Android Auto and the widget are the places where something else does
+the fetching, and none of them can be told about the header, so the app goes
+round it:
 
 - **Google Cast and UPnP/DLNA**: the speaker is handed an address on the phone
   instead of the server's, and the phone fetches from the server with the
@@ -32,6 +33,10 @@ speaker cannot be told about the header, so the app goes round it:
   The phone has to stay awake and on the same Wi-Fi for as long as it plays,
   the same as when it casts a download. A downloaded song is served straight
   off the phone.
+- **Android Auto and the widget**: both draw covers they fetch themselves, so
+  they are given the copies the phone already has, fetched with the header on.
+  A cover the phone has never seen shows up after a moment, or not at all if
+  the server is out of reach.
 
 ## How do I install Resonus on iOS?
 

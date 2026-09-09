@@ -183,6 +183,10 @@ export function MixesShelf({ title }: { title: string }) {
     const cached = queryClient
       .getQueriesData<Album[]>({ queryKey: ['albumList'] })
       .flatMap(([, albums]) => albums ?? []);
+    // Through `allMixes` rather than by listing the four kinds here: the car
+    // builds its own shelf from the same function, and a fifth kind added to
+    // one list and not the other is a mix that exists in the car and not on
+    // the phone.
     return allMixes({
       entries,
       times,

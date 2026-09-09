@@ -7,17 +7,41 @@
  * module (`setNodes`), because the native service doesn't fetch: it reads
  * from the cached tree. That's why we prefetch each album/playlist's tracks.
  *
+ * What goes where, and how many of each, is decided in `carAutoLayout`; this
+ * file gathers the rows and answers the taps.
+ *
  * Adapted from the wavio pattern (github.com/Joel-Mercier/wavio, MIT).
  */
+import { Image } from 'expo-image';
+
 import * as data from '@/api/data';
-import { type Album, type Artist, type Playlist, type Song } from '@/api/subsonic';
+import {
+  type Album,
+  type Artist,
+  type Bookmark,
+  type Genre,
+  type Playlist,
+  type Song,
+} from '@/api/subsonic';
 import { songsLabel, tg } from '@/i18n';
+import { greetingHours } from '@/i18n/languages';
+import { bookmarksAvailable, loadBookmarks, useBookmarks } from '@/lib/bookmarks';
+import { formatDuration } from '@/lib/format';
+import { getPlaylists as getLocalPlaylists } from '@/lib/localQueries';
 import { queryClient } from '@/lib/query';
-import { profileScopeId } from '@/store/auth';
+import { profileScopeId, useAuthStore } from '@/store/auth';
+import { getDownloadShelf, useDownloads } from '@/store/downloads';
 import { useLastPlayed } from '@/store/lastPlayed';
+import { usePins } from '@/store/pins';
 import { usePlayerStore } from '@/store/player';
+import { usePlayHistory } from '@/store/playHistory';
+import { useQueueHistory, type PastQueue } from '@/store/queueHistory';
 import { useSettings } from '@/store/settings';
+import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { type CarNode, type CarTree } from './carAuto';
+import { drawerLayout, overflowsHome, tabLayout } from './carAutoLayout';
+import { allMixes, topGenres, type Mix } from './mixes';
+import { resolveSmartPlaylist, type SmartPlaylist } from './smartPlaylists';
 
 const ROOT = 'root';
 const HOME_SIZE = 15;
@@ -44,16 +68,51 @@ const MAX_PREFETCH_PLAYLISTS = 20;
 const MAX_ARTIST_ALBUMS = 5;
 
 // ── Snapshot to resolve taps without refetching data ─────────────────────────
-const songById = new Map<string, Song>();
-/** parentId → track mediaIds (in order) to queue the collection on tap. */
-const parentTracks = new Map<string, string[]>();
-/** Collection id → what it is called, to name the source a car started. */
-const nodeTitles = new Map<string, string>();
-/** The account these three were filled from. They are thrown away when it
- *  changes and only then: a rebuild of the lists alone knows nothing about
- *  any album's songs, and emptying them there left a tap in the car with no
- *  way to tell which collection the song it was handed belongs to. */
+type Resolve = {
+  songById: Map<string, Song>;
+  /** parentId → track mediaIds (in order) to queue the collection on tap. */
+  parentTracks: Map<string, string[]>;
+  /** Collection id → what it is called, to name the source a car started. */
+  nodeTitles: Map<string, string>;
+  /** Mix key → the mix, whose `load` is what a tap on its tile runs. */
+  mixes: Map<string, Mix>;
+  /** Song id → its bookmark, for the position a "Continue listening" row
+   *  picks up from when the store has not read the list yet. */
+  bookmarks: Map<string, Bookmark>;
+  /** Past queue id → the queue, for a row the store has not hydrated for. */
+  pastQueues: Map<string, PastQueue>;
+};
+
+function emptyResolve(): Resolve {
+  return {
+    songById: new Map(),
+    parentTracks: new Map(),
+    nodeTitles: new Map(),
+    mixes: new Map(),
+    bookmarks: new Map(),
+    pastQueues: new Map(),
+  };
+}
+
+/**
+ * What a tap in the car is answered from. A full build fills a set of its own
+ * and swaps it in whole once it is done: emptying this one at the start left
+ * every tap for the length of the build, a minute of requests on a big
+ * library, with no way to tell which collection the song belongs to, so the
+ * car got the one song instead of the album. A build of the lists alone adds
+ * to it in place, since it knows nothing about any album's songs.
+ */
+let resolve: Resolve = emptyResolve();
+/** The account `resolve` was filled from: another account's is thrown away. */
 let mapsProfile: string | null = null;
+/**
+ * The last full tree, for the albums a rebuild fails to fetch. Each one used
+ * to be published empty, and a full tree is what the native side writes to
+ * disk for a car that starts the service on its own: one request lost to a
+ * bad moment on the network, and that album opened onto nothing until the
+ * next rebuild, in the car and in the snapshot alike.
+ */
+let lastTree: Record<string, CarNode[]> | null = null;
 
 /** Runs `fn` over `items` with at most `n` in parallel (avoids 429). */
 async function mapConcurrent<T>(items: T[], n: number, fn: (item: T) => Promise<void>): Promise<void> {
@@ -72,8 +131,45 @@ function trackMediaId(parentId: string, songId: string): string {
   return `track|${parentId}|${songId}`;
 }
 
+/**
+ * A plain URL: the car host downloads the artwork itself.
+ *
+ * Offline the data layer hands back a marked URL that only the image cache
+ * can answer (`CACHED_COVER`); `resolveCachedArt` turns those into files at
+ * the end of a build, once for the whole tree. A profile whose server wants
+ * extra headers gets the same treatment online (`carCoverUrl`), since the car
+ * host cannot be told to send them.
+ */
 function art(id: string | undefined): string | undefined {
-  return data.coverArtUrl(id, data.COVER.card);
+  return carCoverUrl(data.coverArtUrl(id, data.COVER.card));
+}
+
+/**
+ * A cover as the car can draw it. The host fetches a URL for itself, with no
+ * headers, so for a profile whose server wants some (`SubsonicAuth.headers`)
+ * the URL is marked cache-only instead: `resolveCachedArt` turns it into the
+ * image cache's file, fetching it with the headers on when it is not there
+ * yet, and the native side embeds the file like a download's cover.
+ */
+export function carCoverUrl(url: string | undefined): string | undefined {
+  if (!url || !/^https?:\/\//i.test(url)) return url;
+  return data.serverImageSource(url).headers ? data.CACHED_COVER + url : url;
+}
+
+/**
+ * The file already known for a marked cover, for what goes to the car outside
+ * the tree (now playing, the queue) and cannot wait: undefined until
+ * `warmCarCover` has looked it up.
+ */
+export function knownCarCover(marked: string): string | undefined {
+  return cachedArt.get(marked.slice(data.CACHED_COVER.length))?.path;
+}
+
+/** Looks a marked cover up, fetching it if need be, and says whether there is
+ *  now a file for it. False straight away for a URL the car can fetch itself. */
+export async function warmCarCover(url: string | undefined): Promise<boolean> {
+  if (!url?.startsWith(data.CACHED_COVER)) return false;
+  return !!(await cachedCoverPath(url.slice(data.CACHED_COVER.length)));
 }
 
 /**
@@ -87,8 +183,13 @@ function icon(name: string): string {
   return `res://${name}`;
 }
 
-function songNode(s: Song, parentId: string): CarNode {
-  songById.set(s.id, s);
+/** A row of the Library that opens onto a list or a grid of its own. */
+function drawer(id: string, title: string, style: 'list' | 'grid', iconName: string): CarNode {
+  return { id, title, playable: false, contentStyle: style, artworkUrl: icon(iconName) };
+}
+
+function songNode(into: Resolve, s: Song, parentId: string): CarNode {
+  into.songById.set(s.id, s);
   return {
     id: trackMediaId(parentId, s.id),
     title: s.title || tg('Unknown title'),
@@ -98,8 +199,8 @@ function songNode(s: Song, parentId: string): CarNode {
   };
 }
 
-function albumNode(a: Album): CarNode {
-  nodeTitles.set(`album:${a.id}`, a.name);
+function albumNode(into: Resolve, a: Album): CarNode {
+  into.nodeTitles.set(`album:${a.id}`, a.name);
   return {
     id: `album:${a.id}`,
     title: a.name,
@@ -111,8 +212,8 @@ function albumNode(a: Album): CarNode {
   };
 }
 
-function playlistNode(p: Playlist): CarNode {
-  nodeTitles.set(`playlist:${p.id}`, p.name);
+function playlistNode(into: Resolve, p: Playlist): CarNode {
+  into.nodeTitles.set(`playlist:${p.id}`, p.name);
   return {
     id: `playlist:${p.id}`,
     title: p.name,
@@ -129,8 +230,8 @@ function playlistNode(p: Playlist): CarNode {
   };
 }
 
-function artistNode(a: Artist): CarNode {
-  nodeTitles.set(`artist:${a.id}`, a.name);
+function artistNode(into: Resolve, a: Artist): CarNode {
+  into.nodeTitles.set(`artist:${a.id}`, a.name);
   return {
     id: `artist:${a.id}`,
     title: a.name,
@@ -138,6 +239,288 @@ function artistNode(a: Artist): CarNode {
     playable: false,
     contentStyle: 'list',
     mediaType: 'artist',
+  };
+}
+
+// ── Continue listening ───────────────────────────────────────────────────────
+
+/** The row that picks the queue up where the phone left it. */
+const RESUME_ID = 'resume:queue';
+/** How many resume points Home shows; past that they get a drawer in the
+ *  Library too. A driver reaching for last night's audiobook wants one row,
+ *  not the whole shelf. */
+const HOME_BOOKMARKS = 3;
+
+/**
+ * The queue as the phone holds it now: one row, which is what a driver who
+ * paused on the doorstep taps first. The song's own cover, so the row looks
+ * like what it will play, and the collection it was started from under it.
+ */
+function resumeNode(): CarNode | null {
+  const { queue, index, source } = usePlayerStore.getState();
+  const song = queue[index];
+  if (!song) return null;
+  return {
+    id: RESUME_ID,
+    title: song.title || tg('Unknown title'),
+    subtitle: source ?? song.artist ?? tg('Queue'),
+    artworkUrl: carCoverUrl(data.songCoverUrl(song, data.COVER.card)),
+    playable: true,
+  };
+}
+
+/**
+ * A bookmark as a row: the song, and under it where it will pick up from. The
+ * position goes under the title rather than in it, so a spoken title still
+ * matches the row exactly.
+ */
+function bookmarkNode(into: Resolve, b: Bookmark): CarNode {
+  into.songById.set(b.song.id, b.song);
+  into.bookmarks.set(b.song.id, b);
+  const at = tg('at {time}', { time: formatDuration(b.position / 1000) });
+  return {
+    id: `bookmark:${b.song.id}`,
+    title: b.song.title || tg('Unknown title'),
+    subtitle: b.song.artist ? `${at} · ${b.song.artist}` : at,
+    artworkUrl: art(b.song.coverArt ?? b.song.albumId),
+    playable: true,
+  };
+}
+
+/**
+ * The resume points, newest moved first, as the Bookmarks screen lists them.
+ *
+ * A full build reads the list again, since another device may have moved
+ * one; a build of the lists alone takes what the store holds, which is the
+ * profile's own list or nothing. Offline only the songs on the phone are
+ * rows: a resume point in a song that cannot be played is a tap into a toast.
+ */
+async function bookmarkList(deep: boolean, profile: string): Promise<Bookmark[]> {
+  if (deep && bookmarksAvailable()) await loadBookmarks(true).catch(() => {});
+  const { byId, loadedFor } = useBookmarks.getState();
+  if (loadedFor !== profile) return [];
+  const list = Object.values(byId).sort((a, b) => b.changed.localeCompare(a.changed));
+  const playable = new Set(
+    data
+      .markUnplayableOffline(list.map((b) => b.song))
+      .filter((s) => !s.unavailable)
+      .map((s) => s.id),
+  );
+  return list.filter((b) => playable.has(b.song.id));
+}
+
+// ── Past queues ──────────────────────────────────────────────────────────────
+
+/** A queue put away when another replaced it, brought back whole on a tap.
+ *  "12 songs · 8 Sept" under the name it was started from. */
+function pastQueueNode(into: Resolve, q: PastQueue): CarNode {
+  into.pastQueues.set(q.id, q);
+  const lang = useSettings.getState().language;
+  const date = new Date(q.at).toLocaleDateString(lang, { day: 'numeric', month: 'short' });
+  return {
+    id: `queue:${q.id}`,
+    title: q.title,
+    subtitle: `${songsLabel(q.songIds.length, lang)} · ${date}`,
+    artworkUrl: icon('ic_car_queue'),
+    playable: true,
+  };
+}
+
+// ── Shuffle ──────────────────────────────────────────────────────────────────
+
+/** Plays songs picked at random, resolved only when it is tapped. */
+const SHUFFLE_ID = 'shuffle:all';
+/** The favourites dealt once and played through, the way the button on the
+ *  Favorites screen plays them. */
+const SHUFFLE_FAVORITES_ID = 'shuffle:favorites';
+/** How many it queues. Enough for a drive without asking again. */
+const SHUFFLE_SONGS = 100;
+
+// ── Genres ───────────────────────────────────────────────────────────────────
+
+/** How many genres the Library offers. The biggest ones, where the listening
+ *  is; a whole list of them is a thing to read, not to drive with. */
+const LIBRARY_GENRES = 8;
+
+/**
+ * The genres, biggest first, from the same query the Genres screen and the
+ * "Made for you" shelf share. Online only: offline the phone has no genre
+ * index to shuffle by, and a row that opens onto a toast is worse than none.
+ */
+async function genreList(deep: boolean): Promise<Genre[]> {
+  const { auth, offline } = useAuthStore.getState();
+  if (!auth || offline) return [];
+  const genres = deep
+    ? await queryClient
+        .fetchQuery({ queryKey: ['genres'], queryFn: () => data.getGenres(), retry: false })
+        .catch(() => queryClient.getQueryData<Genre[]>(['genres']))
+    : queryClient.getQueryData<Genre[]>(['genres']);
+  return [...(genres ?? [])]
+    .sort((a, b) => (b.songCount ?? 0) - (a.songCount ?? 0))
+    .slice(0, LIBRARY_GENRES);
+}
+
+/**
+ * A genre is a leaf that shuffles it, like the genre screen's own button. Its
+ * cover is the first of the albums the "Made for you" shelf fetched for the
+ * genre's card, when the cache has them; otherwise the genre icon.
+ */
+function genreNode(g: Genre): CarNode {
+  const covers = queryClient.getQueryData<Album[]>(['mixes', 'genreArt', g.value]);
+  const first = covers?.[0];
+  return {
+    id: `genre:${g.value}`,
+    title: g.value,
+    subtitle: g.songCount != null ? songsLabel(g.songCount, useSettings.getState().language) : undefined,
+    artworkUrl: (first && art(first.coverArt ?? first.id)) ?? icon('ic_car_genres'),
+    playable: true,
+  };
+}
+
+// ── Downloaded ───────────────────────────────────────────────────────────────
+
+/**
+ * The albums and the playlists kept on the phone, from the same query the
+ * Library's Downloaded tab reads: whoever gets there first pays, and the shelf
+ * itself is a cached read of the downloads database, not of the server.
+ *
+ * A downloaded playlist is the server's playlist online and the phone's copy
+ * of it offline, as it is on the Library tab: its id is the server's there,
+ * and the `dl_` copy's here, so a tap opens the one that can be played.
+ */
+async function downloadedLists(): Promise<{ albums: Album[]; playlists: Playlist[] }> {
+  const { auth, offline } = useAuthStore.getState();
+  const files = Object.keys(useDownloads.getState().files).length;
+  const { albums, playlists } = await queryClient
+    .fetchQuery({
+      queryKey: ['downloads', 'shelf', files],
+      queryFn: async () => {
+        const [shelf, lists] = await Promise.all([getDownloadShelf(), getLocalPlaylists()]);
+        return { albums: shelf.albums, playlists: lists.filter((p) => p.id.startsWith('dl_')) };
+      },
+    })
+    .catch(() => ({ albums: [] as Album[], playlists: [] as Playlist[] }));
+  const serverIds = !!auth && !offline;
+  return {
+    albums,
+    playlists: playlists.map((p) => (serverIds ? { ...p, id: p.id.slice('dl_'.length) } : p)),
+  };
+}
+
+// ── Made for you ─────────────────────────────────────────────────────────────
+
+/**
+ * How many albums are sampled to find out which decades the library has, and
+ * how many covers a genre card gets. The same numbers, under the same query
+ * keys, as the shelf on Home (`MixesShelf`): the two share one answer in the
+ * cache rather than asking the server twice for the same list.
+ */
+const YEAR_SAMPLE = 100;
+const GENRE_COVERS = 4;
+/** How many mixes Home shows. The rest exist, on the phone. */
+const HOME_MIXES = 4;
+
+/**
+ * The mixes of Home's "Made for you" shelf as the phone would draw them now,
+ * and none of their songs: a mix is a `load` that runs when it is tapped.
+ *
+ * The history and the recents come from the stores; the rest goes through the
+ * query cache under the shelf's own keys. A build of the lists alone reads
+ * what the cache already holds and asks the server for nothing: at launch
+ * Home is asking for the same things, or the settings have left the shelf
+ * out, and either way the car is not the one to pay for it (#50). So the
+ * mixes built from the history alone are there at once, and a full build
+ * fetches what the genre radios and the decades need.
+ */
+async function mixList(deep: boolean): Promise<Mix[]> {
+  const { auth, offline } = useAuthStore.getState();
+  // Server only, like the shelf: the mixes are drawn from what the server can
+  // pick at random or by likeness, and offline there is neither.
+  if (!auth || offline) return [];
+  const cached = <T>(queryKey: readonly unknown[]) => queryClient.getQueryData<T>(queryKey);
+  const get = <T>(queryKey: readonly unknown[], queryFn: () => Promise<T>, staleTime?: number) =>
+    deep
+      ? queryClient.fetchQuery({ queryKey, queryFn, staleTime, retry: false }).catch(() => cached<T>(queryKey))
+      : Promise.resolve(cached<T>(queryKey));
+  const [sample, genres] = await Promise.all([
+    get(['mixes', 'albumSample'], () => data.getAlbumList('random', YEAR_SAMPLE)),
+    get(['genres'], () => data.getGenres()),
+  ]);
+  const picked = topGenres(genres ?? []);
+  const art = await Promise.all(
+    picked.map((g) =>
+      get(['mixes', 'genreArt', g.value], () => data.getAlbumsByGenre(g.value, GENRE_COVERS), Infinity),
+    ),
+  );
+  const artByGenre = new Map(picked.map((g, i) => [g.value, art[i]]));
+  // Every album already on screen says which decades the library has: the
+  // shelves' lists sit in the cache under this key, whatever their type, and
+  // the car's own build has just put one of them there.
+  const seen = queryClient
+    .getQueriesData<Album[]>({ queryKey: ['albumList'] })
+    .flatMap(([, albums]) => albums ?? []);
+  return allMixes({
+    entries: usePlayHistory.getState().entries,
+    times: useLastPlayed.getState().times,
+    hours: greetingHours(useSettings.getState().language),
+    now: Date.now(),
+    albums: [...seen, ...(sample ?? [])],
+    genres: picked,
+    artOf: (genre) => artByGenre.get(genre),
+  });
+}
+
+/** A mix is a leaf: nothing is fetched for it until the tile is pressed. */
+function mixNode(into: Resolve, mix: Mix): CarNode {
+  into.mixes.set(mix.key, mix);
+  return {
+    id: `mix:${mix.key}`,
+    title: tg(mix.title.key, mix.title.vars),
+    subtitle: tg(mix.subtitle.key, mix.subtitle.vars),
+    // The first cover stands in for the mosaic on the phone, since a tile in
+    // the car is one picture. A mix with no cover yet, a genre whose art has
+    // not come back, wears the shuffle icon: that is what it does.
+    artworkUrl: art(mix.covers[0]) ?? icon('ic_car_shuffle'),
+    playable: true,
+  };
+}
+
+// ── Smart playlists ──────────────────────────────────────────────────────────
+
+/**
+ * Ceiling on the songs a smart playlist shows in the car. A list with no rules
+ * is the whole library, and every song of it would ride the bridge and the
+ * snapshot on disk on each full build. Playing the list whole, from a spoken
+ * request or its own row, still resolves all of it (`handleBrowsePlay`).
+ */
+const MAX_SMART_SONGS = 500;
+/** How long the library's song list is reused, the same as the smart playlist
+ *  screen's query, which is also whose cache entry this is. */
+const LIBRARY_STALE_MS = 10 * 60 * 1000;
+
+/** Every song the profile can see: what a smart playlist's rules sift. */
+function allSongs(): Promise<Song[]> {
+  return queryClient.fetchQuery({
+    queryKey: ['allSongs'],
+    queryFn: () => data.getAllSongs(),
+    staleTime: LIBRARY_STALE_MS,
+  });
+}
+
+/**
+ * The same sparkles the phone draws for every smart playlist, rather than a
+ * cover: the songs are worked out when the list is opened, and the first
+ * cover of a random list would change on every build.
+ */
+function smartNode(list: SmartPlaylist): CarNode {
+  return {
+    id: `smart:${list.id}`,
+    title: list.name,
+    subtitle: tg('Smart playlist'),
+    artworkUrl: icon('ic_car_smart_playlists'),
+    playable: false,
+    contentStyle: 'list',
+    mediaType: 'playlist',
   };
 }
 
@@ -169,7 +552,7 @@ const KIND_LABEL = { album: 'Album', artist: 'Artist', playlist: 'Playlist' } as
  * left out — what gets played again is the album or the playlist it came from,
  * and a car full of single tracks is a worse thing to steer through.
  */
-function recentNodes(): CarNode[] {
+function recentNodes(into: Resolve): CarNode[] {
   const { times, names } = useLastPlayed.getState();
   const nodes: CarNode[] = [];
   for (const [href] of Object.entries(times).sort((a, b) => b[1] - a[1])) {
@@ -178,7 +561,7 @@ function recentNodes(): CarNode[] {
     const name = names[href];
     if (!name || !id || !(kind in KIND_LABEL)) continue;
     const type = kind as keyof typeof KIND_LABEL;
-    nodeTitles.set(`${type}:${id}`, name);
+    into.nodeTitles.set(`${type}:${id}`, name);
     nodes.push({
       id: `${type}:${id}`,
       title: name,
@@ -192,25 +575,98 @@ function recentNodes(): CarNode[] {
   return nodes;
 }
 
+/** How many of the newest albums Home shows, and how many pinned playlists.
+ *  Four of each: a group, not a shelf, on a tab that is read and not
+ *  scrolled. */
+const HOME_RECENT_ALBUMS = 4;
+const HOME_PINNED = 4;
+
 /**
- * Home's shelves. Their covers are shown straight, under a heading, instead of
- * behind a folder each: a driver reaching for music should be looking at the
- * records, not at the names of two drawers.
- *
- * Titles are resolved inside buildBrowseTree (i18n is loaded by then).
+ * The playlists pinned on the phone, in the order they were pinned. Pins are
+ * keys of the form `playlist:<id>`, matched against the list the Library
+ * shows; a pin on a playlist that is gone matches nothing and draws nothing.
  */
-const HOME_SHELVES: { type: 'newest' | 'frequent'; titleKey: string }[] = [
-  { type: 'newest', titleKey: 'Recently added' },
-  { type: 'frequent', titleKey: 'Most played' },
-];
+function pinnedPlaylists(playlists: Playlist[]): Playlist[] {
+  const pins = usePins.getState().pins;
+  const byId = new Map(playlists.map((p) => [p.id, p]));
+  return Object.entries(pins)
+    .filter(([key]) => key.startsWith('playlist:'))
+    .sort((a, b) => a[1] - b[1])
+    .flatMap(([key]) => byId.get(key.slice('playlist:'.length)) ?? []);
+}
 
-/** How many covers each shelf puts on Home. The tab is scrolled, not read. */
-const HOME_SHELF_SIZE = 10;
+// ── Covers offline ───────────────────────────────────────────────────────────
 
-/** Plays songs picked at random, resolved only when it is tapped. */
-const SHUFFLE_ID = 'shuffle:all';
-/** How many it queues. Enough for a drive without asking again. */
-const SHUFFLE_SONGS = 100;
+/**
+ * How many marked covers a build asks the image cache about. The tree walks
+ * shelves first and songs last, so what the ceiling cuts is the tail of the
+ * tracklists, whose rows are small tiles the driver rarely looks at.
+ */
+const MAX_CACHE_LOOKUPS = 300;
+/** The sizes a cover may have been seen at on the phone, tried when the size
+ *  the car asks for misses. The same list as the `Cover` component's. */
+const CACHE_SIZES = [data.COVER.card, data.COVER.full, data.COVER.thumb, 500, 300, 100] as const;
+/** A miss is kept for a minute: back online the mirror does save covers. */
+const MISS_TTL = 60_000;
+const cachedArt = new Map<string, { path?: string; at: number }>();
+
+/**
+ * The file behind a marked cover, if the image cache has one, else nothing.
+ *
+ * Offline the data layer marks every cover that is not on disk
+ * (`CACHED_COVER`), and only the image loader's cache can say whether it was
+ * seen while online. The car host cannot ask it, and cannot draw the marked
+ * URL either, so it is asked here: a hit becomes a `file://` the native side
+ * embeds like a download's cover, and a miss becomes no picture at all, which
+ * is what it was showing anyway.
+ */
+async function cachedCoverPath(url: string): Promise<string | undefined> {
+  const seen = cachedArt.get(url);
+  if (seen && (seen.path || Date.now() - seen.at < MISS_TTL)) return seen.path;
+  const sized = (n: number) => url.replace(/([?&](?:size|fillWidth|fillHeight)=)\d+/g, `$1${n}`);
+  const look = async (candidate: string) => {
+    const path = await Image.getCachePathAsync(candidate).catch(() => null);
+    return path ? (path.startsWith('file://') ? path : `file://${path}`) : undefined;
+  };
+  let found = await look(url);
+  if (!found) {
+    const others = await Promise.all(CACHE_SIZES.map((n) => look(sized(n))));
+    found = others.find(Boolean);
+  }
+  // Marked online for a server that wants headers, not for being offline: the
+  // picture can be fetched, with the headers on, into the cache the car is
+  // then served from. Once per miss, and the miss is remembered like any other.
+  const { headers } = data.serverImageSource(url);
+  if (!found && headers && !useAuthStore.getState().offline) {
+    await Image.prefetch(url, { headers, cachePolicy: 'disk' }).catch(() => false);
+    found = await look(url);
+  }
+  cachedArt.set(url, { path: found, at: Date.now() });
+  return found;
+}
+
+/** Replaces every marked cover in the tree with its cached file, or drops it. */
+async function resolveCachedArt(tree: Record<string, CarNode[]>): Promise<void> {
+  const marked = new Map<string, CarNode[]>();
+  for (const nodes of Object.values(tree)) {
+    for (const node of nodes) {
+      const url = node.artworkUrl;
+      if (!url?.startsWith(data.CACHED_COVER)) continue;
+      const bare = url.slice(data.CACHED_COVER.length);
+      const list = marked.get(bare);
+      if (list) list.push(node);
+      else if (marked.size < MAX_CACHE_LOOKUPS) marked.set(bare, [node]);
+      else delete node.artworkUrl;
+    }
+  }
+  await mapConcurrent(Array.from(marked.entries()), 8, async ([url, nodes]) => {
+    const path = await cachedCoverPath(url);
+    for (const node of nodes) {
+      if (path) node.artworkUrl = path;
+      else delete node.artworkUrl;
+    }
+  });
+}
 
 /**
  * The whole browse tree, or only its lists.
@@ -228,36 +684,48 @@ const SHUFFLE_SONGS = 100;
  * rather than taking it for the whole library: it was replacing the songs of
  * every album with nothing, in memory and in the snapshot it keeps for a car
  * that starts the service on its own.
+ *
+ * Offline every list here comes from the phone: the downloads database, the
+ * library mirror, the stores. Nothing that would need the server (the mixes,
+ * the genres) is offered at all, since a row that opens onto a toast is worse
+ * than no row.
  */
 export async function buildBrowseTree(deep = true): Promise<CarTree> {
   const profile = profileScopeId();
-  // A full build replaces what it knows; a partial one adds to it. What is
-  // dropped either way is another account's, which nothing here can resolve.
-  if (deep || profile !== mapsProfile) {
-    songById.clear();
-    parentTracks.clear();
-    nodeTitles.clear();
+  // Another account's is dropped at once, whatever the build: nothing here can
+  // resolve it. Then a full build fills a set of its own, swapped in at the
+  // end, and a partial one adds to the live set (see `resolve`).
+  if (profile !== mapsProfile) {
+    resolve = emptyResolve();
+    lastTree = null;
   }
   mapsProfile = profile;
+  const into = deep ? emptyResolve() : resolve;
   const tree: Record<string, CarNode[]> = {};
+  const lang = useSettings.getState().language;
+  // What the last build had for a collection this one cannot fetch. Its songs
+  // are still in `resolve` then, since a failed fetch adds nothing to `into`,
+  // so the tap resolves against the same list the car is showing.
+  const keep = (parent: string) => {
+    const before = lastTree?.[parent];
+    tree[parent] = before ?? [];
+    if (before) {
+      const ids = resolve.parentTracks.get(parent);
+      if (ids) into.parentTracks.set(parent, ids);
+      for (const id of ids ?? []) {
+        const song = resolve.songById.get(songIdFromTrackMediaId(id));
+        if (song) into.songById.set(song.id, song);
+      }
+    }
+  };
 
-  // Root: the four tabs Android Auto draws, and no more than four. What goes
-  // inside each one is still being decided, so they are empty on purpose; the
-  // collections below are built all the same and are waiting to be hung off
-  // whichever tab ends up owning them.
+  // Root: the tabs Android Auto draws, and no more than four.
   tree[ROOT] = [
     { id: 'tab:home', title: tg('Home'), playable: false, contentStyle: 'list', artworkUrl: icon('ic_car_home') },
     { id: 'tab:recents', title: tg('Recents'), playable: false, contentStyle: 'grid', artworkUrl: icon('ic_car_recent') },
     { id: 'tab:library', title: tg('Library'), playable: false, contentStyle: 'list', artworkUrl: icon('ic_car_library') },
   ];
-  tree['tab:home'] = [];
-  tree['tab:recents'] = recentNodes();
-  // Library: two ways in, each opening onto a grid of covers. A list of two
-  // rows is cheap to read at a glance, which a grid of two tiles would not be.
-  tree['tab:library'] = [
-    { id: 'lib:playlists', title: tg('Playlists'), playable: false, contentStyle: 'grid', artworkUrl: icon('ic_car_playlists') },
-    { id: 'lib:albums', title: tg('Albums'), playable: false, contentStyle: 'grid', artworkUrl: icon('ic_car_albums') },
-  ];
+  tree['tab:recents'] = recentNodes(into);
 
   // Which albums get their songs fetched, in the order they deserve them. The
   // cap further down cuts the tail of this, and it was cutting the wrong end:
@@ -271,25 +739,17 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
     tree['tab:recents'].filter((n) => n.mediaType === 'album').map((n) => n.id.slice('album:'.length)),
   );
 
-  // Home's shelves. Through the query cache, with the keys the screens use:
-  // Home asks for these very lists, and the car was asking again for its own
-  // copy on every launch. Whoever gets there first pays; the other reads it.
-  const shelves = await Promise.all(
-    HOME_SHELVES.map(async (s) => {
-      const albums = await queryClient
-        .fetchQuery({
-          queryKey: ['albumList', s.type],
-          queryFn: () => data.getAlbumList(s.type, HOME_SIZE),
-        })
-        .catch(() => [] as Album[]);
-      return { title: tg(s.titleKey), albums: albums.slice(0, HOME_SHELF_SIZE) };
-    }),
-  );
-
-  // What the tabs land on: favourite songs, playlists, starred albums and
-  // starred artists. Folders are left out, as they were before: a handful of
-  // server roots is nothing to hand a driver.
-  const [starred, playlists] = await Promise.all([
+  // The lists, all at once. Through the query cache, with the keys the screens
+  // use: Home asks for these very lists, and the car was asking again for its
+  // own copy on every launch. Whoever gets there first pays; the other reads
+  // it. The stores (past queues, pins, smart lists) cost nothing at all.
+  const [newest, starred, playlists, bookmarks, downloaded, genres] = await Promise.all([
+    queryClient
+      .fetchQuery({
+        queryKey: ['albumList', 'newest'],
+        queryFn: () => data.getAlbumList('newest', HOME_SIZE),
+      })
+      .catch(() => [] as Album[]),
     queryClient
       .fetchQuery({ queryKey: ['starred'], queryFn: () => data.getStarred() })
       .catch(() => ({ songs: [] as Song[], albums: [] as Album[], artists: [] as Artist[] })),
@@ -298,88 +758,143 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
     queryClient
       .fetchQuery({ queryKey: ['playlists'], queryFn: () => data.getPlaylists() })
       .catch(() => [] as Playlist[]),
+    bookmarkList(deep, profile),
+    downloadedLists(),
+    genreList(deep),
+    useQueueHistory.getState().hydrate().catch(() => {}),
   ]);
+  const pastQueues = useQueueHistory.getState().queues;
+  const smartLists = useSmartPlaylists.getState().lists;
 
+  // ── Library ──
+  // A few ways in, each opening onto a grid of covers or a list of rows. A
+  // list of rows is cheap to read at a glance, which a grid of tiles would not
+  // be. A drawer only exists once there is something behind it (see
+  // `drawerLayout`): the smart playlists come from the phone's own store, the
+  // past queues and the bookmarks likewise, and the genres from the server
+  // when there is one.
+  const favoritesNode: CarNode = {
+    id: 'favorites',
+    title: tg('Favorites'),
+    subtitle: songsLabel(starred.songs.length, lang),
+    artworkUrl: icon('ic_car_favorites'),
+    playable: false,
+    contentStyle: 'list',
+    mediaType: 'playlist',
+  };
   // Favourites lead the playlists: they are the one list nobody made and
   // everybody plays, and on a phone they sit above them too.
-  tree['lib:playlists'] = [
-    {
-      id: 'favorites',
-      title: tg('Favorites'),
-      subtitle: songsLabel(starred.songs.length, useSettings.getState().language),
-      artworkUrl: icon('ic_car_favorites'),
-      playable: false,
-      contentStyle: 'list',
-      mediaType: 'playlist',
-    },
-    ...byLastPlayed(playlists, (p) => `/playlist/${p.id}`).map(playlistNode),
-  ];
+  const orderedPlaylists = byLastPlayed(playlists, (p) => `/playlist/${p.id}`);
+  tree['lib:playlists'] = [favoritesNode, ...orderedPlaylists.map((p) => playlistNode(into, p))];
 
-  tree['favorites'] = starred.songs.map((s) => songNode(s, 'favorites'));
-  parentTracks.set('favorites', tree['favorites'].map((n) => n.id));
+  tree['favorites'] = starred.songs.map((s) => songNode(into, s, 'favorites'));
+  into.parentTracks.set('favorites', tree['favorites'].map((n) => n.id));
 
   const starredAlbums = byLastPlayed(starred.albums, (a) => `/album/${a.id}`);
-  tree['lib:albums'] = starredAlbums.map(albumNode);
-  // Behind the recents and ahead of the shelves, in the order the grid shows
-  // them. And of a shelf only what it shows, not the whole list it was cut
-  // from: the songs of five albums nobody can see cost five albums somebody
-  // can.
+  tree['lib:albums'] = starredAlbums.map((a) => albumNode(into, a));
+  // Behind the recents and ahead of the shelf, in the order the grid shows
+  // them. And of the shelf only what Home shows, not the whole list it was
+  // cut from: the songs of ten albums nobody can see cost ten albums somebody
+  // can. The downloads come last: offline they are a read of the database
+  // each, and online they are the albums least likely to be missing.
   starredAlbums.forEach((a) => albumIds.add(a.id));
-  shelves.forEach((shelf) => shelf.albums.forEach((a) => albumIds.add(a.id)));
+  newest.slice(0, HOME_RECENT_ALBUMS).forEach((a) => albumIds.add(a.id));
+  downloaded.albums.forEach((a) => albumIds.add(a.id));
 
-  tree['lib:artists'] = starred.artists.map(artistNode);
-
-  // Home. Two things that need no choosing, and then the records themselves.
-  // Shuffle leads because it is the answer to the only question anyone asks
-  // with the engine running, and it plays on the tap: it is a leaf, not a
-  // folder, and nothing is fetched for it until somebody presses it.
-  tree['tab:home'] = [
-    {
-      id: SHUFFLE_ID,
-      title: tg('Shuffle'),
-      artworkUrl: icon('ic_car_shuffle'),
-      playable: true,
-    },
-    {
-      id: 'favorites',
-      title: tg('Favorites'),
-      subtitle: songsLabel(starred.songs.length, useSettings.getState().language),
-      artworkUrl: icon('ic_car_favorites'),
-      playable: false,
-      contentStyle: 'list',
-      mediaType: 'playlist',
-    },
-    ...shelves.flatMap((shelf) =>
-      shelf.albums.map((a) => ({ ...albumNode(a), group: shelf.title })),
-    ),
+  tree['lib:artists'] = starred.artists.map((a) => artistNode(into, a));
+  tree['lib:genres'] = genres.map(genreNode);
+  tree['lib:downloaded'] = [
+    ...byLastPlayed(downloaded.playlists, (p) => `/playlist/${p.id}`).map((p) => playlistNode(into, p)),
+    ...byLastPlayed(downloaded.albums, (a) => `/album/${a.id}`).map((a) => albumNode(into, a)),
   ];
+  tree['lib:queues'] = pastQueues.map((q) => pastQueueNode(into, q));
+  const bookmarkNodes = bookmarks.map((b) => bookmarkNode(into, b));
+  tree['lib:bookmarks'] = bookmarkNodes;
+  if (smartLists.length > 0) tree['lib:smart'] = smartLists.map(smartNode);
+
+  tree['tab:library'] = drawerLayout([
+    { node: drawer('lib:playlists', tg('Playlists'), 'grid', 'ic_car_playlists'), count: null },
+    { node: drawer('lib:albums', tg('Albums'), 'grid', 'ic_car_albums'), count: null },
+    { node: drawer('lib:artists', tg('Artists'), 'grid', 'ic_car_artists'), count: tree['lib:artists'].length },
+    { node: drawer('lib:genres', tg('Genres'), 'list', 'ic_car_genres'), count: tree['lib:genres'].length },
+    {
+      node: drawer('lib:downloaded', tg('Downloaded::library'), 'grid', 'ic_car_downloaded'),
+      count: tree['lib:downloaded'].length,
+    },
+    { node: drawer('lib:queues', tg('Past queues'), 'list', 'ic_car_queue'), count: tree['lib:queues'].length },
+    // On Home while they are few; the drawer is for when they outgrow it.
+    {
+      node: drawer('lib:bookmarks', tg('Bookmarks'), 'list', 'ic_car_bookmark'),
+      count: overflowsHome(bookmarkNodes.length, HOME_BOOKMARKS) ? bookmarkNodes.length : 0,
+    },
+    { node: drawer('lib:smart', tg('Smart playlists'), 'list', 'ic_car_smart_playlists'), count: smartLists.length },
+  ]);
+
+  // After the shelf, whose list it reads back out of the cache.
+  const mixes = await mixList(deep);
+
+  // ── Home ──
+  // What a driver taps with the engine running, in the order they ask for it.
+  // The queue and the resume points first: picking up is the commonest thing
+  // to want. Then two things that need no choosing, which play on the tap:
+  // they are leaves, not folders, and nothing is fetched for them until
+  // somebody presses. The mixes next, made out of what this driver plays,
+  // which is a better guess than what came in last; then the newest records,
+  // and the playlists pinned on the phone. Each group is cut short: the tab
+  // is read, not scrolled, and the Library has the rest.
+  const resume = resumeNode();
+  tree['tab:home'] = tabLayout([
+    {
+      heading: tg('Continue listening'),
+      nodes: [...(resume ? [resume] : []), ...bookmarkNodes],
+      max: (resume ? 1 : 0) + HOME_BOOKMARKS,
+    },
+    {
+      nodes: [
+        { id: SHUFFLE_ID, title: tg('Shuffle everything'), artworkUrl: icon('ic_car_shuffle'), playable: true },
+        {
+          id: SHUFFLE_FAVORITES_ID,
+          title: tg('Favorites'),
+          subtitle: songsLabel(starred.songs.length, lang),
+          artworkUrl: icon('ic_car_favorites'),
+          playable: true,
+        },
+      ],
+    },
+    { heading: tg('Made for you'), nodes: mixes.map((m) => mixNode(into, m)), max: HOME_MIXES },
+    { heading: tg('Recently added'), nodes: newest.map((a) => albumNode(into, a)), max: HOME_RECENT_ALBUMS },
+    { heading: tg('Pinned'), nodes: pinnedPlaylists(playlists).map((p) => playlistNode(into, p)), max: HOME_PINNED },
+  ]);
 
   // Marked for what it is: the lists, and none of the songs inside them. The
   // native side lays it over the tree it already has rather than taking it for
   // the whole library.
-  if (!deep) return { nodes: tree, partial: true, profile };
+  if (!deep) {
+    await resolveCachedArt(tree);
+    return { nodes: tree, partial: true, profile };
+  }
 
   // The songs of each playlist, so they can be browsed and not only played
   // whole. Capped like everything else here: a car that is never plugged in
   // should not cost a request per playlist on every launch (#50). The cap
   // follows the order they are shown in, so what it pays for is what a driver
-  // sees first and not whatever the server happened to send first.
-  await mapConcurrent(
-    byLastPlayed(playlists, (p) => `/playlist/${p.id}`)
-      .slice(0, MAX_PREFETCH_PLAYLISTS)
-      .map((p) => p.id),
-    CONCURRENCY,
-    async (id) => {
-      const parent = `playlist:${id}`;
-      try {
-        const { songs } = await playlistDetail(id);
-        tree[parent] = songs.map((s) => songNode(s, parent));
-        parentTracks.set(parent, tree[parent].map((n) => n.id));
-      } catch {
-        tree[parent] = [];
-      }
-    },
-  );
+  // sees first and not whatever the server happened to send first: the pinned
+  // ones, then the recently played, then the copies kept on the phone.
+  const playlistIds = new Set<string>([
+    ...pinnedPlaylists(playlists).map((p) => p.id),
+    ...orderedPlaylists.map((p) => p.id),
+    ...downloaded.playlists.map((p) => p.id),
+  ]);
+  await mapConcurrent(Array.from(playlistIds).slice(0, MAX_PREFETCH_PLAYLISTS), CONCURRENCY, async (id) => {
+    const parent = `playlist:${id}`;
+    try {
+      const { songs } = await playlistDetail(id);
+      tree[parent] = songs.map((s) => songNode(into, s, parent));
+      into.parentTracks.set(parent, tree[parent].map((n) => n.id));
+    } catch {
+      keep(parent);
+    }
+  });
 
   // Prefetch songs for each album (to browse them in the car), up to a point.
   // Measured on a real account: fifty eight favourite artists meant six
@@ -390,10 +905,10 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
     try {
       const { songs } = await albumDetail(id);
       const parent = `album:${id}`;
-      tree[parent] = songs.map((s) => songNode(s, parent));
-      parentTracks.set(parent, tree[parent].map((n) => n.id));
+      tree[parent] = songs.map((s) => songNode(into, s, parent));
+      into.parentTracks.set(parent, tree[parent].map((n) => n.id));
     } catch {
-      tree[`album:${id}`] = [];
+      keep(`album:${id}`);
     }
   });
 
@@ -403,26 +918,59 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
       const { artist, albums } = await data.getArtist(id);
       const top = artist.name ? await data.getTopSongs(artist.name, 10).catch(() => [] as Song[]) : [];
       const parent = `artist:${id}`;
-      const children: CarNode[] = [...top.map((s) => songNode(s, parent)), ...albums.map(albumNode)];
+      const children: CarNode[] = [
+        ...top.map((s) => songNode(into, s, parent)),
+        ...albums.map((a) => albumNode(into, a)),
+      ];
       tree[parent] = children;
-      parentTracks.set(parent, children.filter((n) => n.playable).map((n) => n.id));
+      into.parentTracks.set(parent, children.filter((n) => n.playable).map((n) => n.id));
       for (const a of albums.slice(0, MAX_ARTIST_ALBUMS)) {
         const ap = `album:${a.id}`;
         if (!tree[ap]) {
           try {
             const { songs } = await albumDetail(a.id);
-            tree[ap] = songs.map((s) => songNode(s, ap));
-            parentTracks.set(ap, tree[ap].map((n) => n.id));
+            tree[ap] = songs.map((s) => songNode(into, s, ap));
+            into.parentTracks.set(ap, tree[ap].map((n) => n.id));
           } catch {
-            tree[ap] = [];
+            keep(ap);
           }
         }
       }
     } catch {
-      tree[`artist:${id}`] = [];
+      keep(`artist:${id}`);
     }
   });
 
+  // The songs of each smart playlist, run over the whole library the way the
+  // phone runs them. Last, because the library comes down a page at a time
+  // and the albums above are the likelier tap; it is kept for a while under
+  // the smart playlist screen's own key, so the second list costs nothing and
+  // neither does opening one on the phone afterwards. A random list is dealt
+  // here and stays dealt until the next build: what the car shows is what a
+  // tap on a row will queue.
+  if (smartLists.length > 0) {
+    try {
+      const library = await allSongs();
+      for (const list of smartLists) {
+        const parent = `smart:${list.id}`;
+        tree[parent] = resolveSmartPlaylist(library, list)
+          .slice(0, MAX_SMART_SONGS)
+          .map((s) => songNode(into, s, parent));
+        into.parentTracks.set(parent, tree[parent].map((n) => n.id));
+      }
+    } catch {
+      smartLists.forEach((list) => keep(`smart:${list.id}`));
+    }
+  }
+
+  await resolveCachedArt(tree);
+
+  // Only now, with every song in it, and only if the account is still the one
+  // it was built for.
+  if (profile === mapsProfile) {
+    resolve = into;
+    lastTree = tree;
+  }
   return { nodes: tree, profile };
 }
 
@@ -447,14 +995,144 @@ function sourceOf(collectionId: string | undefined): [string, string] | [] {
   if (collectionId === 'favorites') return [tg('Favorites'), '/favorites'];
   const [prefix, ...rest] = collectionId.split(':');
   const id = rest.join(':');
-  if (!id || (prefix !== 'album' && prefix !== 'playlist' && prefix !== 'artist')) return [];
-  return [nodeTitles.get(collectionId) ?? '', `/${prefix}/${id}`];
+  if (!id) return [];
+  // Named from the store rather than from `nodeTitles`: that is where the
+  // name lives, and it is current after a rename on the phone.
+  if (prefix === 'smart') {
+    const list = useSmartPlaylists.getState().lists.find((l) => l.id === id);
+    return [list?.name ?? '', `/smart-playlist/${id}`];
+  }
+  if (prefix !== 'album' && prefix !== 'playlist' && prefix !== 'artist') return [];
+  return [resolve.nodeTitles.get(collectionId) ?? '', `/${prefix}/${id}`];
+}
+
+/** The favourite songs, from the cache when the tree was built from it. */
+function starredSongs(): Promise<Song[]> {
+  return queryClient
+    .fetchQuery({ queryKey: ['starred'], queryFn: () => data.getStarred() })
+    .then((s) => s.songs);
+}
+
+/**
+ * Picks the song up where its bookmark is, the way a row on the Bookmarks
+ * screen does: the song alone, then a seek once the player has taken it.
+ * The bookmark from the store first, which is current after a move on another
+ * device; the build's copy for a car that started from the snapshot; and the
+ * server as a last resort.
+ */
+async function playBookmark(songId: string): Promise<void> {
+  const store = usePlayerStore.getState();
+  const known = useBookmarks.getState().byId[songId] ?? resolve.bookmarks.get(songId);
+  let bm = known;
+  if (!bm) {
+    await loadBookmarks().catch(() => {});
+    bm = useBookmarks.getState().byId[songId];
+  }
+  if (!bm) return;
+  const ok = await store.playQueue([bm.song], 0, tg('Bookmarks'), '/bookmarks');
+  if (ok) usePlayerStore.getState().seekTo(bm.position / 1000);
+}
+
+/**
+ * Brings a past queue back and plays on from where it was, as the Past queues
+ * screen does: the songs asked for by id, so one the server no longer has
+ * drops out, and the cursor on the song it was on if that one is still there.
+ */
+async function playPastQueue(id: string): Promise<void> {
+  const history = useQueueHistory.getState();
+  await history.hydrate().catch(() => {});
+  const q = useQueueHistory.getState().queues.find((x) => x.id === id) ?? resolve.pastQueues.get(id);
+  if (!q) return;
+  const songs = await data.getSongsByIds(q.songIds).catch(() => [] as Song[]);
+  if (songs.length === 0) return;
+  const wanted = q.songIds[q.index];
+  const at = Math.max(
+    0,
+    songs.findIndex((s) => s.id === wanted),
+  );
+  await usePlayerStore.getState().playQueue(songs, at, q.title);
+}
+
+/** Lowercase, unaccented and single-spaced, the way the native search folds
+ *  what was said: "bjork" is Björk in both places. */
+function fold(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Ceiling on what a spoken request queues from a search of songs. */
+const SPOKEN_SONGS = 50;
+
+/**
+ * "Play <something>" for a something the tree does not hold: the native side
+ * searched what it has and found nothing, so the library is asked.
+ *
+ * A name first, a song last. A playlist, an artist or an album called exactly
+ * what was said is the answer to "play X" far more often than a song of that
+ * name, and each of those is one tap's worth of music rather than one track.
+ * Failing an exact name, the closest album or artist the server offers; and
+ * failing those, the songs it found, dealt once, which is at least the right
+ * kind of music. Offline the same search runs over what is on the phone.
+ */
+async function playSpoken(query: string): Promise<void> {
+  const store = usePlayerStore.getState();
+  const said = fold(query);
+  if (!said) return;
+  const [found, playlists] = await Promise.all([
+    data.search(query).catch(() => ({ artists: [] as Artist[], albums: [] as Album[], songs: [] as Song[] })),
+    queryClient
+      .fetchQuery({ queryKey: ['playlists'], queryFn: () => data.getPlaylists() })
+      .catch(() => [] as Playlist[]),
+  ]);
+  const exact = <T>(items: T[], name: (item: T) => string | undefined) =>
+    items.find((item) => fold(name(item) ?? '') === said);
+
+  const playlist = exact(playlists, (p) => p.name);
+  if (playlist) {
+    const { songs } = await playlistDetail(playlist.id).catch(() => ({ songs: [] as Song[] }));
+    if (songs.length > 0) await store.playQueue(songs, 0, playlist.name, `/playlist/${playlist.id}`);
+    return;
+  }
+  const artist = exact(found.artists, (a) => a.name) ?? found.artists[0];
+  const album = exact(found.albums, (a) => a.name) ?? found.albums[0];
+  // An exact artist beats a close album; an exact album beats a close artist;
+  // both close, the album, which is a record and not a guess at a catalogue.
+  const pick: { kind: 'artist'; item: Artist } | { kind: 'album'; item: Album } | null =
+    artist && fold(artist.name) === said
+      ? { kind: 'artist', item: artist }
+      : album
+        ? { kind: 'album', item: album }
+        : artist
+          ? { kind: 'artist', item: artist }
+          : null;
+  if (pick?.kind === 'artist') {
+    const songs = await data.getTopSongs(pick.item.name, SPOKEN_SONGS).catch(() => [] as Song[]);
+    if (songs.length > 0) {
+      await store.playQueue(songs, 0, pick.item.name, `/artist/${pick.item.id}`);
+      return;
+    }
+  }
+  if (pick?.kind === 'album') {
+    const { songs } = await albumDetail(pick.item.id).catch(() => ({ songs: [] as Song[] }));
+    if (songs.length > 0) {
+      await store.playQueue(songs, 0, pick.item.name, `/album/${pick.item.id}`);
+      return;
+    }
+  }
+  const songs = found.songs.slice(0, SPOKEN_SONGS);
+  if (songs.length > 0) await store.playQueue(songs, 0, query, undefined, { shuffled: true });
 }
 
 /**
  * Handles a car tap: if it's a track within a collection, queues the whole
  * collection starting from the tapped one; if it's an album/playlist/artist/favorites,
- * plays everything.
+ * plays everything. The leaves of Home and the Library (the queue, a resume
+ * point, a past queue, a genre, a mix, the two shuffles) each play their own
+ * thing, and a spoken request the tree could not answer goes to the library.
  */
 export async function handleBrowsePlay(mediaId: string, parentId?: string): Promise<void> {
   const store = usePlayerStore.getState();
@@ -469,14 +1147,31 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
     return;
   }
 
+  // The favourites dealt once, under their own name: the same thing the
+  // Favorites screen's shuffle button does.
+  if (mediaId === SHUFFLE_FAVORITES_ID) {
+    const songs = await starredSongs().catch(() => [] as Song[]);
+    if (songs.length > 0) await store.playQueue(songs, 0, tg('Favorites'), '/favorites', { shuffled: true });
+    return;
+  }
+
+  // The queue as it stands: nothing is replaced, it is only set going. A
+  // queue that is already playing is left alone, and no queue at all is
+  // nothing to resume (the row is not drawn then; a stale snapshot may still
+  // hold it).
+  if (mediaId === RESUME_ID) {
+    if (store.queue.length > 0 && !store.isPlaying) store.toggle();
+    return;
+  }
+
   if (mediaId.startsWith('track|')) {
     const parts = mediaId.split('|');
     const parent = parts[1] || parentId;
     const songId = parts.slice(2).join('|');
-    const ids = parent ? parentTracks.get(parent) : undefined;
+    const ids = parent ? resolve.parentTracks.get(parent) : undefined;
     if (ids && ids.length > 0) {
       const songs = ids
-        .map((id) => songById.get(songIdFromTrackMediaId(id)))
+        .map((id) => resolve.songById.get(songIdFromTrackMediaId(id)))
         .filter((s): s is Song => !!s);
       const startIndex = Math.max(0, ids.indexOf(mediaId));
       if (songs.length > 0) {
@@ -485,21 +1180,54 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
         return;
       }
     }
-    const single = songById.get(songId);
+    const single = resolve.songById.get(songId);
     if (single) await store.playQueue([single], 0);
     return;
   }
 
   const [prefix, ...rest] = mediaId.split(':');
   const id = rest.join(':');
+
+  if (prefix === 'bookmark') return playBookmark(id);
+  if (prefix === 'queue') return playPastQueue(id);
+  if (prefix === 'search') return playSpoken(id);
+
+  // A genre shuffles itself, like the genre screen's own button, under the
+  // genre's name and screen.
+  if (prefix === 'genre') {
+    const songs = await data.getRandomSongs(SHUFFLE_SONGS, id).catch(() => [] as Song[]);
+    if (songs.length > 0) await store.playQueue(songs, 0, id, `/genre/${encodeURIComponent(id)}`);
+    return;
+  }
+
+  // A mix is built when it is tapped, like the card on Home, and plays under
+  // the mix's name with no href: there is no screen a mix lives on. The tile
+  // came from a build of this process, so the mix is in hand; if the car
+  // started from the snapshot before any build ran, the list is made again
+  // from what the stores and the cache hold, which is what the tile was made
+  // from too.
+  if (prefix === 'mix') {
+    const mix = resolve.mixes.get(id) ?? (await mixList(false)).find((m) => m.key === id);
+    if (!mix) return;
+    const songs = await mix.load().catch(() => [] as Song[]);
+    if (songs.length > 0) await store.playQueue(songs, 0, tg(mix.title.key, mix.title.vars));
+    return;
+  }
+
   let songs: Song[] = [];
   try {
     if (prefix === 'album') songs = (await albumDetail(id)).songs;
     else if (prefix === 'playlist') songs = (await playlistDetail(id)).songs;
-    else if (prefix === 'favorites') songs = (await data.getStarred()).songs;
+    else if (prefix === 'favorites') songs = await starredSongs();
     else if (prefix === 'artist') {
       const { artist } = await data.getArtist(id);
       songs = artist.name ? await data.getTopSongs(artist.name, 20) : [];
+    } else if (prefix === 'smart') {
+      // Resolved now rather than read off the tree: the rules are the list,
+      // and a random one is dealt afresh, as it is when it is opened on the
+      // phone. The library itself is the cached copy the tree was built from.
+      const list = useSmartPlaylists.getState().lists.find((l) => l.id === id);
+      if (list) songs = resolveSmartPlaylist(await allSongs(), list);
     }
   } catch {
     songs = [];

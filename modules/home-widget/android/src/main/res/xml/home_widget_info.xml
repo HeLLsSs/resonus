@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One provider, three looks: the cells the launcher gives a widget decide
+     which layout it is drawn with (HomeWidgetRenderer). It is placed as the
+     wide 4x2 one and can be pulled down to 2x2 or up to 4x4; the preview in
+     the picker is the wide one.
+
+     No updatePeriodMillis: the widget never asks the system to redraw it on a
+     clock. It is redrawn when playback changes (JS pushes the state through
+     HomeWidgetModule) and when the launcher asks (onUpdate, a resize), from
+     the state saved last, so nothing is polled while the phone sits in a
+     pocket. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/home_widget"
+    android:previewLayout="@layout/home_widget"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_description" />

@@ -992,6 +992,10 @@
   "A playlist called “{name}” already exists. Replace its songs?": "Ja existeix una playlist anomenada «{name}». Vols reemplaçar-ne les cançons?",
   "Replace": "Reemplaça",
   "That file is too big to be a playlist.": "Aquest fitxer és massa gran per ser una playlist.",
+  "Continue listening": "Continua escoltant",
+  "Shuffle everything": "Tot en aleatori",
+  "Pinned": "Fixats",
+  "at {time}": "a {time}",
   "Highlight words": "Ressaltar paraules",
   "When the lyrics carry word timings, the word being sung lights up.": "Quan la lletra porta els temps de cada paraula, la que s'està cantant s'il·lumina."
 }

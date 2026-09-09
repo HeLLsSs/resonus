@@ -15,6 +15,7 @@ import { AppStartupTab } from '@/components/AppStartupTab';
 import { ArtistPickerSheet } from '@/components/ArtistPickerSheet';
 import { BatteryWarning } from '@/components/BatteryWarning';
 import { CarAutoSync } from '@/components/CarAutoSync';
+import { WidgetSync } from '@/components/WidgetSync';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GlobalMiniPlayer } from '@/components/GlobalMiniPlayer';
 import { GlobalTabBar } from '@/components/GlobalTabBar';
@@ -26,6 +27,7 @@ import { SongMenuSheet } from '@/components/SongMenuSheet';
 import { Toast } from '@/components/Toast';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { installAppFont, setAppFont } from '@/lib/appFont';
+import { startIntentsApi } from '@/lib/intentsApi';
 import { removeLegacyRadioCovers } from '@/lib/legacyRadioCovers';
 import { systemAccentAvailable } from '@/lib/materialYou';
 import { startPerfLog } from '@/lib/perfLog';
@@ -150,6 +152,9 @@ export default function RootLayout() {
     // Server URL switching on network change (profiles with multiple URLs).
     initAutoUrl();
     initRemoteIntegration();
+    // Control from other apps (Tasker and the like, docs/INTENTS.md): the
+    // phone's too, and its commands wait for the profile on their own.
+    startIntentsApi();
   }, []);
 
   /**
@@ -388,6 +393,7 @@ export default function RootLayout() {
             {auth || offline ? <GlobalPlaylistPicker /> : null}
             {auth || offline ? <GlobalShareSheet /> : null}
             {auth || offline ? <CarAutoSync /> : null}
+            {auth || offline ? <WidgetSync /> : null}
             {auth || offline ? <BatteryWarning /> : null}
             {/* Not behind the profile guard on a whim: the check reaches
                 GitHub, not the music server, and somebody stuck on the login

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="widget_label">Reproduint</string>
+  <string name="widget_description">Caràtula, títol i controls del que s\'està reproduint; la mida alta afegeix les cançons següents de la cua.</string>
+  <string name="widget_nothing_playing">Res en reproducció</string>
+  <string name="widget_open_app">Toca per obrir Resonus</string>
+  <string name="widget_open_player">Obre el reproductor</string>
+  <string name="widget_previous">Anterior</string>
+  <string name="widget_play">Reprodueix</string>
+  <string name="widget_pause">Pausa</string>
+  <string name="widget_next">Següent</string>
+  <string name="widget_play_song">Reprodueix %1$s</string>
+</resources>
