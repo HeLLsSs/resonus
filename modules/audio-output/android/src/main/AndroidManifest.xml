@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Package visibility (Android 11+): without these the app cannot see the
+       system's media output dialog, neither the SystemUI receiver that opens it
+       on Android 12+ nor the Settings panel that did the job before, and would
+       always fall back to the Bluetooth settings. -->
+  <queries>
+    <package android:name="com.android.systemui" />
+    <intent>
+      <action android:name="com.android.settings.panel.action.MEDIA_OUTPUT" />
+    </intent>
+  </queries>
+</manifest>

@@ -40,7 +40,8 @@ class LocalHttpModule : Module() {
       }
     }
 
-    /** Publishes what may be asked for: `[{ key, uri, mime }]`. */
+    /** Publishes what may be asked for: `[{ key, uri, mime }]` for a file on the
+     *  phone, `[{ key, url, headers }]` for a server URL relayed from here. */
     Function("setEntries") { json: String ->
       server?.setEntries(json)
     }

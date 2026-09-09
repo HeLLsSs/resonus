@@ -4,7 +4,6 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
-import java.net.URL
 
 object Services {
   const val AV_TRANSPORT = "urn:schemas-upnp-org:service:AVTransport:1"
@@ -41,7 +40,7 @@ object Soap {
 
     var connection: HttpURLConnection? = null
     try {
-      connection = (URL(controlUrl).openConnection() as HttpURLConnection).apply {
+      connection = LanNetwork.open(controlUrl).apply {
         requestMethod = "POST"
         setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"")
         setRequestProperty("SOAPAction", "\"$service#$action\"")
@@ -72,7 +71,7 @@ object Soap {
   suspend fun fetch(url: String): String? = withContext(Dispatchers.IO) {
     var connection: HttpURLConnection? = null
     try {
-      connection = (URL(url).openConnection() as HttpURLConnection).apply {
+      connection = LanNetwork.open(url).apply {
         connectTimeout = TIMEOUT_MS
         readTimeout = TIMEOUT_MS
       }

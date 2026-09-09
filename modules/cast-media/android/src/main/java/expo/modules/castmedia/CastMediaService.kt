@@ -91,7 +91,14 @@ class CastMediaService : Service() {
       ACTION_START -> {
         bootInfo?.let { info = it }
         bootInfo = null
-        startForegroundWithNotification()
+        // Android 12+ can refuse the promotion once the service is already
+        // running, and the refusal is an exception thrown in here, where the
+        // module's own guard around `startForegroundService` cannot reach it.
+        // A cast with no notification beats no app at all.
+        if (startForegroundWithNotification().isFailure) {
+          stopSelf(startId)
+          return START_NOT_STICKY
+        }
         applyMetadata()
         applyPlaybackState()
         loadArtwork()
@@ -197,7 +204,7 @@ class CastMediaService : Service() {
     session?.setPlaybackState(ps)
   }
 
-  private fun startForegroundWithNotification() {
+  private fun startForegroundWithNotification(): Result<Unit> = runCatching {
     val notif = buildNotification()
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)

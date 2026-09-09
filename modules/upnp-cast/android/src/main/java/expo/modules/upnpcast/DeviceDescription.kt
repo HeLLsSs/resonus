@@ -16,8 +16,14 @@ class DeviceDescription private constructor(
 ) {
   data class Service(val type: String, val controlUrl: String)
 
+  /**
+   * Any version of the service will do: a renderer declaring `AVTransport:2`
+   * is driven the same way, and the sub-devices of a `<deviceList>` are
+   * searched along with the root.
+   */
   fun controlUrl(serviceType: String): String? {
-    val service = services.firstOrNull { it.type.contains(serviceType, ignoreCase = true) }
+    val family = serviceType.substringBeforeLast(':')
+    val service = services.firstOrNull { it.type.trim().startsWith(family, ignoreCase = true) }
       ?: return null
     if (service.controlUrl.isEmpty()) return null
     val base = urlBase?.takeIf { it.isNotEmpty() } ?: location

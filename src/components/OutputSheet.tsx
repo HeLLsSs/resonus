@@ -1,7 +1,7 @@
 /**
  * Audio output picker (Spotify Connect style): this phone, the server's own
- * speakers or a UPnP/DLNA renderer on the network. When opened it searches for
- * renderers and keeps searching while it is up.
+ * speakers, a UPnP/DLNA renderer or a Google Cast receiver on the network.
+ * When opened it searches for both kinds and keeps searching while it is up.
  *
  * Sonos speakers are the reason this is more than a list. They arrive one per
  * room and can be played as a group, so while a Sonos session is on, the list
@@ -13,15 +13,32 @@
  */
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Slider from '@react-native-community/slider';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAccent } from '@/hooks/useAccent';
 import { useBottomSheetAnim } from '@/hooks/useBottomSheetAnim';
 import { useT } from '@/i18n';
+import {
+  audioOutputAvailable,
+  openSystemOutputPicker,
+  setMediaVolume,
+  useAudioOutput,
+  type AudioOutputDevice,
+} from '@/lib/audioOutput';
 import { formatGroupedDeviceLabel, normalizeOutputDisplayName } from '@/lib/format';
+import {
+  castConnect,
+  castDisconnect,
+  castSearch,
+  googleCastAvailable,
+  useGoogleCast,
+  type CastDevice,
+} from '@/store/googleCast';
 import {
   jukeboxConnect,
   jukeboxDisconnect,
@@ -41,6 +58,12 @@ import {
 } from '@/store/upnp';
 import { colors, fontSize, radius, SHEET_MAX_WIDTH, spacing, themed } from '@/theme';
 
+/** Both discoveries at once: they are two answers to the same question. */
+function searchAll() {
+  void upnpSearch();
+  void castSearch();
+}
+
 export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const t = useT();
@@ -51,7 +74,19 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   const scanning = useUpnp((s) => s.scanning);
   const jukeboxActive = useJukebox((s) => s.active);
   const jukeboxAvailable = useJukebox((s) => s.available);
-  const phoneActive = !upnpId && !jukeboxActive;
+  const castId = useGoogleCast((s) => (s.connected ? s.deviceId : null));
+  const castDevices = useGoogleCast((s) => s.devices);
+  const castScanning = useGoogleCast((s) => s.scanning);
+  const phoneActive = !upnpId && !jukeboxActive && !castId;
+  // The phone's own outputs and its media volume, only while the phone is the
+  // one playing: a remote output has a volume of its own and the phone's
+  // outputs are nothing to it.
+  const { outputs, volume } = useAudioOutput(visible && phoneActive);
+  const accent = useAccent();
+  // The slider's value while a finger is on it: the volume it reports comes
+  // back from the system a moment later, and handing the slider that stale
+  // number mid-drag makes the thumb hop.
+  const [liveVolume, setLiveVolume] = useState<number | null>(null);
   const { dismiss, pan, backdropStyle, sheetStyle, onSheetLayout } = useBottomSheetAnim(
     visible,
     onClose,
@@ -78,13 +113,13 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   const activeSonosGroupMode = activeGroupMembers.length > 1;
 
   const groupedUpnpRows = useMemo(() => {
-    const rows: Array<{
+    const rows: {
       key: string;
       label: string;
       device: UpnpDevice;
       active: boolean;
       groupSize: number;
-    }> = [];
+    }[] = [];
     const coveredIds = new Set<string>();
     const groups = new Map<string, UpnpDevice[]>();
 
@@ -134,35 +169,70 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
       .sort((a, b) => normalizeOutputDisplayName(a.name).localeCompare(normalizeOutputDisplayName(b.name)));
   }, [activeSonosGroupMode, devices, isSonosSession, upnpId]);
 
+  const activeCastDevice = castId ? castDevices.find((device) => device.id === castId) ?? null : null;
+
+  /**
+   * One of the phone's outputs by name. Only the Bluetooth ones have a name of
+   * their own; for the rest the product name is the phone's model, which says
+   * nothing about the output, so the kind names it.
+   */
+  const localOutputLabel = (device: AudioOutputDevice) => {
+    if (device.kind === 'speaker') return t('Phone speaker');
+    if (device.kind === 'wired') return t('Wired headphones');
+    if (device.kind === 'usb') return device.name || t('USB audio');
+    if (device.kind === 'hearingAid') return device.name || t('Hearing aid');
+    return device.name;
+  };
+
+  const activeLocalOutput = phoneActive
+    ? outputs.devices.find((device) => device.id === outputs.activeId) ?? null
+    : null;
+
   /** What the phone is playing through, named the way the row would name it. */
   const currentLabel = phoneActive
-    ? t('This phone')
+    ? activeLocalOutput && activeLocalOutput.kind !== 'speaker'
+      ? `${t('This phone')} · ${localOutputLabel(activeLocalOutput)}`
+      : t('This phone')
     : jukeboxActive
       ? t('Server speakers (Jukebox)')
-      : activeSonosGroupMode
-        ? formatGroupedDeviceLabel(activeGroupMembers.map((device) => device.name))
-        : activeUpnpDevice
-          ? normalizeOutputDisplayName(activeUpnpDevice.name)
-          : t('This phone');
+      : activeCastDevice
+        ? activeCastDevice.name
+        : activeSonosGroupMode
+          ? formatGroupedDeviceLabel(activeGroupMembers.map((device) => device.name))
+          : activeUpnpDevice
+            ? normalizeOutputDisplayName(activeUpnpDevice.name)
+            : t('This phone');
 
   useEffect(() => {
     if (!visible) return;
-    void upnpSearch();
+    searchAll();
     void refreshJukeboxAvailability();
     // Re-scan periodically while the sheet is open: SSDP is lossy, so repeating
     // the search lets renderers that missed the first round appear on their own
-    // (upnpSearch merges results and no-ops if a scan is still running).
-    const id = setInterval(() => void upnpSearch(), 10000);
+    // (each search merges results and no-ops if a scan is still running).
+    const id = setInterval(searchAll, 10000);
     return () => clearInterval(id);
   }, [visible]);
 
   async function pickPhone() {
     if (upnpId) await upnpDisconnect();
     else if (jukeboxActive) await jukeboxDisconnect();
+    else if (castId) await castDisconnect();
+  }
+
+  /**
+   * Choosing one of the phone's outputs is the system's to do, not the app's
+   * (see `src/lib/audioOutput.ts`), so a tap on one opens the system's own
+   * media output dialog, where the same list is waiting with the same tick.
+   */
+  function openLocalPicker() {
+    if (!openSystemOutputPicker()) toast(t("Couldn't complete the action"));
   }
 
   async function pickDevice(device: UpnpDevice) {
     if (device.id === upnpId) return;
+    // Silent handoff between remote outputs (does not resume on local in between).
+    if (castId) await castDisconnect(true);
     const ok = await upnpConnect(device);
     if (!ok) toast(t("Couldn't complete the action"));
   }
@@ -171,7 +241,17 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     if (jukeboxActive) return;
     // Silent handoff between remote outputs (does not resume on local in between).
     if (upnpId) await upnpDisconnect(true);
+    if (castId) await castDisconnect(true);
     const ok = await jukeboxConnect();
+    if (!ok) toast(t("Couldn't complete the action"));
+  }
+
+  async function pickCastDevice(device: CastDevice) {
+    if (device.id === castId) return;
+    // Silent handoff between remote outputs (does not resume on local in between).
+    if (upnpId) await upnpDisconnect(true);
+    if (jukeboxActive) await jukeboxDisconnect(true);
+    const ok = await castConnect(device);
     if (!ok) toast(t("Couldn't complete the action"));
   }
 
@@ -214,51 +294,28 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     });
   }
 
-  /**
-   * One output. The tick and the accent name the one that is playing, which is
-   * how every list in the app says "this one"; `action` is the extra control a
-   * Sonos room gets, and it sits where the tick would be because a room that
-   * can be grouped is never the room already playing.
-   */
-  function Row({
-    icon,
-    label,
-    active,
-    onPress,
-    action,
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    active?: boolean;
-    onPress?: () => void;
-    action?: React.ReactNode;
-  }) {
-    return (
-      <Pressable
-        style={({ pressed }) => [styles.action, pressed && !!onPress && { opacity: 0.6 }]}
-        disabled={!onPress}
-        onPress={onPress}
-      >
-        {icon}
-        <Text style={[styles.actionText, active && { color: colors.accent }]} numberOfLines={1}>
-          {label}
-        </Text>
-        <View style={styles.trailing}>
-          {action ?? (active ? <Ionicons name="checkmark" size={20} color={colors.accent} /> : null)}
-        </View>
-      </Pressable>
-    );
-  }
-
   /** The icon for an output, by what it is. */
-  const outputIcon = (kind: 'phone' | 'server' | 'group' | 'tv' | 'speaker', active?: boolean) => {
+  const outputIcon = (kind: 'phone' | 'server' | 'group' | 'tv' | 'speaker' | 'cast', active?: boolean) => {
     const color = active ? colors.accent : colors.text;
     if (kind === 'phone') return <Ionicons name="phone-portrait-outline" size={22} color={color} />;
     if (kind === 'server') return <Ionicons name="server-outline" size={22} color={color} />;
     if (kind === 'group') return <MaterialIcons name="speaker-group" size={22} color={color} />;
     if (kind === 'tv') return <Ionicons name="tv-outline" size={22} color={color} />;
+    if (kind === 'cast') return <Ionicons name="logo-google" size={22} color={color} />;
     return <MaterialIcons name="speaker" size={22} color={color} />;
   };
+
+  /** The icon for one of the phone's outputs, by what it is. */
+  const localOutputIcon = (kind: AudioOutputDevice['kind'], active: boolean) => {
+    const color = active ? colors.accent : colors.text;
+    if (kind === 'speaker') return <Ionicons name="volume-high-outline" size={22} color={color} />;
+    if (kind === 'wired') return <Ionicons name="headset-outline" size={22} color={color} />;
+    if (kind === 'bluetooth') return <Ionicons name="bluetooth-outline" size={22} color={color} />;
+    if (kind === 'usb') return <Ionicons name="hardware-chip-outline" size={22} color={color} />;
+    return <Ionicons name="ear-outline" size={22} color={color} />;
+  };
+
+  const showLocalOutputs = phoneActive && audioOutputAvailable && outputs.devices.length > 0;
 
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={close}>
@@ -298,6 +355,68 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
                 active={phoneActive}
                 onPress={phoneActive ? undefined : () => void pickPhone()}
               />
+
+              {/* The phone's own outputs, under the phone and indented to it,
+                  with the one media is going to ticked. Only while the phone is
+                  playing: the tick, the volume and the outputs themselves are
+                  all the phone's, and a remote output has none of them. The
+                  rows open the system's dialog rather than switch on their own,
+                  for the reason `openLocalPicker` gives. */}
+              {showLocalOutputs ? (
+                <View style={styles.localOutputs}>
+                  {outputs.devices.map((device) => {
+                    const active = device.id === outputs.activeId;
+                    return (
+                      <Row
+                        key={`local:${device.id}`}
+                        icon={localOutputIcon(device.kind, active)}
+                        label={localOutputLabel(device)}
+                        active={active}
+                        onPress={active ? undefined : openLocalPicker}
+                      />
+                    );
+                  })}
+                  <Text style={styles.hint}>{t("Change the output from the system's media output picker")}</Text>
+                  <Pressable
+                    style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]}
+                    onPress={openLocalPicker}
+                  >
+                    <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
+                    <Text style={[styles.actionText, { color: colors.textSecondary }]}>
+                      {t('Open system output picker')}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {/* The media volume, in the system's own steps so it lands on
+                  the same notches as the hardware keys, and following them
+                  when they are pressed. */}
+              {phoneActive && audioOutputAvailable && volume.max > 0 ? (
+                <View style={styles.volumeRow}>
+                  <Ionicons name="volume-low-outline" size={20} color={colors.textSecondary} />
+                  <Slider
+                    style={styles.volumeSlider}
+                    accessibilityLabel={t('Media volume')}
+                    minimumValue={0}
+                    maximumValue={volume.max}
+                    step={1}
+                    value={liveVolume ?? volume.value}
+                    onValueChange={(v) => {
+                      setLiveVolume(v);
+                      setMediaVolume(v);
+                    }}
+                    onSlidingComplete={(v) => {
+                      setMediaVolume(v);
+                      setLiveVolume(null);
+                    }}
+                    minimumTrackTintColor={accent}
+                    maximumTrackTintColor={colors.control}
+                    thumbTintColor={colors.knob}
+                  />
+                  <Ionicons name="volume-high-outline" size={20} color={colors.textSecondary} />
+                </View>
+              ) : null}
 
               {jukeboxAvailable ? (
                 <Row
@@ -376,23 +495,45 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
                     ))
                 : null}
 
+              {/* Cast receivers under a heading of their own: a TV shows up
+                  here and, as a DLNA renderer, in the list above as well, and
+                  the heading is what says which of the two rows is which. Only
+                  while there is something under it. */}
+              {googleCastAvailable && castDevices.length > 0 ? (
+                <>
+                  <Text style={styles.sectionTitle}>{t('Google Cast')}</Text>
+                  {castDevices.map((device) => {
+                    const active = device.id === castId;
+                    return (
+                      <Row
+                        key={`cast:${device.id}`}
+                        icon={outputIcon('cast', active)}
+                        label={device.name}
+                        active={active}
+                        onPress={() => void pickCastDevice(device)}
+                      />
+                    );
+                  })}
+                </>
+              ) : null}
+
               {/* What the search is doing, and only while it is doing it: a line
                   that says it is searching whether or not it is says nothing at
                   all. When it has finished and found nothing, that is the news,
                   and the way to try again goes with it. */}
-              {scanning ? (
+              {scanning || castScanning ? (
                 <View style={styles.scanRow}>
                   <ActivityIndicator size="small" color={colors.textSecondary} />
                   <Text style={styles.scanText}>{t('Searching for devices…')}</Text>
                 </View>
-              ) : upnpAvailable ? (
+              ) : upnpAvailable || googleCastAvailable ? (
                 <>
-                  {devices.length === 0 ? (
+                  {devices.length === 0 && castDevices.length === 0 ? (
                     <Text style={styles.scanText}>{t('No devices found')}</Text>
                   ) : null}
                   <Pressable
                     style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]}
-                    onPress={() => void upnpSearch()}
+                    onPress={searchAll}
                   >
                     <Ionicons name="refresh" size={20} color={colors.textSecondary} />
                     <Text style={[styles.actionText, { color: colors.textSecondary }]}>
@@ -406,6 +547,42 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
         </GestureDetector>
       </GestureHandlerRootView>
     </Modal>
+  );
+}
+
+/**
+ * One output. The tick and the accent name the one that is playing, which is
+ * how every list in the app says "this one"; `action` is the extra control a
+ * Sonos room gets, and it sits where the tick would be because a room that
+ * can be grouped is never the room already playing.
+ */
+function Row({
+  icon,
+  label,
+  active,
+  onPress,
+  action,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  onPress?: () => void;
+  action?: React.ReactNode;
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.action, pressed && !!onPress && { opacity: 0.6 }]}
+      disabled={!onPress}
+      onPress={onPress}
+    >
+      {icon}
+      <Text style={[styles.actionText, active && { color: colors.accent }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <View style={styles.trailing}>
+        {action ?? (active ? <Ionicons name="checkmark" size={20} color={colors.accent} /> : null)}
+      </View>
+    </Pressable>
   );
 }
 
@@ -446,6 +623,12 @@ const styles = themed((colors) => ({
     marginBottom: spacing.sm,
   },
   content: { paddingBottom: spacing.sm },
+  sectionTitle: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    marginTop: spacing.sm,
+  },
   action: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -454,6 +637,16 @@ const styles = themed((colors) => ({
     minHeight: 34,
   },
   actionText: { color: colors.text, fontSize: fontSize.md, flexShrink: 1 },
+  // Indented by the phone row's icon and gap, so the outputs read as its own.
+  localOutputs: { paddingLeft: 22 + spacing.md },
+  hint: { color: colors.textMuted, fontSize: fontSize.sm, paddingTop: spacing.xs },
+  volumeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  volumeSlider: { flex: 1, height: 32 },
   // Fixed width so the ticks and the group controls line up down the sheet
   // whatever the names are, and the names all get cut at the same place.
   trailing: { marginLeft: 'auto', minWidth: 22, alignItems: 'flex-end' },

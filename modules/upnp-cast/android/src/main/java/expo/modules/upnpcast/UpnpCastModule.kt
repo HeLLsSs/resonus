@@ -124,11 +124,19 @@ class UpnpCastModule : Module() {
      */
     AsyncFunction("search") { timeoutMs: Double, promise: Promise ->
       scope.launch {
-        val found = Ssdp.discover(timeoutMs.toLong())
+        val found = Ssdp.discover(appContext.reactContext, timeoutMs.toLong())
         val devices = found.map { (location, address) ->
           async {
             val description = Soap.fetch(location)?.let { DeviceDescription.parse(it, location) }
-            if (description == null || !description.isRenderer) return@async null
+            if (description == null) {
+              Log.w(Soap.TAG, "description at $location not read")
+              return@async null
+            }
+            if (!description.isRenderer) {
+              Log.d(Soap.TAG, "not a renderer at $address: ${description.displayName()} (${description.modelName})")
+              return@async null
+            }
+            Log.d(Soap.TAG, "renderer at $address: ${description.displayName()} (${description.modelName}, ${description.manufacturer})")
             val sonos = SonosTopology.describe(description)
             val id = (description.udn?.removePrefix("uuid:")?.trim()?.takeIf(String::isNotEmpty)
               ?.let { if (description.isSonos) it.uppercase() else it }) ?: address

@@ -1,0 +1,7 @@
+{
+  "name": "audio-output",
+  "version": "0.0.1",
+  "description": "Local audio outputs and media volume (android.media.AudioManager) bridge for Resonus (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

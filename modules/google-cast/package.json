@@ -1,0 +1,7 @@
+{
+  "name": "google-cast",
+  "version": "0.0.1",
+  "description": "Google Cast (Chromecast) output bridge for Resonus (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

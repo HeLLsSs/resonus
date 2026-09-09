@@ -1,0 +1,27 @@
+// See the note in modules/audio-eq/android/build.gradle: the plugin is what
+// brings the compiler plugin the module DSL needs from SDK 56 on.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.googlecast'
+version = '0.0.1'
+
+android {
+  namespace "expo.modules.googlecast"
+  defaultConfig {
+    versionCode 1
+    versionName "0.0.1"
+  }
+}
+
+dependencies {
+  // The Cast Application Framework: session, RemoteMediaClient and the
+  // receiver handshake all live in Google Play services, this is the client
+  // half. Discovery goes through MediaRouter, which the framework plugs its
+  // route provider into; the explicit dependency is for the classes this
+  // module calls itself (selector, callback, route list).
+  implementation "com.google.android.gms:play-services-cast-framework:22.3.1"
+  implementation "androidx.mediarouter:mediarouter:1.7.0"
+}

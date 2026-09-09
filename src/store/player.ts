@@ -64,6 +64,19 @@ import { getItem, setItem } from '@/lib/storage';
 import { useAuthStore } from './auth';
 import { checkAutoUrlNow } from './autoUrl';
 import { castSetState, castSetVolumeLevel, castUpdate, initCastMedia } from './castMedia';
+import {
+  castDisconnect,
+  castNowPlaying,
+  castPause,
+  castPlay,
+  castSeek,
+  castSetVolume,
+  initGoogleCast,
+  isCastConnected,
+  loadCastQueue,
+  syncCastQueue,
+  type CastQueueState,
+} from './googleCast';
 import { useDownloads } from './downloads';
 import { useEqualizer } from './equalizer';
 import {
@@ -759,47 +772,67 @@ function clearLockScreen() {
   lockOwner = null;
 }
 
-// ── Salida remota (renderer UPnP/DLNA) ─────────────────────────────────────
+// ── Remote output (UPnP/DLNA renderer, server jukebox, Google Cast) ─────────
 
 /** Active remote output, if any. */
-function remoteKind(): 'upnp' | 'jukebox' | null {
+function remoteKind(): 'upnp' | 'jukebox' | 'cast' | null {
   if (isUpnpConnected()) return 'upnp';
   if (isJukeboxActive()) return 'jukebox';
+  if (isCastConnected()) return 'cast';
   return null;
 }
 
+/**
+ * Whether the phone needs a media session of its own for what is playing: a
+ * renderer or a Cast receiver plays with the local player mute, so the
+ * notification and the volume keys have nothing to hold on to without one.
+ * Jukebox plays on the server itself and needs no session here.
+ */
+function usesCastMedia(): boolean {
+  const kind = remoteKind();
+  return kind === 'upnp' || kind === 'cast';
+}
+
 function remotePlay() {
-  if (isJukeboxActive()) void jukeboxPlay();
+  const kind = remoteKind();
+  if (kind === 'jukebox') void jukeboxPlay();
+  else if (kind === 'cast') void castPlay();
   else void upnpPlay();
 }
 
 function remotePause() {
-  if (isJukeboxActive()) void jukeboxPause();
+  const kind = remoteKind();
+  if (kind === 'jukebox') void jukeboxPause();
+  else if (kind === 'cast') void castPause();
   else void upnpPause();
 }
 
 function remoteSeek(sec: number) {
-  if (isJukeboxActive()) void jukeboxSeek(sec);
+  const kind = remoteKind();
+  if (kind === 'jukebox') void jukeboxSeek(sec);
+  else if (kind === 'cast') void castSeek(sec);
   else void upnpSeek(sec);
 }
 
 function remoteSetVolume(volume: number) {
-  if (isJukeboxActive()) jukeboxSetVolume(volume);
-  else {
-    upnpSetVolume(volume);
-    // Reflect the exact value back in the system volume overlay (UPnP casts
-    // through the CastMedia session; Jukebox plays on the server, no overlay).
-    castSetVolumeLevel(volume);
+  const kind = remoteKind();
+  if (kind === 'jukebox') {
+    jukeboxSetVolume(volume);
+    return;
   }
+  if (kind === 'cast') castSetVolume(volume);
+  else upnpSetVolume(volume);
+  // Reflect the exact value back in the system volume overlay (UPnP and Cast
+  // go through the CastMedia session; Jukebox plays on the server, no overlay).
+  castSetVolumeLevel(volume);
 }
 
 /**
  * Syncs the casting media session (lock screen notification + volume buttons)
- * with the current track/state. Only for UPnP: Jukebox plays on the server
- * itself and doesn't need a local session on the phone.
+ * with the current track/state, for the outputs that have one (`usesCastMedia`).
  */
 function syncCastMedia(): void {
-  if (!isUpnpConnected()) return;
+  if (!usesCastMedia()) return;
   const st = usePlayerStore.getState();
   const song = currentSong(st);
   if (!song) return;
@@ -817,27 +850,98 @@ function syncCastMedia(): void {
   castSetVolumeLevel(st.volume);
 }
 
+/** What the Cast receiver is handed to build its queue from, at `index`. */
+function castQueueState(index = usePlayerStore.getState().index): CastQueueState {
+  const { queue, repeat, sleepAtSongEnd } = usePlayerStore.getState();
+  return { queue, index, repeat, sleepAtSongEnd };
+}
+
+/**
+ * A Cast session found again before the queue was back. The app opened on a
+ * receiver still playing, and what it plays can only be placed once the saved
+ * queue has been restored: until then the restore's own load is held back
+ * (see `remoteLoadIndex`), or it would pause the receiver to hand it, at 0:00,
+ * the very track it is in the middle of.
+ */
+let castResumeAwaitingQueue = false;
+const CAST_RESUME_HOLD_MS = 20_000;
+
+/**
+ * Takes the player to where the receiver is: the receiver's song, position
+ * and state become the player's, and the tail of the queue on the receiver is
+ * rebuilt from here since this app never saw it. A receiver playing something
+ * this queue does not hold is handed the current track instead, the way a
+ * fresh connection is.
+ */
+function adoptCastSession() {
+  const st = usePlayerStore.getState();
+  const now = castNowPlaying();
+  const index = now.songId
+    ? (() => {
+        const after = st.queue.findIndex((song, i) => i >= st.index && song.id === now.songId);
+        return after >= 0 ? after : st.queue.findIndex((song) => song.id === now.songId);
+      })()
+    : -1;
+  const song = st.queue[index];
+  if (!song) {
+    remoteEvents?.onConnected();
+    return;
+  }
+  cutCrossfade();
+  try {
+    activePlayer()?.pause();
+  } catch {
+    // ignore
+  }
+  clearLockScreen();
+  scrobbledThisTrack = false;
+  usePlayerStore.setState({
+    index,
+    positionSec: now.positionSec,
+    durationSec: now.durationSec || song.duration || 0,
+    isPlaying: now.isPlaying,
+    isBuffering: false,
+  });
+  if (now.isPlaying) startPeriodicSync();
+  scheduleSync();
+  syncCastMedia();
+  void syncCastQueue(castQueueState(index), true);
+}
+
 /** Loads the track at `index` into the remote output and syncs state. */
 async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
   const state = usePlayerStore.getState();
   const song = state.queue[index];
   if (!song) return;
+  const kind = remoteKind();
+  if (kind === 'cast' && castResumeAwaitingQueue && !autoplay) {
+    // The restored queue's own load, paused: not sent. The receiver keeps
+    // playing, and the player joins it once the restore has finished writing
+    // its position and state, which it does right after this returns.
+    castResumeAwaitingQueue = false;
+    setTimeout(adoptCastSession, 0);
+    return;
+  }
   scrobbledThisTrack = false;
-  const ok = isJukeboxActive()
-    ? await jukeboxLoad(song, autoplay, startSec)
-    : await loadUpnpRemoteTrack(
-        {
-          queue: state.queue,
-          index,
-          positionSec: startSec,
-          isPlaying: autoplay,
-          shuffle: state.shuffle,
-          repeat: state.repeat,
-        },
-        autoplay,
-      );
+  const ok =
+    kind === 'jukebox'
+      ? await jukeboxLoad(song, autoplay, startSec)
+      : kind === 'cast'
+        ? await loadCastQueue(castQueueState(index), autoplay, startSec)
+        : await loadUpnpRemoteTrack(
+            {
+              queue: state.queue,
+              index,
+              positionSec: startSec,
+              isPlaying: autoplay,
+              shuffle: state.shuffle,
+              repeat: state.repeat,
+            },
+            autoplay,
+          );
   if (!ok) {
-    useToast.getState().show(tg("This song can't be cast"));
+    // Cast says why itself, when the receiver gave a reason.
+    if (kind !== 'cast') useToast.getState().show(tg("This song can't be cast"));
     usePlayerStore.setState({ index, isPlaying: false, isBuffering: false });
     return;
   }
@@ -3028,6 +3132,8 @@ function syncQueueNow(force = false, syncRemote = true) {
       },
       force,
     );
+  } else if (syncRemote && remoteKind() === 'cast') {
+    void syncCastQueue(castQueueState(), force);
   }
 }
 
@@ -3114,9 +3220,12 @@ function attachAppState() {
   });
 }
 
+/** The events handed to the remote outputs, kept for the Cast resume to reuse. */
+let remoteEvents: RemoteEvents | null = null;
+
 /**
- * Attaches remote output events (UPnP/DLNA) to the queue; see
- * src/store/upnp.ts. Call once on startup.
+ * Attaches remote output events (UPnP/DLNA, Jukebox, Google Cast) to the
+ * queue; see src/store/upnp.ts. Call once on startup.
  */
 export function initRemoteIntegration() {
   const events: RemoteEvents = {
@@ -3150,10 +3259,37 @@ export function initRemoteIntegration() {
       });
       scrobbledThisTrack = false;
       onTrackChanged(song);
+      // The receiver just used up one of the tracks it held, and the app may
+      // be in the background, where the timers `onTrackChanged` starts do not
+      // run: the tail is refilled now, from the event itself.
+      if (remoteKind() === 'cast') void syncCastQueue(castQueueState(index));
+    },
+    onVolume: (volume) => {
+      // Moved on the device's side: the slider follows, and nothing is sent
+      // back (`setVolume` would), or the two would chase each other.
+      usePlayerStore.setState({ volume });
+      castSetVolumeLevel(volume);
+    },
+    onResumed: () => {
+      if (usePlayerStore.getState().queue.length === 0) {
+        castResumeAwaitingQueue = true;
+        // Nothing saved to restore, and the hold would wait for a load that
+        // never comes: past a generous opening, whatever queue there is by
+        // then is joined to the receiver, or the hold is simply dropped.
+        setTimeout(() => {
+          if (!castResumeAwaitingQueue) return;
+          castResumeAwaitingQueue = false;
+          if (remoteKind() === 'cast' && usePlayerStore.getState().queue.length > 0) adoptCastSession();
+        }, CAST_RESUME_HOLD_MS);
+        return;
+      }
+      adoptCastSession();
     },
     onDisconnected: (lastPositionSec) => {
-      // The casting media session is already closed by `upnpDisconnect` (covers
-      // silent disconnects too). Here we just return to the local player.
+      castResumeAwaitingQueue = false;
+      // The casting media session is already closed by `upnpDisconnect` and
+      // `castDisconnect` (covers silent disconnects too). Here we just return
+      // to the local player.
       const { queue, index } = usePlayerStore.getState();
       resetUpnpRemoteSyncState();
       if (!queue[index]) return;
@@ -3171,7 +3307,7 @@ export function initRemoteIntegration() {
       const st = usePlayerStore.getState();
       maybeScrobbleThreshold(positionSec);
       // Updates the casting notification/lock screen scrubber.
-      if (isUpnpConnected()) castSetState(st.isPlaying, positionSec * 1000);
+      if (usesCastMedia()) castSetState(st.isPlaying, positionSec * 1000);
     },
     onPlayingChanged: (isPlaying, isBuffering) => {
       usePlayerStore.setState({ isPlaying, isBuffering });
@@ -3181,7 +3317,7 @@ export function initRemoteIntegration() {
         scheduleSync();
       }
       // Reflects play/pause in the casting media session.
-      if (isUpnpConnected()) castSetState(isPlaying, usePlayerStore.getState().positionSec * 1000);
+      if (usesCastMedia()) castSetState(isPlaying, usePlayerStore.getState().positionSec * 1000);
     },
     onRepeatChanged: (repeat) => {
       const current = usePlayerStore.getState().repeat;
@@ -3204,8 +3340,13 @@ export function initRemoteIntegration() {
       else void loadIndex(ni, true);
     },
   };
+  remoteEvents = events;
   initUpnp(events);
   initJukebox(events);
+  initGoogleCast(events, () => {
+    const { queue, index } = usePlayerStore.getState();
+    return { queue, index };
+  });
   // Sync crossfade toggle to Sonos whenever the setting changes.
   let lastCrossfadeSec = useSettings.getState().crossfadeSec;
   useSettings.subscribe((s) => {
@@ -3217,7 +3358,7 @@ export function initRemoteIntegration() {
   // Controls pressed in the notification/lock screen or volume buttons during
   // casting: the store actions are already routed to the renderer (remoteKind()).
   initCastMedia((action, value) => {
-    if (!isUpnpConnected()) return;
+    if (!usesCastMedia()) return;
     const st = usePlayerStore.getState();
     switch (action) {
       case 'play':
@@ -4282,7 +4423,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // Radio (own url) and anything playing from disk sound the same whatever
     // the server URL is, so there is nothing to reload against a new one.
     if (!song || song.url || localSourceFor(song)) return;
-    // Cast (UPnP) carries its own session; don't touch it.
+    // A remote output carries its own session; don't touch it.
     if (remoteKind()) return;
     // Paused, there's no audio to preserve: abrupt reload, simpler and safer.
     // Playing, seamless handoff against the new host (see `handoffToNewSource`).
@@ -4306,6 +4447,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // resuming locally: the queue is going away anyway.
     if (remoteKind() === 'upnp') void upnpDisconnect(true);
     else if (remoteKind() === 'jukebox') void jukeboxDisconnect(true);
+    else if (remoteKind() === 'cast') void castDisconnect(true);
     cutCrossfade();
     try {
       activePlayer()?.pause();

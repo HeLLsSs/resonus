@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Discovery. Holding the Wi-Fi multicast lock takes
+       CHANGE_WIFI_MULTICAST_STATE, and picking the network the search goes out
+       on takes ACCESS_NETWORK_STATE. Both are granted at install, without a
+       prompt. -->
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+</manifest>

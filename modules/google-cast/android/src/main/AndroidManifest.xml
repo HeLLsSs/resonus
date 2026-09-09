@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!-- The Cast framework reads its options (which receiver app to launch)
+         from this class the first time CastContext is asked for. Without the
+         entry CastContext.getSharedInstance throws, so it is declared here in
+         the module's manifest and merged into the app's. -->
+    <meta-data
+      android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+      android:value="expo.modules.googlecast.CastOptionsProvider" />
+  </application>
+</manifest>

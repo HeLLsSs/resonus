@@ -85,8 +85,8 @@ export interface SubsonicAuth {
    * `Authorization: Basic`...). Typed by the user at login, kept with the
    * profile, and read only through `authHeaders()`. They travel with every
    * request this app makes itself: the API, the streams, the covers and the
-   * downloads. They cannot travel with a URL handed to another device (UPnP),
-   * which fetches for itself.
+   * downloads. They cannot travel with a URL handed to another device (UPnP,
+   * Google Cast), which fetches for itself; see `store/remoteTrack`.
    */
   headers?: Record<string, string>;
 }

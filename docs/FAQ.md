@@ -17,6 +17,22 @@ accept the rest. The switch is on the phone and you only set it once:
 
 Resonus should be in the car's app list from then on.
 
+## My server is behind Cloudflare Access (or another proxy that wants a header). What works?
+
+Sign in with the header under **Advanced**, one `Name: value` per line. It goes
+with every request the app makes: browsing, streaming, covers, downloads,
+lyrics.
+
+Casting is the one place where something else does the fetching, and the
+speaker cannot be told about the header, so the app goes round it:
+
+- **Google Cast and UPnP/DLNA**: the speaker is handed an address on the phone
+  instead of the server's, and the phone fetches from the server with the
+  header on and passes the stream through. The header never leaves the phone.
+  The phone has to stay awake and on the same Wi-Fi for as long as it plays,
+  the same as when it casts a download. A downloaded song is served straight
+  off the phone.
+
 ## How do I install Resonus on iOS?
 
 Resonus on iOS is provided as an unsigned .ipa file, so it has to be sideloaded.

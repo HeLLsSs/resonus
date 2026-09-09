@@ -8,10 +8,12 @@ import java.io.BufferedOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.HttpURLConnection
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.URL
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.ExecutorService
@@ -31,10 +33,22 @@ import java.util.concurrent.Executors
  * reach the port — that is the whole point of it — so nothing else is reachable:
  * no directory listing, no paths from the request, and a key that means nothing
  * once the session is over.
+ *
+ * The same door also relays a song the server has, for a profile whose server
+ * wants extra HTTP headers (a proxy in front of it, Cloudflare Access and the
+ * like): the renderer can be handed a URL and nothing else, so it is handed
+ * this phone's, and the phone fetches from the server with the headers on and
+ * passes the bytes through. The headers never leave the phone.
  */
 class FileServer(private val ctx: Context) {
-  /** A file JS has published, and what to announce it as. */
-  data class Entry(val uri: String, val mime: String)
+  /** Something JS has published under a key. */
+  sealed class Entry {
+    /** A file on this phone, and what to announce it as. */
+    data class Local(val uri: String, val mime: String) : Entry()
+
+    /** A URL on the server, fetched from here with these headers on. */
+    data class Remote(val url: String, val headers: Map<String, String>) : Entry()
+  }
 
   /**
    * Swapped whole, never edited in place. Publishing happens between one track
@@ -84,16 +98,27 @@ class FileServer(private val ctx: Context) {
     return "http://$host:$port/$token"
   }
 
-  /** Replaces the published files. The payload is `[{ key, uri, mime }]`. */
+  /**
+   * Replaces what is published. The payload is a list of `{ key, uri, mime }`
+   * for a file on the phone or `{ key, url, headers }` for one to relay.
+   */
   fun setEntries(json: String) {
     val list = JSONArray(json)
     val next = HashMap<String, Entry>(list.length())
     for (i in 0 until list.length()) {
       val item = list.getJSONObject(i)
       val key = item.optString("key")
+      if (key.isEmpty()) continue
       val uri = item.optString("uri")
-      if (key.isEmpty() || uri.isEmpty()) continue
-      next[key] = Entry(uri, item.optString("mime", "application/octet-stream"))
+      val url = item.optString("url")
+      if (uri.isNotEmpty()) {
+        next[key] = Entry.Local(uri, item.optString("mime", "application/octet-stream"))
+      } else if (url.startsWith("http://") || url.startsWith("https://")) {
+        val headers = HashMap<String, String>()
+        val given = item.optJSONObject("headers")
+        if (given != null) for (name in given.keys()) headers[name] = given.optString(name)
+        next[key] = Entry.Remote(url, headers)
+      }
     }
     entries = next
   }
@@ -144,8 +169,80 @@ class FileServer(private val ctx: Context) {
     // `/<token>/<key>`, and nothing else is a path this server knows.
     val parts = path.trim('/').split('/')
     if (parts.size != 2 || parts[0] != token) return status(out, 404, "Not Found")
-    val entry = entries[parts[1]] ?: return status(out, 404, "Not Found")
+    when (val entry = entries[parts[1]] ?: return status(out, 404, "Not Found")) {
+      is Entry.Remote -> relay(method, lines, entry, out)
+      is Entry.Local -> serveFile(method, lines, entry, out)
+    }
+  }
 
+  /**
+   * Fetches the server's URL with the profile's headers on and hands the answer
+   * on as it came: the status, the type, the length when the server gave one,
+   * and the byte range if the renderer asked for one and the server honoured
+   * it. A transcoded stream has no length and no ranges, and the renderer is
+   * told exactly that rather than promised bytes it cannot seek to.
+   */
+  private fun relay(method: String, lines: List<String>, entry: Entry.Remote, out: OutputStream) {
+    val connection =
+      try {
+        (URL(entry.url).openConnection() as HttpURLConnection).apply {
+          requestMethod = method
+          connectTimeout = REQUEST_TIMEOUT_MS
+          readTimeout = RELAY_READ_TIMEOUT_MS
+          // Not followed: a redirect to another host would carry the
+          // profile's headers there. A 3xx is answered as a 502 below.
+          instanceFollowRedirects = false
+          for ((name, value) in entry.headers) setRequestProperty(name, value)
+          lines.firstOrNull { it.startsWith("range:", ignoreCase = true) }?.let {
+            setRequestProperty("Range", it.substringAfter(':').trim())
+          }
+        }
+      } catch (_: Exception) {
+        return status(out, 502, "Bad Gateway")
+      }
+    try {
+      val code =
+        try {
+          connection.responseCode
+        } catch (_: Exception) {
+          return status(out, 502, "Bad Gateway")
+        }
+      if (code < 200 || code >= 300 && code != 304) {
+        // The server's own refusal, passed on: a wrong header is a 401 or a
+        // 403 from the proxy, and a renderer told so gives up the same way it
+        // would have been given up on by the server directly.
+        return status(out, if (code in 400..599) code else 502, connection.responseMessage ?: "Error")
+      }
+      val length = connection.getHeaderField("Content-Length")?.trim()?.toLongOrNull()
+      val ranges = code == 206 || connection.getHeaderField("Accept-Ranges")?.contains("bytes", ignoreCase = true) == true
+      writeHead(
+        out,
+        code,
+        connection.responseMessage ?: if (code == 206) "Partial Content" else "OK",
+        connection.contentType ?: "application/octet-stream",
+        length,
+        connection.getHeaderField("Content-Range"),
+        ranges,
+      )
+      if (method == "HEAD") {
+        out.flush()
+        return
+      }
+      connection.inputStream.use { body ->
+        val buffer = ByteArray(COPY_BUFFER)
+        while (true) {
+          val read = body.read(buffer)
+          if (read < 0) break
+          out.write(buffer, 0, read)
+        }
+      }
+      out.flush()
+    } finally {
+      connection.disconnect()
+    }
+  }
+
+  private fun serveFile(method: String, lines: List<String>, entry: Entry.Local, out: OutputStream) {
     val pfd =
       try {
         ctx.contentResolver.openFileDescriptor(Uri.parse(entry.uri), "r")
@@ -249,26 +346,30 @@ class FileServer(private val ctx: Context) {
     return Pair(start, minOf(end, total - 1))
   }
 
+  /** [length] null is a body that ends when the connection does: a relayed
+   *  stream the server itself did not measure. */
   private fun writeHead(
     out: OutputStream,
     code: Int,
     reason: String,
     mime: String,
-    length: Long,
+    length: Long?,
     contentRange: String?,
+    ranges: Boolean = true,
   ) {
     val head = StringBuilder()
     head.append("HTTP/1.1 $code $reason\r\n")
     head.append("Content-Type: $mime\r\n")
-    head.append("Content-Length: $length\r\n")
-    head.append("Accept-Ranges: bytes\r\n")
+    if (length != null) head.append("Content-Length: $length\r\n")
+    if (ranges) head.append("Accept-Ranges: bytes\r\n")
     if (contentRange != null) head.append("Content-Range: $contentRange\r\n")
     // What a DLNA renderer reads to decide it may seek: OP=01 says byte ranges
     // are answered, which is the difference between a progress bar that works
-    // and a speaker that refuses the file outright.
+    // and a speaker that refuses the file outright. OP=00 for a relayed stream
+    // the server will not range over, so the renderer does not try.
     head.append("transferMode.dlna.org: Streaming\r\n")
     head.append(
-      "contentFeatures.dlna.org: DLNA.ORG_OP=01;DLNA.ORG_CI=0;" +
+      "contentFeatures.dlna.org: DLNA.ORG_OP=${if (ranges) "01" else "00"};DLNA.ORG_CI=0;" +
         "DLNA.ORG_FLAGS=01700000000000000000000000000000\r\n",
     )
     // One request per connection: keeping them alive would mean reading the
@@ -325,6 +426,8 @@ class FileServer(private val ctx: Context) {
 
   private companion object {
     const val REQUEST_TIMEOUT_MS = 15000
+    /** A server transcoding on the fly can go quiet for a while between chunks. */
+    const val RELAY_READ_TIMEOUT_MS = 60000
     const val MAX_HEAD_BYTES = 8192
     const val COPY_BUFFER = 64 * 1024
   }
