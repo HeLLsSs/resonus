@@ -15,6 +15,7 @@ import {
   type SortDirection,
   type StarType,
   type SubsonicAuth,
+  type YearRange,
 } from './subsonic';
 
 export { COVER, normalizeUrl, SubsonicRequestError } from './subsonic';
@@ -30,6 +31,7 @@ export type {
   GuestAlbum,
   LyricLine,
   MusicFolder,
+  NowPlayingEntry,
   PlaybackState,
   Playlist,
   RadioStation,
@@ -37,7 +39,7 @@ export type {
   ScanStatus,
   SearchResult,
   Song,
-  SongListSort, SongLyrics, SortDirection, Starred, StarType, SubsonicAuth
+  SongListSort, SongLyrics, SortDirection, Starred, StarType, SubsonicAuth, YearRange
 } from './subsonic';
 
 /** Implementation matching the profile (same signature in both). */
@@ -173,7 +175,8 @@ export const getRandomSongs = (
   size?: number,
   genre?: string,
   musicFolderId?: string,
-) => api(auth).getRandomSongs(auth, size, genre, musicFolderId);
+  years?: YearRange,
+) => api(auth).getRandomSongs(auth, size, genre, musicFolderId, years);
 
 export const search = (auth: SubsonicAuth, query: string, musicFolderId?: string) =>
   api(auth).search(auth, query, musicFolderId);
@@ -240,6 +243,8 @@ export const savePlayQueue = (
 ) => api(auth).savePlayQueue(auth, ids, currentId, positionMs);
 
 export const getPlayQueue = (auth: SubsonicAuth) => api(auth).getPlayQueue(auth);
+
+export const getNowPlaying = (auth: SubsonicAuth) => api(auth).getNowPlaying(auth);
 
 export const scrobble = (auth: SubsonicAuth, id: string, submission?: boolean) =>
   api(auth).scrobble(auth, id, submission);

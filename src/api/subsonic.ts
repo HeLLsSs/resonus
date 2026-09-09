@@ -1084,6 +1084,16 @@ export async function getMostPlayedSongs(
 }
 
 /**
+ * The years a random pick is confined to, both ends included. What a decade
+ * mix asks for: `getRandomSongs` takes `fromYear` and `toYear` as standard
+ * Subsonic parameters, and either may be left out.
+ */
+export interface YearRange {
+  fromYear?: number;
+  toYear?: number;
+}
+
+/**
  * Random songs from the whole library (the Home shuffle).
  *
  * `size` is not arbitrary: the endpoint caps around 500, so this doesn't
@@ -1091,18 +1101,26 @@ export async function getMostPlayedSongs(
  * nobody browses a 20,000-song queue.
  *
  * Accepts `genre` because that's what a "genre radio" would need without
- * duplicating any of this.
+ * duplicating any of this, and `years` for the same reason on behalf of the
+ * decade mixes.
  */
 export async function getRandomSongs(
   auth: SubsonicAuth,
   size = 200,
   genre?: string,
   musicFolderId?: string,
+  years?: YearRange,
 ): Promise<Song[]> {
   const res = await request<{ randomSongs?: { song?: Song[] } }>(
     auth,
     'getRandomSongs.view',
-    { size, ...(genre ? { genre } : {}), ...(musicFolderId ? { musicFolderId } : {}) },
+    {
+      size,
+      ...(genre ? { genre } : {}),
+      ...(musicFolderId ? { musicFolderId } : {}),
+      ...(years?.fromYear != null ? { fromYear: years.fromYear } : {}),
+      ...(years?.toYear != null ? { toYear: years.toYear } : {}),
+    },
   );
   return res.randomSongs?.song ?? [];
 }
@@ -1406,6 +1424,55 @@ export async function getPlayQueue(auth: SubsonicAuth): Promise<SavedQueue | nul
     changed: Number.isFinite(changed) ? changed : undefined,
     changedBy: pq.changedBy,
   };
+}
+
+/** What another player of this account is listening to right now. */
+export interface NowPlayingEntry {
+  song: Song;
+  /** The client name that player sent, which is what the card calls it. */
+  playerName?: string;
+  /** How long ago that player announced the song. */
+  minutesAgo: number;
+}
+
+/**
+ * How stale a "now playing" entry may be and still count as playing.
+ *
+ * The server only hears that a song started (see `scrobble`), so it keeps the
+ * entry for a while after it did and has no idea whether it is still going.
+ * Ten minutes is a long song plus a bit: after that the other player has most
+ * likely moved on or stopped, and a card offering to resume it would resume
+ * something nobody is listening to.
+ */
+const NOW_PLAYING_MAX_MINUTES = 10;
+
+/**
+ * What is playing elsewhere on this account (getNowPlaying).
+ *
+ * The endpoint answers with every user's players. Kept: this user's, on
+ * anything that is not this app, and announced recently. Other players named
+ * `CLIENT_NAME` are left out with our own, since there is no telling this phone
+ * from another one running Resonus, and the card is about picking up what a
+ * different player was doing.
+ */
+export async function getNowPlaying(auth: SubsonicAuth): Promise<NowPlayingEntry[]> {
+  const res = await request<{
+    nowPlaying?: {
+      entry?: (Song & { username?: string; playerName?: string; minutesAgo?: number })[];
+    };
+  }>(auth, 'getNowPlaying.view');
+  return (res.nowPlaying?.entry ?? [])
+    .filter(
+      (e) =>
+        e.username === auth.username &&
+        e.playerName !== CLIENT_NAME &&
+        (e.minutesAgo ?? 0) <= NOW_PLAYING_MAX_MINUTES,
+    )
+    .map(({ username: _user, playerName, minutesAgo, ...song }) => ({
+      song: song as Song,
+      playerName,
+      minutesAgo: minutesAgo ?? 0,
+    }));
 }
 
 /** Notifies the server that a song has been played (scrobble). */

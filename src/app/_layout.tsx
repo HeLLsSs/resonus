@@ -302,6 +302,7 @@ export default function RootLayout() {
                 <Stack.Screen name="favorites" />
                 <Stack.Screen name="favorites-add" />
                 <Stack.Screen name="history" />
+                <Stack.Screen name="stats" />
                 <Stack.Screen name="smart-playlists" />
                 <Stack.Screen name="smart-playlist/[id]" />
                 <Stack.Screen name="smart-playlist/edit" />

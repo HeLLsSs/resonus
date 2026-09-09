@@ -20,6 +20,7 @@ import { hashKey } from './localLibrary';
 import { closeMirrorFor } from './mirrorDb';
 import { removeMirrorCovers } from './mirrorCovers';
 import { primaryUrl } from './serverUrls';
+import { closeStatsFor } from './statsDb';
 import { deleteItem } from './storage';
 
 /** Preferences kept per profile, each stored as `<key>.<hash>`. */
@@ -37,6 +38,10 @@ const SCOPED_KEYS = [
 
 const DOWNLOADS_DIR = `${FileSystem.documentDirectory}downloads/`;
 const MIRROR_DIR = `${FileSystem.documentDirectory}library-mirror/`;
+// One more database of the profile's own: what it listened to. It is not a
+// copy of anything the server holds, so it goes with the account rather than
+// being rebuilt for the next one.
+const STATS_DIR = `${FileSystem.documentDirectory}stats/`;
 
 async function remove(uri: string): Promise<void> {
   await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
@@ -49,7 +54,10 @@ async function remove(uri: string): Promise<void> {
  * whoever uses it, and nothing here is its to delete.
  */
 export async function deleteProfileData(auth: SubsonicAuth): Promise<void> {
-  const scope = hashKey(`${primaryUrl(auth)}|${auth.username}`);
+  // What the profile is called before it is hashed: the stats database is
+  // held open under that name, even though its file wears the hash.
+  const profile = `${primaryUrl(auth)}|${auth.username}`;
+  const scope = hashKey(profile);
   const dir = `${DOWNLOADS_DIR}${scope}/`;
 
   // The databases are closed before their files go, or the handles would
@@ -57,6 +65,7 @@ export async function deleteProfileData(auth: SubsonicAuth): Promise<void> {
   // that no longer exists.
   await closeCatalog(dir);
   await closeMirrorFor(scope);
+  await closeStatsFor(profile);
 
   // The downloads: the audio, the covers and the catalog that indexed them.
   await remove(dir);
@@ -72,6 +81,9 @@ export async function deleteProfileData(auth: SubsonicAuth): Promise<void> {
   ]) {
     await remove(`${MIRROR_DIR}${name}`);
   }
+
+  // The listening log, three files with its write-ahead journals.
+  for (const suffix of ['', '-wal', '-shm']) await remove(`${STATS_DIR}stats-${scope}.db${suffix}`);
 
   // The covers kept for that mirror, which live in a folder of their own: one
   // file per cover plus the index that says which id each belongs to.

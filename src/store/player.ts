@@ -58,6 +58,7 @@ import { remapSong } from '@/lib/navidromeRemap';
 import { beat, bump, timed } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
+import { recordPlay } from '@/lib/statsDb';
 import { getItem, setItem } from '@/lib/storage';
 import { useAuthStore } from './auth';
 import { checkAutoUrlNow } from './autoUrl';
@@ -1112,6 +1113,8 @@ function maybeScrobbleThreshold(positionSec: number) {
   if (threshold === null || positionSec < threshold) return;
   scrobbledThisTrack = true;
   const at = Date.now();
+  // The listening statistics keep every honest listen, online or not.
+  void recordPlay(song, at);
   const { auth, offline } = useAuthStore.getState();
   // The listen is remembered locally whatever happens to the server: it feeds
   // "Most played" on this phone, which is nobody else's business.

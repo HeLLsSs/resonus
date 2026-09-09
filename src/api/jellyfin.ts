@@ -26,6 +26,7 @@ import {
   type Genre,
   type GuestAlbum,
   type MusicFolder,
+  type NowPlayingEntry,
   type PlaybackState,
   type Playlist,
   type RadioStation,
@@ -39,6 +40,7 @@ import {
   type Starred,
   type StarType,
   type SubsonicAuth,
+  type YearRange,
 } from './subsonic';
 // Not the global `fetch`: it never resolves in the background. See the note
 // in `src/api/subsonic.ts`.
@@ -650,19 +652,33 @@ export async function getMostPlayedSongs(
   return (res.Items ?? []).map(toSong);
 }
 
-/** Random songs from the entire library (the Home mix). */
+/**
+ * Random songs from the entire library (the Home mix).
+ *
+ * `years` becomes Jellyfin's `Years`, which is a list rather than a range, so
+ * the range is spelled out year by year. A decade is ten of them, which is as
+ * long as that list ever gets here.
+ */
 export async function getRandomSongs(
   auth: SubsonicAuth,
   size = 200,
   genre?: string,
   _musicFolderId?: string,
+  years?: YearRange,
 ): Promise<Song[]> {
+  const from = years?.fromYear ?? years?.toYear;
+  const to = years?.toYear ?? years?.fromYear;
+  const list =
+    from != null && to != null && to >= from
+      ? Array.from({ length: to - from + 1 }, (_, i) => from + i).join(',')
+      : undefined;
   const res = await request<JfItems>(auth, `/Users/${auth.jfUserId}/Items`, {
     IncludeItemTypes: 'Audio',
     Recursive: true,
     SortBy: 'Random',
     Limit: size,
     ...(genre ? { Genres: genre } : {}),
+    ...(list ? { Years: list } : {}),
     Fields: SONG_FIELDS,
   });
   return (res.Items ?? []).map(toSong);
@@ -1064,6 +1080,11 @@ export async function savePlayQueue(
 
 export async function getPlayQueue(_auth: SubsonicAuth): Promise<SavedQueue | null> {
   return null;
+}
+
+/** Jellyfin keeps sessions rather than a now-playing list; not read here. */
+export async function getNowPlaying(_auth: SubsonicAuth): Promise<NowPlayingEntry[]> {
+  return [];
 }
 
 /** Jellyfin has no internet radio stations. */

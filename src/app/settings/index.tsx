@@ -143,6 +143,17 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </Pressable>
         ))}
+        {/* Not a settings section: a screen of its own, reached from here
+            because this is where somebody looks for what the app knows. */}
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.sectionRow, pressed && { opacity: 0.6 }]}
+          onPress={() => router.push('/stats')}
+        >
+          <Ionicons name="stats-chart-outline" size={24} color={colors.text} />
+          <Text style={styles.sectionRowTitle}>{t('Listening stats')}</Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </Pressable>
 
         <View style={styles.sessionRow}>
           {/* MODE action (outline pill, left): same placement online and offline.

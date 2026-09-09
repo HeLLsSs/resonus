@@ -159,7 +159,7 @@ async function currentPlaylistSongIds(id: string): Promise<string[]> {
   return (d?.songs ?? []).map((s) => s.id);
 }
 
-export type { Album, AlbumListType, Artist, ArtistInfo, Bookmark, FolderContents, FolderEntry, MusicFolder, Playlist, RadioStation, SearchResult, Song, StarType, Starred, SubsonicAuth } from './subsonic';
+export type { Album, AlbumListType, Artist, ArtistInfo, Bookmark, FolderContents, FolderEntry, Genre, MusicFolder, NowPlayingEntry, Playlist, RadioStation, SearchResult, Song, StarType, Starred, SubsonicAuth, YearRange } from './subsonic';
 export { COVER, normalizeUrl } from './subsonic';
 
 /**
@@ -930,19 +930,34 @@ export function getMostPlayedSongs(size = 50): Promise<Subsonic.Song[]> {
  *
  * A genre is left alone: those weights say how much music a library holds, not
  * how much of a given genre, and a library that happens to own most of it would
- * be asked for a fraction of what it could give.
+ * be asked for a fraction of what it could give. The same goes for `years`, a
+ * decade being as narrow a slice of a library as a genre is. Offline the phone
+ * has no year index to filter on, and the random pick is the whole catalogue.
  */
-export async function getRandomSongs(size = 200, genre?: string): Promise<Subsonic.Song[]> {
+export async function getRandomSongs(
+  size = 200,
+  genre?: string,
+  years?: Subsonic.YearRange,
+): Promise<Subsonic.Song[]> {
   if (isOffline()) return Local.getRandomSongs(size);
   const a = auth();
   const ids = enabledFolderIds(a);
-  if (!ids) return Subsonic.getRandomSongs(a, size, genre);
-  if (ids.length === 1) return Subsonic.getRandomSongs(a, size, genre, ids[0]);
-  const depths = genre ? ids.map(() => size) : await randomDepths(a, ids, size);
+  if (!ids) return Subsonic.getRandomSongs(a, size, genre, undefined, years);
+  if (ids.length === 1) return Subsonic.getRandomSongs(a, size, genre, ids[0], years);
+  const depths = genre || years ? ids.map(() => size) : await randomDepths(a, ids, size);
   const lists = await Promise.all(
-    ids.map((fid, i) => Subsonic.getRandomSongs(a, depths[i], genre, fid)),
+    ids.map((fid, i) => Subsonic.getRandomSongs(a, depths[i], genre, fid, years)),
   );
   return shuffled(dedupeById(lists.flat())).slice(0, size);
+}
+
+/**
+ * What another player of this account is listening to. Online only: offline
+ * there is no server to ask, and nothing to resume from it anyway.
+ */
+export function getNowPlaying(): Promise<Subsonic.NowPlayingEntry[]> {
+  if (isOffline()) return Promise.resolve([]);
+  return Subsonic.getNowPlaying(auth());
 }
 
 export function getPlaylists(): Promise<Subsonic.Playlist[]> {

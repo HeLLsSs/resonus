@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 815 of them.
+Every string the app can show, under the screen it shows up on. 852 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -324,6 +324,7 @@ you are actually typing into, which is easier than reading it here.
 | `Clear all` | Throw away the whole list: the history, the queue, or what you searched for |
 | `Clear history` | Throw the listening history away |
 | `History cleared` | Toast |
+| `Listening stats` |  |
 | `Nothing played yet` | Empty state: this phone has not played anything yet |
 | `Songs you play will show up here.` | The line under an empty state, saying how to fill it |
 | `Today` | Heading over the songs played today, on the listening history screen |
@@ -333,20 +334,40 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `{decade}s mix` |  |
+| `{genre} radio` |  |
+| `Afternoon mix` |  |
+| `Another device` |  |
+| `Based on what you listen to` |  |
 | `Couldn't reach the server. Check your connection.` | Error on Home when the server does not answer at all |
 | `Discover` | Home section: discovery suggestions |
+| `Evening mix` |  |
 | `Good afternoon` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
 | `Good evening` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
 | `Good morning` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
 | `Good night` | Home's greeting, for the small hours. Spanish uses the same words as for the evening, which is fine |
 | `Loading covers…` | Still pulling the pictures out of the phone's own files |
 | `Looking for music…` | Reading the phone's own files, before anything can be shown |
+| `Made for you` |  |
+| `Morning mix` |  |
 | `Most played albums` | A section of Home: the records played most |
 | `Most played songs` | A section of Home: the songs played most, as songs |
+| `Music you haven't played in a while` |  |
 | `New releases` | Home shelf and album sort: albums by the year they came out, newest first. Not "Recently added", which is when the server got hold of them |
+| `Night mix` |  |
+| `Nothing to play in this mix yet` |  |
+| `Play here` |  |
+| `Playing on {player}` |  |
 | `Random albums` | A section of Home: albums picked at random, to happen upon something |
 | `Random artists` | A section of Home: artists picked at random |
+| `Random songs from the genre` |  |
+| `Rediscover` |  |
 | `Scanning your music…` | Going through the phone's own files |
+| `Songs from those years` |  |
+| `What you play at night` |  |
+| `What you play in the afternoon` |  |
+| `What you play in the evening` |  |
+| `What you play in the morning` |  |
 
 ## Label
 
@@ -623,6 +644,7 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `Exit local mode` | Leave the profile that plays the phone's own files |
+| `Listening stats` |  |
 | `Local profile` | The on-device profile, with no server account. Its library screen is `Local music` |
 | `Music on your device` | Signing in to nothing at all and playing the phone's own files |
 | `Offline · your downloads` | Settings subtitle shown in offline mode |
@@ -1154,6 +1176,28 @@ you are actually typing into, which is easier than reading it here.
 | `New smart playlist` |  |
 | `No smart playlists yet` |  |
 | `Smart playlists` |  |
+
+## Stats
+
+| String | What it is |
+| --- | --- |
+| `{n} plays` |  |
+| `1 play` |  |
+| `All time` |  |
+| `By day and hour` |  |
+| `By hour of the day` |  |
+| `Listening stats` |  |
+| `Listens` |  |
+| `No listens yet` |  |
+| `Nothing was played in this period.` |  |
+| `Songs you listen to will be counted here.` |  |
+| `This month` |  |
+| `This week` |  |
+| `This year` |  |
+| `Time listened` |  |
+| `Top albums` |  |
+| `Top artists` |  |
+| `Top songs` |  |
 
 ## Used all over the app
 

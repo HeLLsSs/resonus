@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { TrackRow } from '@/components/TrackRow';
 import { useT } from '@/i18n';
 import { listPerf } from '@/lib/listPerf';
+import { pushOnce } from '@/lib/pushOnce';
 import { currentSong, SOURCE_HISTORY, usePlayerStore } from '@/store/player';
 import { markUnplayableOffline } from '@/api/data';
 import { usePlayHistory, type HistoryEntry } from '@/store/playHistory';
@@ -86,6 +87,15 @@ export default function HistoryScreen() {
       <View style={styles.bar}>
         <BackChevron size={28} label={t('Close')} />
         <Text style={styles.barTitle}>{t('History')}</Text>
+        <View style={styles.barActions}>
+          <Pressable
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t('Listening stats')}
+            onPress={() => pushOnce('/stats')}
+          >
+            <Ionicons name="stats-chart-outline" size={22} color={colors.textSecondary} />
+          </Pressable>
         {songs.length > 0 ? (
           <Pressable
             hitSlop={10}
@@ -96,6 +106,7 @@ export default function HistoryScreen() {
             <Ionicons name="trash-outline" size={22} color={colors.textSecondary} />
           </Pressable>
         ) : null}
+        </View>
       </View>
 
       {songs.length === 0 ? (
@@ -158,6 +169,7 @@ const styles = themed((colors) => ({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
+  barActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
   barTitle: { flex: 1, color: colors.text, fontSize: fontSize.lg, fontWeight: '700' },
   center: { flex: 1, justifyContent: 'center' },
   list: { paddingHorizontal: spacing.lg, paddingBottom: SCREEN_BOTTOM_PADDING },

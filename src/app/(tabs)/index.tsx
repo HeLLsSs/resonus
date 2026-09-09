@@ -34,6 +34,8 @@ import { ArtistCard } from '@/components/ArtistCard';
 import { Cover } from '@/components/Cover';
 import { FavoritesArt } from '@/components/FavoritesArt';
 import { Message } from '@/components/Message';
+import { MixesShelf } from '@/components/MixesShelf';
+import { PlayingElsewhereCard } from '@/components/PlayingElsewhereCard';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { SongCard } from '@/components/SongCard';
 import { songsLabel, useT } from '@/i18n';
@@ -410,6 +412,25 @@ function shuffled<T>(arr: T[]): T[] {
   return a;
 }
 
+/**
+ * Ten of `items` at random, drawn again when the list changes or on
+ * pull-to-refresh (`reshuffleKey`). Without that key, when the list doesn't
+ * change react-query keeps the same reference (structural sharing) and the
+ * same ten would come back every time.
+ *
+ * State keyed on both rather than a `useMemo` listing `reshuffleKey`: the
+ * shuffle never reads the key, and a memo whose dependencies say more than
+ * its body is one the compiler rewrites without them.
+ */
+function useRandomTen<T>(items: T[] | undefined, reshuffleKey: number): T[] {
+  const draw = () => (items ? shuffled(items).slice(0, 10) : []);
+  const [pick, setPick] = useState(() => ({ items, reshuffleKey, ten: draw() }));
+  if (pick.items !== items || pick.reshuffleKey !== reshuffleKey) {
+    setPick({ items, reshuffleKey, ten: draw() });
+  }
+  return pick.ten;
+}
+
 /** And the round ones, which are their own shelf. */
 const ARTIST_SIZE = 130;
 const ARTIST_SIZE_WIDE = 165;
@@ -443,14 +464,7 @@ function ArtistSection({ title, reshuffleKey }: { title: string; reshuffleKey: n
     queryFn: () => getArtists(),
     enabled: canFetch && ready,
   });
-  // Reshuffles when the list changes or on pull-to-refresh (`reshuffleKey`).
-  // Without that key, when the list doesn't change react-query keeps the same
-  // reference (structural sharing) and the memo would always return the same
-  // 10 artists.
-  const artists = useMemo(
-    () => (data ? shuffled(data).slice(0, 10) : []),
-    [data, reshuffleKey],
-  );
+  const artists = useRandomTen(data, reshuffleKey);
 
   // The skeleton covers the wait as well as the request, so the shelf holds
   // its place instead of appearing from nowhere four seconds in.
@@ -494,12 +508,7 @@ function DiscoverSection({ title, reshuffleKey }: { title: string; reshuffleKey:
     queryFn: () => getAlbumList('recent', DISCOVER_POOL, DISCOVER_OFFSET),
     enabled: canFetch,
   });
-  // Reshuffles when changing the list or on pull-to-refresh (`reshuffleKey`);
-  // see the note in ArtistSection about react-query's structural sharing.
-  const albums = useMemo(
-    () => (data ? shuffled(data).slice(0, 10) : []),
-    [data, reshuffleKey],
-  );
+  const albums = useRandomTen(data, reshuffleKey);
 
   if (isLoading) {
     return (
@@ -669,7 +678,7 @@ function ScanningPanel() {
 /** Title (i18n key) and list type for the sections that use AlbumSection.
  *  «discover» and «randomArtists» are drawn by components of their own. */
 const HOME_ALBUM_CONFIG: Record<
-  Exclude<HomeSectionKey, 'randomArtists' | 'discover' | 'playlists' | 'mostPlayedSongs'>,
+  Exclude<HomeSectionKey, 'randomArtists' | 'discover' | 'playlists' | 'mostPlayedSongs' | 'mixes'>,
   { title: string; type: 'newest' | 'recent' | 'frequent' | 'random' | 'byYear' }
 > = {
   recentlyAdded: { title: 'Recently added', type: 'newest' },
@@ -864,6 +873,8 @@ export default function HomeScreen() {
 
         <HomeChips offline={offline} />
 
+        <PlayingElsewhereCard />
+
         {!offline && serverUnreachable ? (
           <Message
             text={t("Couldn't reach the server. Check your connection.")}
@@ -881,6 +892,8 @@ export default function HomeScreen() {
               // history records just the same in that mode.
               if (!s.enabled) return null;
               if (s.key === 'discover' && offline) return null;
+              if (s.key === 'mixes' && offline) return null;
+              if (s.key === 'mixes') return <MixesShelf key={s.key} title={t('Made for you')} />;
               if (s.key === 'discover') {
                 return (
                   <DiscoverSection key={s.key} title={t('Discover')} reshuffleKey={reshuffleKey} />

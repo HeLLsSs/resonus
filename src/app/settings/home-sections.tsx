@@ -36,6 +36,7 @@ const LABEL: Record<HomeSectionKey, string> = {
   mostPlayed: 'Most played albums',
   mostPlayedSongs: 'Most played songs',
   discover: 'Discover',
+  mixes: 'Made for you',
   playlists: 'Playlists',
   randomAlbums: 'Random albums',
   randomArtists: 'Random artists',
@@ -74,7 +75,7 @@ function SectionRow({ section }: { section: HomeSection }) {
 
 /** Sections that don't exist locally: their row here would promise something
  *  Home never renders (same criteria as folder browsing in Appearance). */
-const SERVER_ONLY: HomeSectionKey[] = ['discover'];
+const SERVER_ONLY: HomeSectionKey[] = ['discover', 'mixes'];
 
 export default function HomeSectionsSettings() {
   // Repaints on a change of appearance or accent: a stack keeps this screen
