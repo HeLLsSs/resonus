@@ -7,7 +7,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -72,11 +72,8 @@ export default function FavoritesAddScreen() {
 
   // Snapshot of favorites ON ENTRY: rows don't disappear when favorited
   // (like Spotify), only what was already a favorite before is excluded.
-  const initialFavIds = useRef<Set<string> | null>(null);
-  if (starred && !initialFavIds.current) {
-    initialFavIds.current = new Set(starred.songs.map((s) => s.id));
-  }
-  const excluded = initialFavIds.current;
+  const [excluded, setExcluded] = useState<Set<string> | null>(null);
+  if (starred && !excluded) setExcluded(new Set(starred.songs.map((s) => s.id)));
 
   const { data: mostPlayed, isLoading: loadingMost } = useQuery({
     queryKey: ['favAddMost'],

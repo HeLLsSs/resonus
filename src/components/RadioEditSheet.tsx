@@ -1,7 +1,7 @@
 /** Sheet to create or edit a radio station: name, URL, and optional website. */
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -102,8 +102,17 @@ export function RadioEditSheet({
     await cover.removeCover();
   }
 
-  // Resets fields every time it opens.
-  useEffect(() => {
+  // Resets fields every time it opens (or when what it opened on changes under
+  // it). While rendering rather than from an effect, so the old values never
+  // get a frame on screen first.
+  const [opened, setOpened] = useState({ visible, ...initial });
+  if (
+    opened.visible !== visible ||
+    opened.name !== initial.name ||
+    opened.streamUrl !== initial.streamUrl ||
+    opened.homePageUrl !== initial.homePageUrl
+  ) {
+    setOpened({ visible, ...initial });
     if (visible) {
       setName(initial.name);
       setStreamUrl(initial.streamUrl);
@@ -111,7 +120,7 @@ export function RadioEditSheet({
       setPendingCover(null);
       resetCover();
     }
-  }, [visible, initial.name, initial.streamUrl, initial.homePageUrl, resetCover]);
+  }
 
   const urlOk = /^https?:\/\//i.test(streamUrl.trim());
   const showUrlError = streamUrl.trim().length > 0 && !urlOk;

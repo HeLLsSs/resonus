@@ -8,7 +8,7 @@
  * Slides up and down and closes with a swipe, like the song menu: these menus
  * open the same way and from the same ⋯, so they behave the same way too.
  */
-import { type MutableRefObject, type ReactNode, useState } from 'react';
+import { type MutableRefObject, type ReactNode, useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -31,7 +31,12 @@ export function SheetModal({
 }) {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
-  openRef.current = () => setOpen(true);
+  // Handed over once mounted, as a ref is written: the screen only calls it
+  // from a press, long after.
+  useEffect(() => {
+    openRef.current = () => setOpen(true);
+  }, [openRef]);
+
   const closeNow = () => {
     setOpen(false);
     onClosed?.();

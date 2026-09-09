@@ -84,8 +84,9 @@ export function GlobalShareSheet() {
     !!target,
     close,
   );
-  /** The calendar is open (Android shows it as its own dialog). */
-  const [pickingDate, setPickingDate] = useState(false);
+  /** The calendar is open (Android shows it as its own dialog), on the day it
+   *  opened to and with the first day it accepts, both worked out as it opens. */
+  const [pickingDate, setPickingDate] = useState<{ value: Date; minimumDate: Date } | null>(null);
   /** Waiting for the server to mint the link. */
   const [sharing, setSharing] = useState(false);
 
@@ -107,7 +108,7 @@ export function GlobalShareSheet() {
 
   /** The calendar's answer: a date, or nothing if it was dismissed. */
   function onDatePicked(event: DateTimePickerEvent, date?: Date) {
-    setPickingDate(false);
+    setPickingDate(null);
     if (event.type !== 'set' || !date) return;
     // End of the chosen day: picking "the 5th" means the link works through
     // the 5th, not until midnight opening it.
@@ -117,23 +118,20 @@ export function GlobalShareSheet() {
 
   /**
    * Tomorrow as the starting point, and nothing before the next hour: a link
-   * that expired before it was made is not something to let anyone pick.
+   * that expired before it was made is not something to let anyone pick. `now`
+   * is the moment of the tap, which the tap hands in.
    *
    * On Android the calendar is opened imperatively, as its own dialog: as a
    * component it would be rendered inside this sheet's Modal, which is the way
    * to have a native dialog come up behind it.
    */
-  function pickDate() {
+  function pickDate(now: number) {
+    const bounds = { value: new Date(now + DAY), minimumDate: new Date(now + HOUR) };
     if (Platform.OS !== 'android') {
-      setPickingDate(true);
+      setPickingDate(bounds);
       return;
     }
-    DateTimePickerAndroid.open({
-      value: new Date(Date.now() + DAY),
-      minimumDate: new Date(Date.now() + HOUR),
-      mode: 'date',
-      onChange: onDatePicked,
-    });
+    DateTimePickerAndroid.open({ ...bounds, mode: 'date', onChange: onDatePicked });
   }
 
   /** Creates the link with this expiry and hands it to the system sheet. */
@@ -195,7 +193,7 @@ export function GlobalShareSheet() {
                 <Pressable
                   style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
                   accessibilityRole="button"
-                  onPress={pickDate}
+                  onPress={() => pickDate(Date.now())}
                 >
                   <Text style={styles.rowText}>{t('Pick a date…')}</Text>
                   <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
@@ -230,9 +228,9 @@ export function GlobalShareSheet() {
       {/* Everywhere that is not Android, where the calendar is a component. */}
       {pickingDate ? (
         <DateTimePicker
-          value={new Date(Date.now() + DAY)}
+          value={pickingDate.value}
           mode="date"
-          minimumDate={new Date(Date.now() + HOUR)}
+          minimumDate={pickingDate.minimumDate}
           onChange={onDatePicked}
         />
       ) : null}

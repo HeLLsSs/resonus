@@ -4,7 +4,7 @@
  */
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect } from 'react';
-import { ActivityIndicator, Dimensions, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -118,8 +118,8 @@ export function MiniPlayer() {
   // When the song changes (or playback resumes) we return the card to its place
   // in case it was offset from a previous gesture.
   useEffect(() => {
-    translateX.value = 0;
-    translateY.value = 0;
+    translateX.set(0);
+    translateY.set(0);
   }, [song?.id, translateX, translateY]);
 
   // A radio has no album, but the station may carry its own image.

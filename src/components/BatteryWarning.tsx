@@ -15,7 +15,7 @@
  * given a minute ago was not among them. Turning the warning off, or answering
  * «Don't remind me», did not survive the round trip.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { useT } from '@/i18n';
@@ -32,12 +32,17 @@ export function BatteryWarning() {
   const setEnabled = useSettings((s) => s.setBatteryWarning);
   const hydrated = useSettings((s) => s.hydrated);
   const [visible, setVisible] = useState(false);
+  // The launch's flag as this mount found it, kept in step below. A ref because
+  // that is the one outside state an effect may turn into React state: the
+  // effect asks the ref, not the module, and the compiler lets it.
+  const askedRef = useRef(asked);
 
   // Only once the settings are read from disk: before that `batteryWarning` is
   // its default (on), and someone who had turned it off would see it anyway.
   useEffect(() => {
-    if (asked || !hydrated || !enabled || !isBatteryOptimized()) return;
+    if (askedRef.current || !hydrated || !enabled || !isBatteryOptimized()) return;
     asked = true;
+    askedRef.current = true;
     setVisible(true);
   }, [hydrated, enabled]);
 

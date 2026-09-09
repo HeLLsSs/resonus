@@ -1,6 +1,6 @@
 /** Heart to mark/unmark favorites (Subsonic star/unstar). */
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, type GestureResponderEvent } from 'react-native';
 
 import { star, unstar, type StarType } from '@/api/data';
@@ -30,10 +30,13 @@ export function FavoriteButton({ id, type = 'song', starred, size = 22, undo }: 
 
   // Resync with the current song: the same component is reused when switching
   // tracks (mini-player/player), so without this the heart would stay "stuck"
-  // to the previous song's state.
-  useEffect(() => {
+  // to the previous song's state. Adjusted while rendering, the way React
+  // wants state that follows a prop, not a frame later from an effect.
+  const [shown, setShown] = useState({ id, starred });
+  if (shown.id !== id || shown.starred !== starred) {
+    setShown({ id, starred });
     setFav(!!starred);
-  }, [id, starred]);
+  }
 
   async function toggle(e?: GestureResponderEvent) {
     e?.stopPropagation();

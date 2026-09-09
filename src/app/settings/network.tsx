@@ -11,7 +11,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 
 import { Dialog } from '@/components/Dialog';
 import { SettingsPage, settingsStyles, SwitchList } from '@/components/SettingsUI';
-import { reachable } from '@/api/backend';
+import { reachable, type SubsonicAuth } from '@/api/backend';
 import { isLanUrl } from '@/lib/serverUrls';
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
@@ -41,7 +41,11 @@ export default function NetworkSettings() {
   // stays mounted.
   const { accent } = useTheme();
 
-  const [health, setHealth] = useState<'checking' | 'ok' | 'down'>('checking');
+  // The last answer, and what it was asked about: until there is one for the
+  // profile and URL on screen, the check is «checking».
+  const [checked, setChecked] = useState<{ auth: SubsonicAuth; url: string; ok: boolean } | null>(
+    null,
+  );
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -51,14 +55,19 @@ export default function NetworkSettings() {
   useEffect(() => {
     if (!auth) return;
     let alive = true;
-    setHealth('checking');
     reachable(auth, activeUrl).then((ok) => {
-      if (alive) setHealth(ok ? 'ok' : 'down');
+      if (alive) setChecked({ auth, url: activeUrl, ok });
     });
     return () => {
       alive = false;
     };
   }, [auth, activeUrl]);
+  const health =
+    checked && checked.auth === auth && checked.url === activeUrl
+      ? checked.ok
+        ? 'ok'
+        : 'down'
+      : 'checking';
 
   if (!auth) {
     return <SettingsPage title={t('Network')}>{null}</SettingsPage>;

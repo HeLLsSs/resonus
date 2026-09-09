@@ -6,7 +6,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -17,8 +17,6 @@ import {
   Text,
   TextInput,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from 'react-native';
 // The list must use gesture-handler so the row swipe-to-queue doesn't fight
 // the vertical scroll (with RN's FlatList the gesture is flaky).
@@ -262,7 +260,7 @@ export function TrackListView({
         ? () => router.push(`/artist/${subtitleTargets[0].id}`)
         : undefined;
 
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [scrollY] = useState(() => new Animated.Value(0));
 
   // ── In-list search ──────────────────────────────────────────────────────
   // The bar is rendered collapsed (height 0) above the header; a pull-down
@@ -274,7 +272,7 @@ export function TrackListView({
   const [revealed, setRevealed] = useState(false);
   /** Last real scroll offset (the gesture only reveals at the top). */
   const lastOffsetY = useRef(0);
-  const searchH = useRef(new Animated.Value(0)).current;
+  const [searchH] = useState(() => new Animated.Value(0));
   const searchBar = !!searchable && songs.length > 0;
 
   // `setRevealed` is async: the gesture fires `onChange` many times per drag,
@@ -301,17 +299,42 @@ export function TrackListView({
   // at 0), so the "pull down at the top" must be detected separately. The
   // simultaneity is declared on the list (simultaneousHandlers prop with the
   // gesture ref): without it, native scroll cancels this Pan before it starts.
+  //
+  // Built once, and told what to do after each render rather than as it is
+  // built: the handler reads refs, which a function handed to the builder
+  // while rendering is not allowed to do, and the gesture keeps whichever
+  // handler it was given last. The ref the list is told about is filled in
+  // the same place, once the detector below has attached the gesture, which
+  // is when `withRef` would have filled it.
   const revealPanRef = useRef<GestureType | undefined>(undefined);
-  const revealPan = Gesture.Pan()
-    .withRef(revealPanRef)
-    .runOnJS(true)
-    // Only downward drags: upward ones (normal scroll) cancel it.
-    .activeOffsetY(10)
-    .failOffsetY(-10)
-    .onChange((e) => {
+  const [revealPan] = useState(() =>
+    Gesture.Pan()
+      .runOnJS(true)
+      // Only downward drags: upward ones (normal scroll) cancel it.
+      .activeOffsetY(10)
+      .failOffsetY(-10),
+  );
+  useEffect(() => {
+    revealPanRef.current = revealPan;
+    revealPan.onChange((e) => {
       if (!searchBar || searching || revealed) return;
       if (lastOffsetY.current <= 1 && e.translationY > 60) revealSearchBar();
     });
+  });
+
+  // The scroll offset still reaches this side: the native side reports each
+  // change of `scrollY` to a listener on it, so JS hears the same offsets the
+  // animation moves by, and the animation never waits for JS to move. Listened
+  // to from an effect after each render for the same reason the pan's handler
+  // is, and the previous listener taken off, so only the latest is ever told.
+  useEffect(() => {
+    const id = scrollY.addListener(({ value: y }) => {
+      lastOffsetY.current = y;
+      // Scrolling down with the bar open collapses it.
+      if (revealed && !searching && y > 30) collapseSearchBar();
+    });
+    return () => scrollY.removeListener(id);
+  });
 
   // ── Multi-select ────────────────────────────────────────────────────────
   /**
@@ -529,15 +552,7 @@ export function TrackListView({
         ]}
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
-          // The listener still runs on this side: a native event is delivered to
-          // JS as well, it just no longer has to be for the animation to move.
           useNativeDriver: true,
-          listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-            const y = e.nativeEvent.contentOffset.y;
-            lastOffsetY.current = y;
-            // Scrolling down with the bar open collapses it.
-            if (revealed && !searching && y > 30) collapseSearchBar();
-          },
         })}
         ListHeaderComponent={
           <View>

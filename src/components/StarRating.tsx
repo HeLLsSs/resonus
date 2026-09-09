@@ -1,6 +1,6 @@
 /** 5-star bar to rate a song (Subsonic setRating). */
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { setRating } from '@/api/data';
@@ -22,10 +22,13 @@ export function StarRating({ id, rating, size = 22, onRated }: Props) {
   const [busy, setBusy] = useState(false);
 
   // The same component is reused when switching tracks: without this the stars
-  // would stick to the previous song's rating.
-  useEffect(() => {
+  // would stick to the previous song's rating. Adjusted while rendering, the
+  // way React wants state that follows a prop, not a frame later from an effect.
+  const [shown, setShown] = useState({ id, rating });
+  if (shown.id !== id || shown.rating !== rating) {
+    setShown({ id, rating });
     setValue(rating ?? 0);
-  }, [id, rating]);
+  }
 
   async function rate(n: number) {
     if (busy) return;

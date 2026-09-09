@@ -37,10 +37,12 @@ export function usePressFeedback(): {
 } {
   const dim = useSharedValue(1);
 
+  // `set` rather than `.value =`: a value handed to a hook is one the compiler
+  // takes as frozen, and an assignment to it reads as a write to something it
+  // may have memoized. The call is the same write.
   const onPressIn = useCallback(() => {
-    dim.value = withDelay(
-      motion.duration.press,
-      withTiming(PRESSED, { duration: motion.duration.press }),
+    dim.set(
+      withDelay(motion.duration.press, withTiming(PRESSED, { duration: motion.duration.press })),
     );
   }, [dim]);
 
@@ -49,7 +51,7 @@ export function usePressFeedback(): {
     // nothing to come back from, and letting it play out after the finger has
     // gone is the flash this exists to avoid.
     cancelAnimation(dim);
-    dim.value = withTiming(1, { duration: motion.duration.exit });
+    dim.set(withTiming(1, { duration: motion.duration.exit }));
   }, [dim]);
 
   const style = useAnimatedStyle(() => ({ opacity: dim.value }));

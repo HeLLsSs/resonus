@@ -57,6 +57,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --disable-warning=ExperimentalWarning --experimental-transform-types --import ./test/register.mjs --test 'test/**/*.test.ts'",
     "canonical:check": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/ts-register.mjs scripts/canonical-id-check.mjs",
     "i18n:status": "node scripts/i18n-status.mjs",
     "i18n:scaffold": "node scripts/i18n-scaffold.mjs",

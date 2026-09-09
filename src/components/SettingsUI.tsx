@@ -500,19 +500,22 @@ function FineTunePad({
   const saved = useRef(value);
 
   // Opens on whatever the setting is now, which may have moved on the slider.
+  // The ref takes it first and the state follows, as in `nudge` below: the ref
+  // is what the timer moves, and state copied from a ref is the one setState
+  // an effect is allowed.
   useEffect(() => {
     if (!visible) return;
-    setDraft(value);
     draftRef.current = value;
     saved.current = value;
+    setDraft(draftRef.current);
   }, [visible, value]);
-
-  useEffect(() => () => stopTimer(), []);
 
   function stopTimer() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
   }
+
+  useEffect(() => () => stopTimer(), []);
 
   /** Moves the draft and says whether it actually had anywhere to go. */
   function nudge(direction: number, amount: number): boolean {

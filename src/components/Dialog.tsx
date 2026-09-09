@@ -4,7 +4,7 @@
  * destructive actions (without input).
  */
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -55,13 +55,17 @@ export function Dialog({
   onConfirm,
 }: Props) {
   const t = useT();
-  const [value, setValue] = useState(input?.initialValue ?? '');
+  const initial = input?.initialValue ?? '';
+  const [value, setValue] = useState(initial);
   const inputRef = useRef<TextInput>(null);
 
-  // Reset the text every time it opens.
-  useEffect(() => {
-    if (visible) setValue(input?.initialValue ?? '');
-  }, [visible, input?.initialValue]);
+  // Reset the text every time it opens: worked out while rendering, against
+  // what was last seen, so the old text is never drawn first.
+  const [seen, setSeen] = useState({ visible, initial });
+  if (seen.visible !== visible || seen.initial !== initial) {
+    setSeen({ visible, initial });
+    if (visible) setValue(initial);
+  }
 
   const canConfirm = input ? value.trim().length > 0 : true;
 

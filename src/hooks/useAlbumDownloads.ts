@@ -20,27 +20,26 @@ export function useAlbumDownloads(albumId: string | undefined): boolean {
   // Re-checked when downloads change, so deleting the last song of an album
   // takes the option away without leaving the menu.
   const files = useDownloads((s) => s.files);
-  const [has, setHas] = useState(false);
+  // The last answer and the album it was about: any other album, or none, is
+  // «no» until its own comes back.
+  const [found, setFound] = useState<{ albumId: string; has: boolean } | null>(null);
 
   useEffect(() => {
+    if (!albumId) return;
     let alive = true;
-    if (!albumId) {
-      setHas(false);
-      return;
-    }
     void albumHasDownloads(albumId)
-      .then((found) => {
-        if (alive) setHas(found);
+      .then((has) => {
+        if (alive) setFound({ albumId, has });
       })
       .catch(() => {
         // Catalog unreadable: better an option that reports nothing to delete
         // than no way to delete at all.
-        if (alive) setHas(true);
+        if (alive) setFound({ albumId, has: true });
       });
     return () => {
       alive = false;
     };
   }, [albumId, files]);
 
-  return has;
+  return !!found && found.albumId === albumId ? found.has : false;
 }

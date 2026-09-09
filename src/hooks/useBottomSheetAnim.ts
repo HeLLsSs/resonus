@@ -41,9 +41,14 @@ export function useBottomSheetAnim(open: boolean, onClose?: () => void) {
   }, [open, progress]);
 
   const dismiss = (after: () => void) => {
-    progress.value = withTiming(0, TIMING_OUT, (f) => {
-      if (f) scheduleOnRN(after);
-    });
+    // `set` rather than `.value =`: the effect above owns `progress` as far as
+    // the compiler can tell, and an assignment from anywhere else reads as a
+    // write to something it may have memoized. The call is the same write.
+    progress.set(
+      withTiming(0, TIMING_OUT, (f) => {
+        if (f) scheduleOnRN(after);
+      }),
+    );
   };
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: progress.value }));

@@ -179,11 +179,13 @@ export function ArtistsBrowser({ embedded, actionRef, searchOpen }: BrowserProps
     return q ? (data ?? []).filter((a) => a.name.toLowerCase().includes(q)) : (data ?? []);
   }, [data, query]);
 
-  // Shuffled in its own memo, NOT depending on times/byArtist: the history
-  // records every song that starts, so with music playing those deps change
-  // every track and the Fisher-Yates would re-execute — the grid would
-  // reshuffle itself in front of the user on every song change.
-  const shuffledArtists = useMemo(() => {
+  // Shuffled on its own, keyed on the list and the sort and NOT on
+  // times/byArtist: the history records every song that starts, so with music
+  // playing those change every track and the Fisher-Yates would re-execute —
+  // the grid would reshuffle itself in front of the user on every song change.
+  // State adjusted during render rather than a memo, since a draw is not a
+  // pure function of its inputs and a memo is expected to be one.
+  const draw = () => {
     if (sort !== 'random') return null;
     const arr = filtered.slice();
     for (let i = arr.length - 1; i > 0; i--) {
@@ -191,7 +193,10 @@ export function ArtistsBrowser({ embedded, actionRef, searchOpen }: BrowserProps
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
-  }, [filtered, sort]);
+  };
+  const [shuffle, setShuffle] = useState(() => ({ filtered, sort, arr: draw() }));
+  if (shuffle.filtered !== filtered || shuffle.sort !== sort) setShuffle({ filtered, sort, arr: draw() });
+  const shuffledArtists = shuffle.arr;
 
   const artists = useMemo(() => {
     if (sort === 'random') return shuffledArtists ?? [];

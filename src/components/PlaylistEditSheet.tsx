@@ -1,6 +1,6 @@
 /** Sheet to edit a playlist: cover, name, description, and visibility. */
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -68,15 +68,24 @@ export function PlaylistEditSheet({
   const cover = useServerCover({ coverUploadId, localCoverId });
   const { reset: resetCover } = cover;
 
-  // Resets fields every time it opens.
-  useEffect(() => {
+  // Resets fields every time it opens (or when what it opened on changes under
+  // it). While rendering rather than from an effect, so the old values never
+  // get a frame on screen first.
+  const [opened, setOpened] = useState({ visible, ...initial });
+  if (
+    opened.visible !== visible ||
+    opened.name !== initial.name ||
+    opened.comment !== initial.comment ||
+    opened.public !== initial.public
+  ) {
+    setOpened({ visible, ...initial });
     if (visible) {
       setName(initial.name);
       setComment(initial.comment);
       setIsPublic(initial.public);
       resetCover();
     }
-  }, [visible, initial.name, initial.comment, initial.public, resetCover]);
+  }
 
   const canSave = name.trim().length > 0;
 

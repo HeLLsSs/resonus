@@ -41,8 +41,9 @@ export default function DiagnosticsSettings() {
   useTheme();
   const t = useT();
   // Nothing here is reactive: it is a snapshot, refreshed by pulling or by
-  // resetting, so reading it doesn't add work of its own.
-  const [tick, setTick] = useState(0);
+  // resetting, so reading it doesn't add work of its own. Its time is the
+  // state: taking it again is what makes React read everything again.
+  const [now, setNow] = useState(() => Date.now());
   const blocks = perfBlocks();
   // What the profile is, in the terms the code asks about it. Half the reports
   // that start with "this doesn't show up for me" end here.
@@ -118,14 +119,14 @@ export default function DiagnosticsSettings() {
     `screens open: ${navState?.routes?.length ?? '—'}`,
     ...coverLines,
   ];
-  const minutes = Math.max(1, Math.round((Date.now() - perfSince()) / 60000));
+  const minutes = Math.max(1, Math.round((now - perfSince()) / 60000));
 
   return (
     <SettingsPage title={t('Diagnostics')}>
       <ScrollView
         contentContainerStyle={settingsStyles.content}
         // Any scroll refreshes the numbers; no timer polling behind this.
-        onScrollEndDrag={() => setTick(tick + 1)}
+        onScrollEndDrag={() => setNow(Date.now())}
       >
         <Text style={settingsStyles.sectionDescription}>
           {enabled
@@ -247,7 +248,7 @@ export default function DiagnosticsSettings() {
           label={t('Start over')}
           onPress={() => {
             resetPerfLog();
-            setTick(tick + 1);
+            setNow(Date.now());
           }}
         />
       </ScrollView>
