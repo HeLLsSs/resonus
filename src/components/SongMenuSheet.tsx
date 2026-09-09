@@ -38,6 +38,14 @@ import { useCanShare } from '@/hooks/useCanShare';
 import { useFavoriteIds } from '@/hooks/useFavoriteIds';
 import { applyStarChange, resyncFavorites } from '@/lib/favoritesCache';
 import { artistTargets } from '@/lib/artistNav';
+import {
+  loadBookmarks,
+  removeBookmarkByHand,
+  saveBookmarkByHand,
+  useBookmarks,
+  useBookmarksAvailable,
+} from '@/lib/bookmarks';
+import { formatDuration } from '@/lib/format';
 import { exportToFolder, shareSongFile } from '@/lib/exportSong';
 import { useSharePicker } from '@/store/sharePicker';
 import { normKey, pickFolder } from '@/lib/localLibrary';
@@ -161,6 +169,16 @@ export function SongMenuSheet() {
   const openArtistPicker = useArtistPicker((s) => s.open);
   const favIds = useFavoriteIds(!!song);
   const favorited = song ? (favIds ? favIds.has(song.id) : !!song.starred) : false;
+  // Bookmarks: a position kept on the server (see `lib/bookmarks`). One can
+  // be set on the song playing, at where it is; one that exists can be taken
+  // away from anywhere the song is listed. Not for a station: its stream is
+  // not the server's to keep a place in.
+  const canBookmark = useBookmarksAvailable() && !!song && !song.url;
+  const playing = usePlayerStore((s) => !!song && s.queue[s.index]?.id === song.id);
+  const bookmarked = useBookmarks((s) => !!song && !!s.byId[song.id]);
+  useEffect(() => {
+    if (canBookmark) loadBookmarks().catch(() => {});
+  }, [canBookmark, song]);
 
   const [mode, setMode] = useState<'actions' | 'playlists' | 'sleep' | 'rating' | 'export'>(
     'actions',
@@ -174,16 +192,16 @@ export function SongMenuSheet() {
   // Removing a download asks first, like albums and playlists do.
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // When opening the menu for a song, always go back to the actions view.
-  useEffect(() => {
-    if (song) setMode('actions');
-  }, [song]);
-
-  // Every new song or view starts the list scrolled to the top; the sheet
-  // stays mounted between openings, so the flag would otherwise survive.
-  useEffect(() => {
+  // When opening the menu for a song, always go back to the actions view, and
+  // every new song or view starts the list scrolled to the top; the sheet
+  // stays mounted between openings, so both would otherwise survive. Adjusted
+  // while rendering, so the old view never gets a frame on screen first.
+  const [shown, setShown] = useState({ song, mode });
+  if (shown.song !== song || shown.mode !== mode) {
+    setShown({ song, mode });
+    if (shown.song !== song && song) setMode('actions');
     setAtTop(true);
-  }, [song, mode]);
+  }
 
   const { data: playlists, isLoading: loadingPlaylists } = useQuery({
     queryKey: ['playlists'],
@@ -552,6 +570,31 @@ export function SongMenuSheet() {
                       close();
                     }}
                   />
+                  {canBookmark && playing ? (
+                    <Action
+                      icon="bookmark-outline"
+                      label={t('Bookmark here')}
+                      onPress={() => {
+                        close();
+                        const at = usePlayerStore.getState().positionSec;
+                        saveBookmarkByHand(song, at)
+                          .then(() => toast(t('Bookmarked at {time}', { time: formatDuration(at) })))
+                          .catch(() => toast(t("Couldn't save the bookmark")));
+                      }}
+                    />
+                  ) : null}
+                  {canBookmark && bookmarked ? (
+                    <Action
+                      icon="bookmark"
+                      label={t('Remove bookmark')}
+                      onPress={() => {
+                        close();
+                        removeBookmarkByHand(song.id)
+                          .then(() => toast(t('Bookmark removed')))
+                          .catch(() => toast(t("Couldn't remove the bookmark")));
+                      }}
+                    />
+                  ) : null}
                   <Action
                     icon={favorited ? 'heart' : 'heart-outline'}
                     label={favorited ? t('Remove from favorites') : t('Add to favorites')}

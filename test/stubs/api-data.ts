@@ -3,7 +3,7 @@
  * in. Calls are written down in `data.calls` so a test can say what was
  * asked of the server, not only what came back.
  */
-import type { Album, Genre, Song } from '../../src/api/subsonic';
+import type { Album, Bookmark, Genre, Song } from '../../src/api/subsonic';
 
 export const COVER = { thumb: 200, card: 600, full: 1200 } as const;
 export const CACHED_COVER = 'cached-cover:';
@@ -16,6 +16,7 @@ export const data = {
   similar: [] as Song[],
   random: [] as Song[],
   albums: new Map<string, { album: Album; songs: Song[] }>(),
+  bookmarks: [] as Bookmark[],
   starred: [] as Song[],
   /** Handed back by `createPlaylist`. */
   nextPlaylistId: 'pl-new',
@@ -27,6 +28,7 @@ export const data = {
     this.similar = [];
     this.random = [];
     this.albums.clear();
+    this.bookmarks = [];
     this.starred = [];
     this.nextPlaylistId = 'pl-new';
     this.failure = null;
@@ -81,6 +83,18 @@ export function createPlaylist(name: string): Promise<string> {
 
 export function reorderPlaylist(id: string, songIds: string[]): Promise<void> {
   return call('reorderPlaylist', [id, songIds], () => undefined);
+}
+
+export function getBookmarks(): Promise<Bookmark[]> {
+  return call('getBookmarks', [], () => data.bookmarks);
+}
+
+export function createBookmark(id: string, positionMs: number, comment?: string): Promise<void> {
+  return call('createBookmark', [id, positionMs, comment], () => undefined);
+}
+
+export function deleteBookmark(id: string): Promise<void> {
+  return call('deleteBookmark', [id], () => undefined);
 }
 
 /** A cover already in the cache keeps its prefix, the way the app hands it back offline. */

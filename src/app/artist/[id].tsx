@@ -39,6 +39,7 @@ import { Message } from '@/components/Message';
 import { SheetModal } from '@/components/SheetModal';
 import { StarRating } from '@/components/StarRating';
 import { TrackRow } from '@/components/TrackRow';
+import { useComposedAlbums } from '@/hooks/useComposedAlbums';
 import { useDominantColor } from '@/hooks/useDominantColor';
 import { useDownloadMessage } from '@/hooks/useDownloadMessage';
 import { useFavoriteIds } from '@/hooks/useFavoriteIds';
@@ -158,7 +159,7 @@ export default function ArtistScreen() {
   const { width: screenW, height: screenH } = useScreenSize();
   const headerH = headerHeight(screenW, screenH);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [scrollY] = useState(() => new Animated.Value(0));
   const barContentOpacity = scrollY.interpolate({
     inputRange: [headerH * 0.45, headerH * 0.75],
     outputRange: [0, 1],
@@ -209,6 +210,9 @@ export default function ArtistScreen() {
   // does refresh on starring (getArtist's `starred` becomes stale).
   const favArtistIds = useFavoriteIds(canFetch, 'artist');
 
+  // Only for an artist the server credits as a composer (see the hook).
+  const { data: composed } = useComposedAlbums(id, !!data?.artist.roles?.includes('composer'));
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -238,6 +242,10 @@ export default function ArtistScreen() {
   const shuffleActive = isCurrentArtistQueue && playerShuffle;
   const { own: albums, guest: guestAlbums } = splitArtistAlbums(data.albums, appearsOn ?? []);
   const releaseGroups = groupArtistAlbums(albums);
+  // What they composed on, less what is already theirs outright: a record they
+  // both wrote and put out is on the shelves above, and twice on one screen
+  // reads as a mistake.
+  const composedAlbums = (composed ?? []).filter((c) => !albums.some((a) => a.id === c.id));
   const headerUri =
     info?.imageUrl ?? coverArtUrl( data.artist.coverArt ?? data.artist.id, COVER.full);
 
@@ -563,6 +571,17 @@ export default function ArtistScreen() {
             title={t('Appears on')}
             albums={guestAlbums}
             href={`/artist/discography/${id}?section=appears-on`}
+          />
+        ) : null}
+
+        {/* The records they wrote for somebody else to perform, which for a
+            composer is most of them and the reason this screen used to come
+            up empty for one (see `useComposedAlbums`). */}
+        {composedAlbums.length > 0 ? (
+          <AlbumRow
+            title={t('As composer')}
+            albums={composedAlbums}
+            href={`/artist/discography/${id}?section=composer`}
           />
         ) : null}
 

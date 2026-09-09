@@ -25,7 +25,7 @@ import ReorderableList, {
 } from 'react-native-reorderable-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COVER, songCoverUrl } from '@/api/data';
+import { COVER, createPlaylist, getPlaylists, reorderPlaylist, songCoverUrl } from '@/api/data';
 import { type Song } from '@/api/subsonic';
 import { Cover } from '@/components/Cover';
 import { PlayingBars } from '@/components/PlayingBars';
@@ -38,6 +38,7 @@ import { songsLabel, useT } from '@/i18n';
 import { formatTotalDuration } from '@/lib/format';
 import { haptic } from '@/lib/haptics';
 import { listPerf } from '@/lib/listPerf';
+import { queryClient } from '@/lib/query';
 import { useAuthStore } from '@/store/auth';
 import { mixSeedOf, SOURCE_FAVORITES, SOURCE_HISTORY, usePlayerStore } from '@/store/player';
 import { usePlaylistPicker } from '@/store/playlistPicker';
@@ -165,6 +166,13 @@ export default function QueueScreen() {
   const { accent } = useTheme();
   const toast = useToast((s) => s.show);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [naming, setNaming] = useState(false);
+  // A playlist with the name just typed, waiting for the word to overwrite it.
+  const [replacing, setReplacing] = useState<{
+    id: string;
+    name: string;
+    songIds: string[];
+  } | null>(null);
   // ⋯ menu (imperative: opening/closing doesn't re-render the screen).
   const menuRef = useRef<() => void>(() => {});
   const insets = useSafeAreaInsets();
@@ -250,12 +258,58 @@ export default function QueueScreen() {
       return abs === index + 1 ? t('Next in queue') : t('At the end of the queue');
     }
     if (kind === 'mix') {
-      // Named after the song it was grown from, which is the one before it.
+      // Named after the song it was grown from: the seed the player knows,
+      // and failing that the one before it.
       return t('Next from {name}', {
-        name: t('Mix of “{name}”', { name: queue[abs - 1]?.title ?? '' }),
+        name: t('Mix of “{name}”', { name: mixSeed?.title ?? queue[abs - 1]?.title ?? '' }),
       });
     }
     return contextHeader;
+  };
+
+  /**
+   * A new playlist holding the whole queue, in its order. Created empty and
+   * then given its songs in one request (`reorderPlaylist` sets the list),
+   * which is what the library's own creation does and works offline too.
+   *
+   * Only what the server holds goes in: a radio stream has no id, and one in
+   * the list fails the whole request, and what was left behind was an empty
+   * playlist under the name just typed.
+   *
+   * A name already taken is asked about first. `reorderPlaylist` replaces
+   * the songs of whichever playlist carries the id it is given, and on a
+   * server that does not answer `createPlaylist` with the new id, the lookup
+   * by name finds the old one and its songs would be gone without a word.
+   */
+  const fillPlaylist = async (id: string, songIds: string[], name: string) => {
+    await reorderPlaylist(id, songIds);
+    void queryClient.invalidateQueries({ queryKey: ['playlists'] });
+    toast(t('Saved as “{name}”', { name }));
+  };
+
+  const saveAsPlaylist = async (name: string) => {
+    if (!name) return;
+    const songIds = usePlayerStore
+      .getState()
+      .queue.filter((s) => !s.url)
+      .map((s) => s.id);
+    if (songIds.length === 0) {
+      toast(t('None of these songs can be saved to a playlist'));
+      return;
+    }
+    try {
+      const wanted = name.toLowerCase();
+      const existing = (await getPlaylists()).find(
+        (p) => p.name.trim().toLowerCase() === wanted,
+      );
+      if (existing) {
+        setReplacing({ id: existing.id, name: existing.name, songIds });
+        return;
+      }
+      await fillPlaylist(await createPlaylist(name), songIds, name);
+    } catch {
+      toast(t("Couldn't create the playlist"));
+    }
   };
 
   return (
@@ -368,6 +422,36 @@ export default function QueueScreen() {
         }}
       />
 
+      <Dialog
+        visible={naming}
+        title={t('Save as playlist')}
+        input={{ placeholder: t('Playlist name') }}
+        confirmLabel={t('Save')}
+        onCancel={() => setNaming(false)}
+        onConfirm={(name) => {
+          setNaming(false);
+          void saveAsPlaylist(name.trim());
+        }}
+      />
+
+      <Dialog
+        visible={replacing !== null}
+        title={t('Save as playlist')}
+        message={t('A playlist called “{name}” already exists. Replace its songs?', {
+          name: replacing?.name ?? '',
+        })}
+        confirmLabel={t('Replace')}
+        destructive
+        onCancel={() => setReplacing(null)}
+        onConfirm={() => {
+          if (!replacing) return;
+          setReplacing(null);
+          fillPlaylist(replacing.id, replacing.songIds, replacing.name).catch(() => {
+            toast(t("Couldn't complete the action"));
+          });
+        }}
+      />
+
       <SheetModal openRef={menuRef}>
         {(close) => (
           <>
@@ -381,6 +465,28 @@ export default function QueueScreen() {
             >
               <Ionicons name="add" size={24} color={colors.text} />
               <Text style={styles.actionText}>{t('Add to a playlist')}</Text>
+            </Pressable>
+            {/* The queue itself, as a list of its own: an evening's picking is
+                worth keeping under a name rather than being appended to one. */}
+            <Pressable
+              style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]}
+              onPress={() => {
+                close();
+                setNaming(true);
+              }}
+            >
+              <Ionicons name="save-outline" size={24} color={colors.text} />
+              <Text style={styles.actionText}>{t('Save as playlist')}</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]}
+              onPress={() => {
+                close();
+                router.push('/past-queues');
+              }}
+            >
+              <Ionicons name="time-outline" size={24} color={colors.text} />
+              <Text style={styles.actionText}>{t('Past queues')}</Text>
             </Pressable>
             {/* The queue is pushed to the server as it changes, but what comes
                 back is only read when this device has none of its own: the copy

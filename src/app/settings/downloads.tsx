@@ -7,6 +7,7 @@
  * working, since freeing space needs no network.
  */
 import { Paths } from 'expo-file-system';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
@@ -71,6 +72,7 @@ export default function DownloadsSettings() {
   // mounted while you are on another one, out of reach of anything else.
   useTheme();
   const t = useT();
+  const router = useRouter();
   const toast = useToast((s) => s.show);
   const offline = useAuthStore((s) => s.offline);
   const lang = useSettings((s) => s.language);
@@ -90,6 +92,10 @@ export default function DownloadsSettings() {
   const hideUnavailableOffline = useSettings((s) => s.hideUnavailableOffline);
   const setHideUnavailableOffline = useSettings((s) => s.setHideUnavailableOffline);
   const files = useDownloads((s) => s.files);
+  // Two counts, not the lists: the lists change with every song and this
+  // screen has a disk bar to keep still.
+  const transferring = useDownloads((s) => s.activity.active.length);
+  const waiting = useDownloads((s) => s.activity.queued.length);
   const usageBytes = useDownloads((s) => s.usageBytes);
   const clearAll = useDownloads((s) => s.clearAll);
 
@@ -191,6 +197,19 @@ export default function DownloadsSettings() {
               disabled: offline,
             },
           ]}
+        />
+        {/* Not greyed out offline: a queue that stopped with the connection is
+            exactly what somebody comes here to look at. */}
+        <SettingRow
+          icon="cloud-download-outline"
+          label={t('Download activity')}
+          description={
+            transferring + waiting > 0
+              ? t('{n} downloading · {m} waiting', { n: transferring, m: waiting })
+              : undefined
+          }
+          chevron
+          onPress={() => router.push('/settings/download-activity')}
         />
         <Text style={settingsStyles.sectionTitle}>{t('Offline')}</Text>
         <SwitchList

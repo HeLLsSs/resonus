@@ -109,11 +109,78 @@ class TransferError extends Error {
   }
 }
 
+/**
+ * A transfer that went quiet.
+ *
+ * A server that accepts the request and then sends nothing (a transcoder that
+ * hung, a proxy holding the connection open, a mobile network that changed
+ * cells) leaves the download waiting forever: nothing times out on a socket
+ * that is still open. Each transfer is watched, and one that has not received
+ * a byte in `STALL_MS` is cut off and started again, once. A second silence
+ * is reported as a failure of its own, so the list of failures says why.
+ */
+class StallError extends Error {
+  constructor() {
+    super('stalled');
+  }
+}
+const STALL_MS = 30_000;
+/** How often the watchdog looks, and how long a silent transfer keeps its last speed. */
+const WATCH_EVERY_MS = 2_000;
+/** How often what is downloading is written to the store while bytes come in. */
+const PROGRESS_FLUSH_MS = 500;
+/** Finished downloads kept for the activity screen, per profile. */
+const RECENT_MAX = 50;
+
 interface GroupProgress {
   done: number;
   total: number;
   /** Fraction (0..1) of the current file, so the progress bar advances between songs. */
   fraction: number;
+}
+
+/** A song that is transferring right now, as the activity screen shows it. */
+export interface ActiveTransfer {
+  id: string;
+  song: Song;
+  /** Received so far. */
+  bytes: number;
+  /** Announced by the server, 0 when it did not say (a transcode has no length). */
+  total: number;
+  /** Smoothed over the last seconds, 0 once nothing has come in for a while. */
+  bytesPerSec: number;
+  startedAt: number;
+}
+export interface QueuedTransfer {
+  id: string;
+  song: Song;
+}
+/** Why a download gave up: `stalled`, `network`, `not-audio` or `HTTP <status>`. */
+export interface FailedTransfer {
+  id: string;
+  song: Song;
+  error: string;
+  at: number;
+}
+export interface RecentTransfer {
+  id: string;
+  song: Song;
+  bytes: number;
+  at: number;
+}
+/**
+ * What the download queue is doing, for the activity screen.
+ *
+ * The group progress in `active` is what the album and playlist buttons show,
+ * one number per group. This is the other view of the same work: each song on
+ * its own, with what is waiting behind it, what gave up and what recently
+ * arrived. Songs are keyed by their server id across the four lists.
+ */
+export interface DownloadActivity {
+  active: ActiveTransfer[];
+  queued: QueuedTransfer[];
+  failed: FailedTransfer[];
+  recent: RecentTransfer[];
 }
 
 /** Mergeable view by the local profile (artists derived from albums). */
@@ -668,6 +735,14 @@ interface DownloadsState {
   dlBitRates: Record<string, number>;
   /** Progress per ongoing group: `album:<id>` / `playlist:<id>` / `artist:<id>`. */
   active: Record<string, GroupProgress>;
+  /** Song by song: transferring, waiting, failed and recently finished. */
+  activity: DownloadActivity;
+  /** Tries one failed song again, on its own. */
+  retry: (songId: string) => Promise<void>;
+  /** Tries every failed song again, as one group. */
+  retryAll: () => Promise<void>;
+  /** Forgets the recently finished downloads of this profile. */
+  clearRecent: () => Promise<void>;
   /**
    * `files` has been read from disk. Until then it is empty, which reads the
    * same as "nothing is downloaded" — and whoever decides something by that
@@ -739,7 +814,207 @@ async function onMobileData(): Promise<boolean> {
   }
 }
 
+/**
+ * The recent list lives in a JSON file next to the profile's downloads rather
+ * than in SecureStore: fifty songs with their metadata is far past the two
+ * kilobytes the Android keystore is comfortable with, and a file in the
+ * profile's directory leaves with the profile, the way the downloads do.
+ */
+function recentFile(dir: string): string {
+  return `${dir}recent.json`;
+}
+
+async function readRecent(dir: string): Promise<RecentTransfer[]> {
+  try {
+    const info = await FileSystem.getInfoAsync(recentFile(dir));
+    if (!info.exists) return [];
+    const parsed: unknown = JSON.parse(await FileSystem.readAsStringAsync(recentFile(dir)));
+    return Array.isArray(parsed) ? (parsed as RecentTransfer[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Serialized through `locked`, so two songs finishing together cannot cross their writes. */
+function writeRecent(dir: string, recent: RecentTransfer[]): Promise<void> {
+  return locked(async () => {
+    try {
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
+      await FileSystem.writeAsStringAsync(recentFile(dir), JSON.stringify(recent));
+    } catch {
+      // A history that cannot be written is still shown until the app closes.
+    }
+  });
+}
+
+const EMPTY_ACTIVITY: DownloadActivity = { active: [], queued: [], failed: [], recent: [] };
+
 export const useDownloads = create<DownloadsState>((set, get) => {
+  // ── Song by song activity ──────────────────────────────────────────────
+  // Progress arrives many times a second per transfer, and a zustand `set` is
+  // a render of everything that reads this store. Bytes and speed live here
+  // in a plain map and are copied into the state on a timer; the lists that
+  // change rarely (queued, failed, recent) are written straight away.
+  const live = new Map<
+    string,
+    ActiveTransfer & {
+      /** When bytes last went up; what the watchdog compares against. */
+      lastProgressAt: number;
+      /** The sample the speed is measured from, at least a second back. */
+      sampleAt: number;
+      sampleBytes: number;
+      task: ReturnType<typeof FileSystem.createDownloadResumable>;
+      stalled: boolean;
+    }
+  >();
+  let flushTimer: ReturnType<typeof setTimeout> | null = null;
+  let watchdog: ReturnType<typeof setInterval> | null = null;
+  /** When the watchdog last ran, to tell a frozen timer from a dead socket. */
+  let lastWatchAt = 0;
+
+  function patchActivity(patch: (a: DownloadActivity) => Partial<DownloadActivity>) {
+    set((st) => ({ activity: { ...st.activity, ...patch(st.activity) } }));
+  }
+
+  function flushActive() {
+    flushTimer = null;
+    patchActivity(() => ({
+      active: Array.from(live.values(), (tr) => ({
+        id: tr.id,
+        song: tr.song,
+        bytes: tr.bytes,
+        total: tr.total,
+        bytesPerSec: tr.bytesPerSec,
+        startedAt: tr.startedAt,
+      })),
+    }));
+  }
+
+  function scheduleFlush() {
+    if (!flushTimer) flushTimer = setTimeout(flushActive, PROGRESS_FLUSH_MS);
+  }
+
+  /**
+   * Cuts off whatever has gone quiet, and lets a speed that stopped being
+   * measured fall to zero rather than showing the last number for ever.
+   */
+  function watch() {
+    const now = Date.now();
+    // How long since the last look. It should be `WATCH_EVERY_MS`; anything
+    // much longer means this timer was frozen, not that the transfers went
+    // quiet. Android freezes JS timers in the background and iOS suspends the
+    // thread outright, and a phone locked for a minute would otherwise come
+    // back to every transfer cut off and restarted from zero at once. The
+    // silence is forgiven and counted again from now.
+    const asleep = lastWatchAt > 0 && now - lastWatchAt > WATCH_EVERY_MS + STALL_MS / 3;
+    lastWatchAt = now;
+    if (asleep) {
+      for (const tr of live.values()) if (!tr.stalled) tr.lastProgressAt = now;
+      return;
+    }
+    let changed = false;
+    for (const tr of live.values()) {
+      if (tr.stalled) continue;
+      const silent = now - tr.lastProgressAt;
+      if (silent > STALL_MS) {
+        tr.stalled = true;
+        // The transfer's own promise settles from this, and `fetchSong` reads
+        // the flag to tell a stall from a cancel.
+        void tr.task.cancelAsync().catch(() => {});
+      } else if (silent > WATCH_EVERY_MS && tr.bytesPerSec > 0) {
+        tr.bytesPerSec = 0;
+        changed = true;
+      }
+    }
+    if (changed) scheduleFlush();
+  }
+
+  function beginTransfer(
+    song: Song,
+    task: ReturnType<typeof FileSystem.createDownloadResumable>,
+  ): void {
+    const now = Date.now();
+    live.set(song.id, {
+      id: song.id,
+      song,
+      bytes: 0,
+      total: 0,
+      bytesPerSec: 0,
+      startedAt: now,
+      lastProgressAt: now,
+      sampleAt: now,
+      sampleBytes: 0,
+      task,
+      stalled: false,
+    });
+    if (!watchdog) {
+      lastWatchAt = now;
+      watchdog = setInterval(watch, WATCH_EVERY_MS);
+    }
+    patchActivity((a) => ({ queued: a.queued.filter((q) => q.id !== song.id) }));
+    scheduleFlush();
+  }
+
+  function progressTransfer(songId: string, bytes: number, total: number): void {
+    const tr = live.get(songId);
+    if (!tr) return;
+    const now = Date.now();
+    if (bytes > tr.bytes) tr.lastProgressAt = now;
+    tr.bytes = bytes;
+    if (total > 0) tr.total = total;
+    // Measured over at least a second, and blended with the previous reading:
+    // the chunks come in bursts, and a number that jumps between 0 and 5 MB/s
+    // five times a second says nothing anyone can read.
+    const span = now - tr.sampleAt;
+    if (span >= 1000) {
+      const rate = ((bytes - tr.sampleBytes) * 1000) / span;
+      tr.bytesPerSec = tr.bytesPerSec > 0 ? 0.6 * rate + 0.4 * tr.bytesPerSec : rate;
+      tr.sampleAt = now;
+      tr.sampleBytes = bytes;
+    }
+    scheduleFlush();
+  }
+
+  /** Whether the transfer was cut off by the watchdog, and forgets it either way. */
+  function endTransfer(songId: string): boolean {
+    const stalled = live.get(songId)?.stalled ?? false;
+    live.delete(songId);
+    if (live.size === 0 && watchdog) {
+      clearInterval(watchdog);
+      watchdog = null;
+      lastWatchAt = 0;
+    }
+    scheduleFlush();
+    return stalled;
+  }
+
+  function noteFailed(song: Song, error: string): void {
+    patchActivity((a) => ({
+      failed: [{ id: song.id, song, error, at: Date.now() }, ...a.failed.filter((f) => f.id !== song.id)],
+    }));
+  }
+
+  function noteDone(dir: string, song: Song, bytes: number): void {
+    const entry: RecentTransfer = { id: song.id, song, bytes, at: Date.now() };
+    let recent: RecentTransfer[] = [];
+    patchActivity((a) => {
+      recent = [entry, ...a.recent.filter((r) => r.id !== song.id)].slice(0, RECENT_MAX);
+      return { recent, failed: a.failed.filter((f) => f.id !== song.id) };
+    });
+    void writeRecent(dir, recent);
+  }
+
+  /** Takes a group's songs out of the waiting list, when it stops or is done. */
+  /** Groups that got as far as fetching something: what a retry asks about. */
+  const startedGroups = new Set<string>();
+
+  function dropQueued(ids: Set<string>): void {
+    patchActivity((a) => ({ queued: a.queued.filter((q) => !ids.has(q.id)) }));
+  }
+
+  /** What to try again with: the album the failed song came in with, kept aside. */
+  const failedAlbums = new Map<string, Album>();
+
   // Groups with a stop requested: workers check this and stop picking new
   // songs. Already downloaded items are kept.
   const cancelling = new Set<string>();
@@ -760,9 +1035,16 @@ export const useDownloads = create<DownloadsState>((set, get) => {
     if (get().active[groupKey]) return; // already in progress
     // No duplicates (a playlist may have the same song twice) nor
     // already downloaded, radio songs (url), or songs already local.
+    //
+    // Nor a song another group has in the air. The bookkeeping below is kept
+    // per song id, so two groups holding the same one would overwrite each
+    // other's entry: the second start would take the watchdog off the first
+    // transfer, and the first to end would delete the other's progress. It is
+    // also a file being written twice at once, which it always was.
     const seen = new Set<string>();
     const pending = songs.filter((s) => {
       if (get().files[s.id] || s.url || s.localUri || seen.has(s.id)) return false;
+      if (live.has(s.id)) return false;
       seen.add(s.id);
       return true;
     });
@@ -776,6 +1058,10 @@ export const useDownloads = create<DownloadsState>((set, get) => {
 
     const dir = serverDir(auth);
     set((st) => ({ active: { ...st.active, [groupKey]: { done: 0, total: pending.length, fraction: 0 } } }));
+    const pendingIds = new Set(pending.map((s) => s.id));
+    patchActivity((a) => ({
+      queued: [...a.queued.filter((q) => !pendingIds.has(q.id)), ...pending.map((song) => ({ id: song.id, song }))],
+    }));
 
     try {
       await FileSystem.makeDirectoryAsync(`${dir}files/`, { intermediates: true }).catch(() => {});
@@ -815,6 +1101,7 @@ export const useDownloads = create<DownloadsState>((set, get) => {
         const { url, ext, bitRate: dlBitRate } = songFileUrl(auth, song);
         const file = `${dir}files/${hashKey(song.id)}.${ext}`;
         const task = FileSystem.createDownloadResumable(url, file, {}, (p) => {
+          progressTransfer(song.id, p.totalBytesWritten, p.totalBytesExpectedToWrite);
           if (p.totalBytesExpectedToWrite > 0) {
             const fraction = p.totalBytesWritten / p.totalBytesExpectedToWrite;
             const cur = get().active[groupKey];
@@ -827,10 +1114,21 @@ export const useDownloads = create<DownloadsState>((set, get) => {
           }
         });
         tasks.add(task);
+        startedGroups.add(groupKey);
+        beginTransfer(song, task);
         try {
-          const res = await task.downloadAsync();
+          // Settled either way before asking the watchdog: a cut-off transfer
+          // resolves to nothing on Android and rejects on iOS, and both of
+          // those are the same stall.
+          const outcome = await task.downloadAsync().then(
+            (res) => ({ res }),
+            (error: unknown) => ({ error }),
+          );
+          if (endTransfer(song.id)) throw new StallError();
+          if ('error' in outcome) throw outcome.error;
+          const res = outcome.res;
           if (!res || res.status !== 200) throw new TransferError(`HTTP ${res?.status}`, res?.status);
-          if (isErrorBody(res.headers)) throw new TransferError('error body, not audio', 200);
+          if (isErrorBody(res.headers)) throw new TransferError('not-audio', 200);
           await cacheLyricsForDownload(auth, song, file);
           // The size comes from the response, which already counted it. Only
           // ask the file system when the server sent no length.
@@ -840,6 +1138,7 @@ export const useDownloads = create<DownloadsState>((set, get) => {
           await Db.addToCatalog(dir, {
             songs: [toLocalSong(song, file, dlBitRate, bytes)],
           });
+          noteDone(dir, song, bytes);
           set((st) => {
             const cur = st.active[groupKey];
             return {
@@ -868,6 +1167,14 @@ export const useDownloads = create<DownloadsState>((set, get) => {
         while (next < pending.length) {
           if (cancelling.has(groupKey)) break; // stop requested by user
           const song = pending[next++];
+          // A silence gets one fresh start of its own, outside the attempts:
+          // those are for a server that answered, this is for one that didn't.
+          let restarted = false;
+          const giveUp = (reason: string) => {
+            failed++;
+            failedAlbums.set(song.id, albumById.get(song.albumId ?? '') ?? albumFromSong(song));
+            noteFailed(song, reason);
+          };
           for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
             // Held across the whole song, cover and lyrics included: they are
             // requests to the same server as the audio.
@@ -881,9 +1188,18 @@ export const useDownloads = create<DownloadsState>((set, get) => {
             } catch (e) {
               // A stop is not a failure; the toast already says it stopped.
               if (cancelling.has(groupKey)) break;
+              if (e instanceof StallError) {
+                if (restarted) {
+                  giveUp('stalled');
+                  break;
+                }
+                restarted = true;
+                attempt--;
+                continue;
+              }
               const status = e instanceof TransferError ? e.status : undefined;
               if (attempt === ATTEMPTS || !worthRetrying(status)) {
-                failed++;
+                giveUp(e instanceof TransferError && status !== undefined ? e.message : 'network');
                 break;
               }
             } finally {
@@ -918,6 +1234,8 @@ export const useDownloads = create<DownloadsState>((set, get) => {
     } finally {
       cancelling.delete(groupKey);
       activeTasks.delete(groupKey);
+      // Whatever this group never got to, on a stop.
+      dropQueued(pendingIds);
       set((st) => {
         const active = { ...st.active };
         delete active[groupKey];
@@ -926,11 +1244,64 @@ export const useDownloads = create<DownloadsState>((set, get) => {
     }
   }
 
+  /**
+   * Puts failed songs back through the queue, as a group of their own.
+   *
+   * The list is cleared only once the group has taken them, and put back if
+   * it has not: `downloadGroup` turns away for five reasons of its own (no
+   * account, offline, a group of that name already running, nothing left to
+   * fetch, mobile data with Wi-Fi-only on), and a Retry that empties the list
+   * on the way to being turned away is a failure the person can no longer
+   * see, let alone try again.
+   */
+  async function retrySongs(entries: FailedTransfer[]): Promise<void> {
+    if (entries.length === 0) return;
+    const ids = new Set(entries.map((f) => f.id));
+    const albums = new Map<string, Album>();
+    for (const f of entries) {
+      const album = failedAlbums.get(f.id) ?? albumFromSong(f.song);
+      if (!albums.has(album.id)) albums.set(album.id, album);
+    }
+    const groupKey = `retry:${Date.now()}`;
+    patchActivity((a) => ({ failed: a.failed.filter((f) => !ids.has(f.id)) }));
+    await downloadGroup(
+      groupKey,
+      entries.map((f) => f.song),
+      Array.from(albums.values()),
+    );
+    // Nothing was even started: put them back where they were, and keep the
+    // albums, since a later try still needs them.
+    const started = startedGroups.has(groupKey);
+    startedGroups.delete(groupKey);
+    if (!started) {
+      patchActivity((a) => ({
+        failed: [...entries.filter((f) => !a.failed.some((x) => x.id === f.id)), ...a.failed],
+      }));
+      return;
+    }
+    for (const f of entries) failedAlbums.delete(f.id);
+  }
+
   return {
     files: {},
     dlBitRates: {},
     active: {},
+    activity: EMPTY_ACTIVITY,
     hydrated: false,
+
+    retry: async (songId) => {
+      await retrySongs(get().activity.failed.filter((f) => f.id === songId));
+    },
+
+    retryAll: async () => {
+      await retrySongs(get().activity.failed);
+    },
+
+    clearRecent: async () => {
+      patchActivity(() => ({ recent: [] }));
+      const dir = activeServerDir();
+      if (dir) await writeRecent(dir, []);
+    },
 
     hydrate: async () => {
       // Which run this is. Restoring the session re-runs this while the first
@@ -963,6 +1334,21 @@ export const useDownloads = create<DownloadsState>((set, get) => {
       }
       if (run !== hydrateRun) return;
       set({ files, hydrated: true });
+      // The history belongs to the profile too, and without one there is
+      // none. Read after the files: nothing on the way in waits for it.
+      // Failures and the waiting list belong to the profile that was here a
+      // moment ago: their ids are that server's, and a Retry against this one
+      // would ask for songs it has never heard of and write them into this
+      // profile's folder.
+      patchActivity(() => ({ failed: [], queued: [] }));
+      failedAlbums.clear();
+      if (active) {
+        void readRecent(active).then((recent) => {
+          if (run === hydrateRun) patchActivity(() => ({ recent }));
+        });
+      } else {
+        patchActivity(() => ({ recent: [] }));
+      }
       // The bitrates come after, on their own: nothing on the way in reads
       // them, and digging them out of the rows' JSON is the expensive half of
       // what this used to ask for (see `downloadedBitRates`).
@@ -1125,11 +1511,19 @@ export const useDownloads = create<DownloadsState>((set, get) => {
         await Db.closeCatalogs();
         await FileSystem.deleteAsync(ROOT_DIR, { idempotent: true }).catch(() => {});
       });
+      failedAlbums.clear();
       // Local playlists created by downloads no longer resolve songs;
       // they are removed to avoid leaving empty lists.
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       await require('@/lib/localQueries').deleteLocalPlaylistsByPrefix('dl_');
-      set({ files: {}, dlBitRates: {}, active: {} });
+      set((st) => ({
+        files: {},
+        dlBitRates: {},
+        active: {},
+        // The history file went with the directory, and nothing is left to
+        // retry or to wait for.
+        activity: { ...st.activity, recent: [], failed: [], queued: [] },
+      }));
       invalidate();
     },
 

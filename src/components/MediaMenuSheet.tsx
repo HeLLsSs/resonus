@@ -23,6 +23,7 @@ import { artistTargets } from '@/lib/artistNav';
 import { exportManyToFolder, totalBytes } from '@/lib/exportSong';
 import { formatBytes } from '@/lib/format';
 import { pickFolder } from '@/lib/localLibrary';
+import { shareM3u } from '@/lib/m3u';
 import { queryClient } from '@/lib/query';
 import { useArtistPicker } from '@/store/artistPicker';
 import { useAuthStore } from '@/store/auth';
@@ -174,6 +175,20 @@ export function MediaMenuSheet() {
     );
   }
 
+  /**
+   * Writes the list down as a file and hands it to another app. Needs the
+   * songs and nothing else, so the mirror serves it offline as well.
+   */
+  async function exportM3u(songs: Song[]) {
+    try {
+      if (!(await shareM3u(name, songs))) {
+        toast(t("Sending to another app isn't available on this device"));
+      }
+    } catch {
+      toast(t("Couldn't send the file"));
+    }
+  }
+
   /** Closes, fetches the songs, and runs the action (with toast on failure). */
   async function withSongs(fn: (songs: Song[]) => void) {
     close();
@@ -307,6 +322,17 @@ export function MediaMenuSheet() {
                 which is what the press does. */}
             {hasDownloads ? (
               <Action icon="save-outline" label={t('Export')} onPress={() => void askExport()} />
+            ) : null}
+            {/* The list itself rather than its files: a text file any player
+                reads, for taking a playlist to another server or keeping it
+                past this one. Playlists only, since an album is already a
+                thing on every server. */}
+            {playlist ? (
+              <Action
+                icon="document-text-outline"
+                label={t('Export as M3U')}
+                onPress={() => withSongs((songs) => void exportM3u(songs))}
+              />
             ) : null}
             {/* Moved here from the header row, which had grown to four icons for
                 something used now and then. Covers the long press on a card too,

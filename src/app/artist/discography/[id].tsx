@@ -2,6 +2,7 @@
  * Full artist discography, as a vertical list or a grid of covers. With
  * `?section=appears-on` it lists the albums the artist only appears on
  * instead — same screen, same layout preference, only the other row's albums.
+ * `?section=composer` is the third shelf, the records they composed on.
  */
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
@@ -34,6 +35,7 @@ import { useSettings } from '@/store/settings';
 import { colors, fontSize, spacing, SCREEN_BOTTOM_PADDING, themed, useTheme } from '@/theme';
 import { BackChevron } from '@/components/BackChevron';
 import { useAlbumSort } from '@/hooks/useAlbumSort';
+import { useComposedAlbums } from '@/hooks/useComposedAlbums';
 import { useGridColumns } from '@/hooks/useGridColumns';
 import { useScreenBottomPadding } from '@/hooks/useScreenBottomPadding';
 import { useListPadding } from '@/hooks/useScreenSize';
@@ -61,6 +63,7 @@ export default function DiscographyScreen() {
     group?: string;
   }>();
   const guestsOnly = section === 'appears-on';
+  const composedOnly = section === 'composer';
   /** Which shelf of the artist screen this came from, when it came from one. */
   const only = RELEASE_GROUPS.find((g) => g === group);
   const canFetch = useAuthStore((s) => !!s.auth || s.offline);
@@ -99,6 +102,16 @@ export default function DiscographyScreen() {
     enabled: canFetch && !!id && !!name,
   });
 
+  // The same query the artist screen's shelf filled, so this opens on what the
+  // shelf had. Only asked for on the way in from that shelf: the other lists
+  // have no use for it.
+  const {
+    data: composed,
+    isLoading: loadingComposed,
+    isError: composedError,
+    refetch: refetchComposed,
+  } = useComposedAlbums(id, composedOnly);
+
   const split = useMemo(
     () => splitArtistAlbums(data?.albums ?? [], appearsOn ?? []),
     [data?.albums, appearsOn],
@@ -106,9 +119,13 @@ export default function DiscographyScreen() {
   // Kept to the kind of record the row that opened this was showing, so "Show
   // all" on the EPs answers with the EPs.
   const listed = useMemo<Album[]>(() => {
+    if (composedOnly) {
+      // Less what is theirs outright, as on the shelf.
+      return (composed ?? []).filter((c) => !split.own.some((a) => a.id === c.id));
+    }
     const own = only ? split.own.filter((a) => releaseGroupOf(a) === only) : split.own;
     return guestsOnly ? split.guest : own;
-  }, [split, only, guestsOnly]);
+  }, [split, only, guestsOnly, composedOnly, composed]);
   // One preference for all of these lists rather than one per shelf: they are
   // the same screen with a different filter, and asking again for the EPs what
   // was already answered for the albums is asking twice (#147).
@@ -116,10 +133,12 @@ export default function DiscographyScreen() {
   /** What this list is, under the artist's name. */
   const what = guestsOnly
     ? t('Appears on')
-    : only
-      ? t(RELEASE_GROUP_TITLE[only])
-      : t('Discography');
-  const loading = isLoading || loadingGuests;
+    : composedOnly
+      ? t('As composer')
+      : only
+        ? t(RELEASE_GROUP_TITLE[only])
+        : t('Discography');
+  const loading = isLoading || loadingGuests || loadingComposed;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -161,12 +180,13 @@ export default function DiscographyScreen() {
 
       {loading ? (
         <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.accent} />
-      ) : isError || !data || guestsError ? (
+      ) : isError || !data || guestsError || composedError ? (
         <Message
           text={t("Couldn't load the artist.")}
           onRetry={() => {
             void refetch();
             void refetchGuests();
+            if (composedOnly) void refetchComposed();
           }}
         />
       ) : (

@@ -52,6 +52,7 @@ import {
 import { COVER, coverArtUrl, getRandomSongs } from '@/api/data';
 import { prefetchLyrics } from '@/hooks/useLyrics';
 import { tg } from '@/i18n';
+import { attachBookmarks } from '@/lib/bookmarks';
 import type { Remap } from '@/lib/navidromeRemap';
 import { remapSong } from '@/lib/navidromeRemap';
 import { beat, bump, timed } from '@/lib/perfLog';
@@ -78,6 +79,7 @@ import { useNetworkType } from './networkType';
 import { useOfflineQueue } from './offlineQueue';
 import { usePlayCounts } from './playCounts';
 import { usePlayHistory } from './playHistory';
+import { useQueueHistory } from './queueHistory';
 import { scrobbleThresholdSec, useSettings, type TranscodeFormat } from './settings';
 import { useToast } from './toast';
 import {
@@ -961,6 +963,24 @@ export type JumpKind = 'pick' | 'skip';
  */
 function skipAutoplay(playing: boolean): boolean {
   return useSettings.getState().keepPausedOnSkip ? playing : true;
+}
+
+/**
+ * Keeps the queue about to be replaced, so it can be brought back later (see
+ * `store/queueHistory`). Named after what it was started from, the way the
+ * queue screen names its "Next from" section; a mix goes by its seed.
+ */
+function rememberQueue() {
+  const st = usePlayerStore.getState();
+  const seed = mixSeedOf(st);
+  const name = seed
+    ? tg('Mix of “{name}”', { name: seed.title })
+    : st.source === SOURCE_FAVORITES
+      ? tg('Favorites')
+      : st.source === SOURCE_HISTORY
+        ? tg('History')
+        : st.source;
+  void useQueueHistory.getState().push(st.queue, st.index, name);
 }
 
 /** Pushes the current context before advancing or skipping to another track. */
@@ -3392,6 +3412,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       radioMode: get().radioMode,
       radioSeed: get().radioSeed,
     };
+    rememberQueue();
     set({
       queue: queued,
       index: at,
@@ -3426,6 +3447,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // to that song. We keep `cur` (not `seed`) in the queue: same song, but
       // the object the player is already loaded with.
       pushHistory();
+      rememberQueue();
       autoplayFetchedFor = null;
       autoplayRound = null;
       artistFill = null;
@@ -3984,6 +4006,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // `playedHere`). Otherwise adopting a queue and putting the phone away
     // wrote it straight back, stamped with our name.
     clearPlayedHere();
+    if (replace) rememberQueue();
     set({
       queue: songs,
       index,
@@ -4236,3 +4259,7 @@ usePlayerStore.subscribe((st, prev) => {
     queueDirty = true;
   }
 });
+
+// Resume points for long songs, and the bookmark a song leaves behind when it
+// stops: the same store watch, for the same reason as the reports above.
+attachBookmarks(usePlayerStore);

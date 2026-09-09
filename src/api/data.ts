@@ -30,7 +30,7 @@ import { useSettings, type LyricsSource } from '@/store/settings';
 import * as Navidrome from './navidrome';
 import * as Subsonic from './backend';
 import * as Local from '@/lib/localQueries';
-import type { Song } from './subsonic';
+import { getSong, type Song } from './subsonic';
 
 function isOffline() { return useAuthStore.getState().offline; }
 function auth() { return useAuthStore.getState().auth!; }
@@ -159,7 +159,7 @@ async function currentPlaylistSongIds(id: string): Promise<string[]> {
   return (d?.songs ?? []).map((s) => s.id);
 }
 
-export type { Album, AlbumListType, Artist, ArtistInfo, FolderContents, FolderEntry, MusicFolder, Playlist, RadioStation, SearchResult, Song, StarType, Starred, SubsonicAuth } from './subsonic';
+export type { Album, AlbumListType, Artist, ArtistInfo, Bookmark, FolderContents, FolderEntry, MusicFolder, Playlist, RadioStation, SearchResult, Song, StarType, Starred, SubsonicAuth } from './subsonic';
 export { COVER, normalizeUrl } from './subsonic';
 
 /**
@@ -560,6 +560,69 @@ export function getSongList(
     });
   }
   return subsonicSongList(a, sort, count, offset);
+}
+
+/**
+ * A page of the whole library, how many pages are asked for at once, and how
+ * far a fetch of all of it may go.
+ */
+const ALL_SONGS_PAGE = 500;
+const ALL_SONGS_BATCH = 4;
+const ALL_SONGS_MAX = 50_000;
+
+/**
+ * Every song the profile can see, in one list: what a smart playlist sifts.
+ *
+ * Nothing on a Subsonic server answers "the songs where the rating is four
+ * and the year is before 1990", so the rules are run here, over the library
+ * itself. It comes down a page at a time through whatever this profile lists
+ * songs with: Navidrome's own API where it can be reached, the empty search
+ * everywhere else, and the catalog on disk offline. Through the query cache
+ * under `['allSongs']`, so the second smart playlist opened in a session
+ * costs nothing, and the cap is a guard against a library the size of a
+ * store, not a limit anybody with their own music will reach.
+ */
+export async function getAllSongs(): Promise<Subsonic.Song[]> {
+  if (isOffline()) return Local.getSongList('server', ALL_SONGS_MAX, 0);
+  const a = auth();
+  // Several pages in flight at once, since nothing here says how many there
+  // are: `listSongs` reads the rows and not the count the server sends beside
+  // them, and the empty search never counts anything. A batch whose first
+  // short page is not its last asks for a few pages of nothing, which is
+  // cheaper than a library of a hundred pages fetched one after the other.
+  const pages = async (
+    page: (offset: number, folderId?: string) => Promise<Subsonic.Song[]>,
+    folderId?: string,
+  ) => {
+    const out: Subsonic.Song[] = [];
+    const stride = ALL_SONGS_PAGE * ALL_SONGS_BATCH;
+    for (let offset = 0; offset < ALL_SONGS_MAX; offset += stride) {
+      const offsets = Array.from({ length: ALL_SONGS_BATCH }, (_, i) => offset + i * ALL_SONGS_PAGE);
+      const batch = await Promise.all(
+        offsets.filter((o) => o < ALL_SONGS_MAX).map((o) => page(o, folderId)),
+      );
+      for (const got of batch) {
+        out.push(...got);
+        if (got.length < ALL_SONGS_PAGE) return out;
+      }
+    }
+    return out;
+  };
+  if (canListNative(a)) {
+    try {
+      return await pages((offset) =>
+        Navidrome.listSongs(a, 'title', ALL_SONGS_PAGE, offset, enabledFolderIds(a)),
+      );
+    } catch {
+      bump('all songs · native failed');
+    }
+  }
+  const ids = enabledFolderIds(a);
+  const one = (offset: number, folderId?: string) =>
+    Subsonic.getSongList(a, 'server', ALL_SONGS_PAGE, offset, folderId);
+  if (!ids) return pages(one);
+  const lists = await Promise.all(ids.map((id) => pages(one, id)));
+  return dedupeById(lists.flat());
 }
 
 /** What a Subsonic server can do about listing songs, orders included. */
@@ -1657,6 +1720,51 @@ export async function reorderPlaylist(id: string, songIds: string[]): Promise<vo
     return;
   }
   return Subsonic.reorderPlaylist(auth(), id, songIds);
+}
+
+// Bookmarks live on the server: the position kept in a long song is
+// only worth anything on the account that plays it elsewhere, and a saved
+// position nobody could reach is not a thing to queue up for later.
+export function getBookmarks(): Promise<Subsonic.Bookmark[]> {
+  return Subsonic.getBookmarks(auth());
+}
+
+export function createBookmark(id: string, positionMs: number, comment?: string): Promise<void> {
+  return Subsonic.createBookmark(auth(), id, positionMs, comment);
+}
+
+export function deleteBookmark(id: string): Promise<void> {
+  return Subsonic.deleteBookmark(auth(), id);
+}
+
+/**
+ * The songs behind a list of ids, in that order, for a queue kept as ids only
+ * (see `store/queueHistory`). Offline they come from what the phone knows, the
+ * way a playlist's do; online each is asked of the server, a few at a time so
+ * a long queue does not open hundreds of connections at once. An id the server
+ * no longer answers for is left out rather than failing the lot: a queue from
+ * last week with one deleted song is still that queue.
+ */
+export async function getSongsByIds(ids: string[]): Promise<Song[]> {
+  const a = useAuthStore.getState().auth;
+  if (isOffline() || !a) {
+    const found = await resolveSongs(ids);
+    return markUnplayableOffline(ids.flatMap((id) => found.get(id) ?? []));
+  }
+  // Jellyfin has no `getSong`; the mirror is the one place its songs are kept.
+  if (a.serverType === 'jellyfin') {
+    const found = await resolveSongs(ids);
+    return ids.flatMap((id) => found.get(id) ?? []);
+  }
+  const out: Song[] = [];
+  const batch = 8;
+  for (let i = 0; i < ids.length; i += batch) {
+    const songs = await Promise.all(
+      ids.slice(i, i + batch).map((id) => getSong(a, id).catch(() => null)),
+    );
+    for (const s of songs) if (s) out.push(s);
+  }
+  return out;
 }
 
 // ── Multi-library merging (subset mode) ──

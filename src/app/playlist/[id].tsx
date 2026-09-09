@@ -33,6 +33,7 @@ import { useServerCover } from '@/hooks/useServerCover';
 import { useSongSort } from '@/hooks/useSongSort';
 import { songsLabel, useT } from '@/i18n';
 import { formatTotalDuration } from '@/lib/format';
+import { shareM3u } from '@/lib/m3u';
 import { useSharePicker } from '@/store/sharePicker';
 import { useAuthStore } from '@/store/auth';
 import { useAutoDownloads } from '@/store/autoDownloads';
@@ -510,6 +511,22 @@ export default function PlaylistScreen() {
                 <Text style={styles.actionText}>{t('Refresh')}</Text>
               </Pressable>
             ) : null}
+            {/* The list as a file any player reads, for taking it to another
+                server. The songs come from the mirror offline, so it stays. */}
+            <Pressable
+              style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]}
+              onPress={() => {
+                close();
+                void shareM3u(data.playlist.name, data.songs)
+                  .then((ok) => {
+                    if (!ok) toast(t("Sending to another app isn't available on this device"));
+                  })
+                  .catch(() => toast(t("Couldn't send the file")));
+              }}
+            >
+              <Ionicons name="document-text-outline" size={24} color={colors.text} />
+              <Text style={styles.actionText}>{t('Export as M3U')}</Text>
+            </Pressable>
             {canShare ? (
               <Pressable
                 style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]}

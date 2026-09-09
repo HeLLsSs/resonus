@@ -30,26 +30,39 @@
  * same place and with the same two ways out of it, Back included.
  */
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { canUseNative, probeCatalogueExtras } from '@/api/navidrome';
 import { AlbumsBrowser } from '@/app/browse/albums';
 import { ArtistsBrowser } from '@/app/browse/artists';
 import { SongsBrowser } from '@/app/browse/songs';
+import { ComposersBrowser } from '@/app/composers';
 import { GenresBrowser } from '@/app/genres';
+import { LabelsBrowser } from '@/app/labels';
 import { RadioBrowser } from '@/app/radio';
+import { BookmarksBrowser } from '@/app/bookmarks';
 import { FoldersBrowser } from '@/components/FoldersBrowser';
 import { PlaylistsBrowser } from '@/components/PlaylistsBrowser';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useAccent } from '@/hooks/useAccent';
 import { useT } from '@/i18n';
-import { useAuthStore } from '@/store/auth';
+import { loadBookmarks, useBookmarks } from '@/lib/bookmarks';
+import { profileScopeId, useAuthStore } from '@/store/auth';
 import { useSettings, type ExploreSection, type ListLayout } from '@/store/settings';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
 
-type Section = ExploreSection;
+/**
+ * The saved sections, and the three that are not a choice: the two only a
+ * Navidrome library has, and the bookmarks. They are not in the saved order
+ * because they are there when the server has something to put in them and
+ * gone when it has not, and a settings row for a chip that may never show is
+ * a promise the row cannot keep. They go after the rest, in this order.
+ */
+type Section = ExploreSection | 'composers' | 'labels' | 'bookmarks';
 
 /** The label each goes by. The order is the saved one (Settings › Explore
  *  sections), which starts as the order they are declared in. */
@@ -61,6 +74,9 @@ const LABEL: Record<Section, string> = {
   genres: 'Genres',
   radio: 'Radio',
   folders: 'Folders',
+  composers: 'Composers',
+  labels: 'Labels',
+  bookmarks: 'Bookmarks',
 };
 
 export default function ExploreScreen() {
@@ -103,8 +119,44 @@ export default function ExploreScreen() {
    * there is nothing to grey out for (see `useLocalProfile`).
    */
   const subsonic = !!auth && auth.serverType !== 'jellyfin';
+  /**
+   * Composers and labels are a question put to the server once per profile:
+   * a Subsonic server has no endpoint for either, and a Navidrome library with
+   * no composer credit or no label tag has nothing to list. Until it answers,
+   * and when it cannot, there is no chip. Kept for the session: what a library
+   * is tagged with does not change between two visits to this tab.
+   */
+  const native = canUseNative(auth) && !offline;
+  const { data: extras } = useQuery({
+    queryKey: ['catalogueExtras', auth?.serverUrl, auth?.username],
+    queryFn: () => (canUseNative(auth) ? probeCatalogueExtras(auth) : Promise.resolve(null)),
+    enabled: native,
+    staleTime: Infinity,
+  });
+  /**
+   * Bookmarks are a Subsonic thing, read once per profile and kept in step by
+   * whatever saves or removes one. The chip is only there once the account
+   * has some: with none, a section that says so is a section nobody asked
+   * for, and the song menu is where the first one gets made.
+   */
+  const hasBookmarks = useBookmarks(
+    (s) => s.loadedFor === profileScopeId() && Object.keys(s.byId).length > 0,
+  );
+  // Read again each time the tab is shown: one request, and a bookmark made
+  // or removed elsewhere (another phone, the web) is what decides the chip.
+  useFocusEffect(
+    useCallback(() => {
+      if (subsonic && !offline) loadBookmarks(true).catch(() => {});
+    }, [subsonic, offline]),
+  );
   const available = (key: Section): boolean => {
     switch (key) {
+      case 'composers':
+        return native && !!extras?.composers;
+      case 'labels':
+        return native && !!extras?.labels;
+      case 'bookmarks':
+        return subsonic && !offline && hasBookmarks;
       case 'genres':
         return !!auth && !offline;
       case 'radio':
@@ -119,12 +171,14 @@ export default function ExploreScreen() {
         return true;
     }
   };
-  const sections = order.filter(available);
+  const all: Section[] = [...order, 'composers', 'labels', 'bookmarks'];
+  const sections = all.filter(available);
   // Going offline can take the section you were on with it.
   const current = available(section) ? section : 'albums';
 
-  /** Folders is the one section with no box: it is a handful of server roots. */
-  const searchable = current !== 'folders';
+  /** Two sections have no box: folders are a handful of server roots, and
+   *  bookmarks are a handful of songs. */
+  const searchable = current !== 'folders' && current !== 'bookmarks';
   const searchOpen = searchFor === current;
 
   const closeSearch = useCallback(() => setSearchFor(null), []);
@@ -147,7 +201,8 @@ export default function ExploreScreen() {
    * The section's own button, drawn here and acting down there.
    *
    * Genres and folders have none: one is a grid with nothing to choose about
-   * it and the other is a handful of server roots.
+   * it and the other is a handful of server roots. Composers and labels are
+   * plain lists, A-Z, with nothing to arrange either.
    */
   const headerButton =
     current === 'radio'
@@ -256,6 +311,12 @@ export default function ExploreScreen() {
           <GenresBrowser embedded searchOpen={searchOpen} />
         ) : current === 'radio' ? (
           <RadioBrowser embedded actionRef={sectionAction} searchOpen={searchOpen} />
+        ) : current === 'composers' ? (
+          <ComposersBrowser embedded searchOpen={searchOpen} />
+        ) : current === 'labels' ? (
+          <LabelsBrowser embedded searchOpen={searchOpen} />
+        ) : current === 'bookmarks' ? (
+          <BookmarksBrowser embedded />
         ) : (
           <FoldersBrowser />
         )}

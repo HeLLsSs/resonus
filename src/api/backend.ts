@@ -10,6 +10,7 @@ import * as Jellyfin from './jellyfin';
 import * as Subsonic from './subsonic';
 import {
   type AlbumListType,
+  type Bookmark,
   type SongListSort,
   type SortDirection,
   type StarType,
@@ -22,6 +23,7 @@ export type {
   AlbumListType,
   Artist,
   ArtistInfo,
+  Bookmark,
   FolderContents,
   FolderEntry,
   Genre,
@@ -263,6 +265,25 @@ export const reportPlayback = (
   auth.serverType === 'jellyfin'
     ? Jellyfin.reportPlayback(auth, id, state, positionSec)
     : Subsonic.reportPlayback(auth, id, state, positionSec);
+
+// Bookmarks are Subsonic's. Jellyfin keeps a resume position of its own
+// per user, but nothing here reads it yet, so a Jellyfin account has none
+// and saving one is a no-op rather than a request it cannot answer.
+export const getBookmarks = (auth: SubsonicAuth): Promise<Bookmark[]> =>
+  auth.serverType === 'jellyfin' ? Promise.resolve([]) : Subsonic.getBookmarks(auth);
+
+export const createBookmark = (
+  auth: SubsonicAuth,
+  id: string,
+  positionMs: number,
+  comment?: string,
+): Promise<void> =>
+  auth.serverType === 'jellyfin'
+    ? Promise.resolve()
+    : Subsonic.createBookmark(auth, id, positionMs, comment);
+
+export const deleteBookmark = (auth: SubsonicAuth, id: string): Promise<void> =>
+  auth.serverType === 'jellyfin' ? Promise.resolve() : Subsonic.deleteBookmark(auth, id);
 
 export const getRadioStations = (auth: SubsonicAuth) => api(auth).getRadioStations(auth);
 

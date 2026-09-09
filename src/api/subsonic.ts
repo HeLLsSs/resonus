@@ -127,6 +127,8 @@ export interface Song {
   channelCount?: number;
   /** MusicBrainz recording id (OpenSubsonic). */
   musicBrainzId?: string;
+  /** Where the file sits under the music folder, as the server reports it. */
+  path?: string;
   /** Recording identifier, the one the industry uses (OpenSubsonic). */
   isrc?: string[];
   /** Moods the server has tagged it with (OpenSubsonic). */
@@ -191,6 +193,12 @@ export interface Song {
   year?: number;
   /** File modification timestamp in ms (offline mode). */
   addedAt?: number;
+  /** When the server first saw the file (standard Subsonic `created`). What
+   *  a smart playlist's "added" rule reads on a server; offline it is
+   *  `addedAt`. */
+  created?: string;
+  /** Last time this user played it (OpenSubsonic; Navidrome sends it). */
+  played?: string;
   /**
    * ReplayGain tags from the file (OpenSubsonic extension; Navidrome sends
    * them if present). Gains in dB (negative = attenuates), peaks linear.
@@ -294,6 +302,13 @@ export interface Artist {
    * come up empty.
    */
   userRating?: number;
+  /**
+   * The credits the artist holds (OpenSubsonic; Navidrome 0.55 onwards):
+   * "albumartist", "artist", "composer" and the other tag names. Read to tell
+   * a composer, whose records are filed under whoever performed them and so
+   * never arrive with `getArtist` (see the artist screen).
+   */
+  roles?: string[];
 }
 
 export interface Playlist {
@@ -1716,4 +1731,63 @@ export async function hasShareRole(auth: SubsonicAuth): Promise<boolean> {
     if ((e as { network?: boolean })?.network) throw e;
     return false;
   }
+}
+
+// ── Bookmarks ───────────────────────────────────────────────────────────────
+
+/**
+ * A position kept in a song on the server, to come back to later. One per
+ * song and account: creating another for the same song moves it, and moving it
+ * without a comment drops the comment it had, so a caller keeping a bookmark
+ * up to date hands the old comment back.
+ */
+export interface Bookmark {
+  song: Song;
+  /** Milliseconds into the song. */
+  position: number;
+  comment?: string;
+  /** ISO dates. */
+  created: string;
+  changed: string;
+}
+
+interface RawBookmark extends Omit<Bookmark, 'song'> {
+  /** The spec says one song; a server out of spec could list it. */
+  entry?: Song | Song[];
+}
+
+/** Every bookmark of this account. Navidrome answers `bookmarks: {}` for none. */
+export async function getBookmarks(auth: SubsonicAuth): Promise<Bookmark[]> {
+  const res = await request<{ bookmarks?: { bookmark?: RawBookmark[] } }>(
+    auth,
+    'getBookmarks.view',
+  );
+  const out: Bookmark[] = [];
+  for (const raw of res.bookmarks?.bookmark ?? []) {
+    const entry = Array.isArray(raw.entry) ? raw.entry[0] : raw.entry;
+    if (!entry) continue;
+    out.push({
+      song: entry,
+      position: raw.position,
+      comment: raw.comment || undefined,
+      created: raw.created,
+      changed: raw.changed,
+    });
+  }
+  return out;
+}
+
+/** Sets the song's bookmark to `positionMs`, replacing any it had. */
+export async function createBookmark(
+  auth: SubsonicAuth,
+  id: string,
+  positionMs: number,
+  comment?: string,
+): Promise<void> {
+  await request(auth, 'createBookmark.view', { id, position: Math.round(positionMs), comment });
+}
+
+/** Removes the song's bookmark. A song without one is not an error. */
+export async function deleteBookmark(auth: SubsonicAuth, id: string): Promise<void> {
+  await request(auth, 'deleteBookmark.view', { id });
 }

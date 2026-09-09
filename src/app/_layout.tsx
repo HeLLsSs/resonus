@@ -41,6 +41,7 @@ import { useLibraryMirror } from '@/store/libraryMirror';
 import { initNetworkType } from '@/store/networkType';
 import { useOfflineQueue } from '@/store/offlineQueue';
 import { usePins } from '@/store/pins';
+import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { usePlayCounts } from '@/store/playCounts';
 import { initRemoteIntegration, usePlayerStore } from '@/store/player';
 import { usePlayHistory } from '@/store/playHistory';
@@ -169,6 +170,7 @@ export default function RootLayout() {
       void useLastPlayed.getState().hydrate();
       void usePins.getState().hydrate();
       void useAutoDownloads.getState().hydrate();
+      void useSmartPlaylists.getState().hydrate();
     });
     // After the session is restored, never before: the downloads store reads
     // the account's own catalog, and with no account yet it falls back to
@@ -293,12 +295,21 @@ export default function RootLayout() {
                 <Stack.Screen name="browse/folder/[id]" />
                 <Stack.Screen name="genres" />
                 <Stack.Screen name="genre/[name]" />
+                <Stack.Screen name="composers" />
+                <Stack.Screen name="labels" />
+                <Stack.Screen name="label/[id]" />
                 <Stack.Screen name="radio" />
                 <Stack.Screen name="favorites" />
                 <Stack.Screen name="favorites-add" />
                 <Stack.Screen name="history" />
+                <Stack.Screen name="smart-playlists" />
+                <Stack.Screen name="smart-playlist/[id]" />
+                <Stack.Screen name="smart-playlist/edit" />
+                <Stack.Screen name="bookmarks" />
+                <Stack.Screen name="past-queues" />
                 <Stack.Screen name="settings/index" />
                 <Stack.Screen name="settings/downloads" />
+                <Stack.Screen name="settings/download-activity" />
                 <Stack.Screen name="settings/library" />
                 <Stack.Screen name="settings/playback" />
                 <Stack.Screen name="settings/player" />

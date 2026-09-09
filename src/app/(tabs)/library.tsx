@@ -46,14 +46,18 @@ import { useAuthStore } from '@/store/auth';
 import { useLastPlayed } from '@/store/lastPlayed';
 import { useMediaMenu } from '@/store/mediaMenu';
 import { usePins } from '@/store/pins';
+import { useSmartPlaylists } from '@/store/smartPlaylists';
+import { SmartPlaylistArt } from '../smart-playlists';
 import { SORT_LABELS, byCodepoint, matches, normQ, sortItems } from '@/lib/librarySort';
+import { useM3uImport } from '@/components/M3uImport';
+import { getPlaylists as getLocalPlaylists } from '@/lib/localQueries';
+import { getDownloadShelf, useDownloads } from '@/store/downloads';
 import { useSettings, type LibrarySort } from '@/store/settings';
 import { useAccent } from '@/hooks/useAccent';
 import { useToast } from '@/store/toast';
 import { colors, fontSize, radius, SHEET_MAX_WIDTH, spacing, themed, useTheme } from '@/theme';
 import { useScreenBottomPadding } from '@/hooks/useScreenBottomPadding';
-import { useListPadding } from '@/hooks/useScreenSize';
-import { columnsFor, useScreenSize } from '@/hooks/useScreenSize';
+import { columnsFor, useListPadding, useScreenSize } from '@/hooks/useScreenSize';
 import { listPerf } from '@/lib/listPerf';
 import { bump } from '@/lib/perfLog';
 import { haptic } from '@/lib/haptics';
@@ -61,12 +65,16 @@ import { haptic } from '@/lib/haptics';
 // Folders used to be a fourth segment here. It browses the server's own
 // directory tree, which is the catalogue rather than your own shelf, so it
 // went to the Explore tab with the rest of it (`FoldersBrowser`).
-type Segment = 'playlists' | 'albums' | 'artists';
+// Downloaded is the fourth: the records on this phone, which until now could
+// only be seen by going offline. They are yours in the plainest sense, and
+// online is when you wonder what you have with you.
+type Segment = 'playlists' | 'albums' | 'artists' | 'downloaded';
 
 const SEGMENTS: { key: Segment; label: string }[] = [
   { key: 'playlists', label: 'Playlists' },
   { key: 'albums', label: 'Albums' },
   { key: 'artists', label: 'Artists' },
+  { key: 'downloaded', label: 'Downloaded::library' },
 ];
 
 /**
@@ -250,6 +258,32 @@ function FavoritesEntry({ grid }: { grid?: boolean }) {
   );
 }
 
+/**
+ * The way into the smart playlists, under Favorites. A row in both modes: the
+ * grid's first tile is spoken for, and rules do not have a cover to draw.
+ */
+function SmartPlaylistsEntry() {
+  const t = useT();
+  const count = useSmartPlaylists((s) => s.lists.length);
+  return (
+    <Link href="/smart-playlists" asChild>
+      <Pressable style={styles.row}>
+        <SmartPlaylistArt size={56} />
+        <View style={styles.rowInfo}>
+          <Text style={styles.rowTitle}>{t('Smart playlists')}</Text>
+          <Text style={[styles.rowSub, styles.rowSubGap]}>
+            {count === 0
+              ? t('Rules you write; songs that fit them.')
+              : count === 1
+                ? t('1 smart playlist')
+                : t('{n} smart playlists', { n: count })}
+          </Text>
+        </View>
+      </Pressable>
+    </Link>
+  );
+}
+
 function PlaylistsTab({
   onNew,
   query,
@@ -319,7 +353,16 @@ function PlaylistsTab({
       refreshControl={
         <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.accent} />
       }
-      ListHeaderComponent={grid ? undefined : <FavoritesEntry />}
+      ListHeaderComponent={
+        grid ? (
+          <SmartPlaylistsEntry />
+        ) : (
+          <>
+            <FavoritesEntry />
+            <SmartPlaylistsEntry />
+          </>
+        )
+      }
       ListEmptyComponent={
         query ? (
           <NoResults query={query} />
@@ -534,6 +577,92 @@ function AlbumsTab({ query }: { query: string }) {
 }
 
 /**
+ * What is on this phone: the albums, whole or in part (an album with one
+ * downloaded song is on the shelf, since that song plays offline), and the
+ * playlists downloaded as such. Read off the downloads shelf and the local
+ * playlists rather than the server, so it is the same list offline shows and
+ * it costs no request; `files` is in the key so a download that finishes, or
+ * a delete, redraws it.
+ *
+ * Online a playlist opens as the server's, the way an album does: the phone's
+ * copy of it is what plays when the server is out of reach, not another list.
+ */
+function DownloadedTab({ query }: { query: string }) {
+  const t = useT();
+  const offline = useAuthStore((s) => s.offline);
+  const sort = useSettings((s) => s.librarySort);
+  const times = useLastPlayed((s) => s.times);
+  const pins = usePins((s) => s.pins);
+  const { byAlbum } = useHistoryTimes();
+  const downloaded = useDownloads((s) => Object.keys(s.files).length);
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ['downloads', 'shelf', downloaded],
+    queryFn: async () => {
+      const [shelf, playlists] = await Promise.all([getDownloadShelf(), getLocalPlaylists()]);
+      return { albums: shelf.albums, playlists: playlists.filter((p) => p.id.startsWith('dl_')) };
+    },
+  });
+  const items = useMemo(() => {
+    const all: LibItem[] = [
+      ...(data?.playlists ?? []).map((p) => {
+        const id = offline ? p.id : p.id.slice('dl_'.length);
+        return {
+          kind: 'playlist' as const,
+          id,
+          name: p.name,
+          coverArt: p.coverArt,
+          href: `/playlist/${id}`,
+          recent: times[`/playlist/${id}`] ?? 0,
+          added: Date.parse(p.created ?? '') || 0,
+          playlist: { ...p, id },
+        };
+      }),
+      ...(data?.albums ?? []).map((a) => ({
+        kind: 'album' as const,
+        id: a.id,
+        name: a.name,
+        coverArt: a.coverUri ?? a.coverArt,
+        by: a.artist,
+        href: `/album/${a.id}`,
+        recent: Math.max(times[`/album/${a.id}`] ?? 0, byAlbum.get(a.id) ?? 0),
+        added: a.addedAt ?? 0,
+        album: a,
+      })),
+    ];
+    return withPins(
+      sortItems(
+        all.filter((i) => matches(query, i.name, i.kind === 'album' ? i.by : undefined)),
+        sort,
+        (i) => i.name,
+        (i) => (sort === 'recent' ? i.recent : i.added),
+      ),
+      (i) => `${i.kind}:${i.id}`,
+      pins,
+    );
+  }, [data, offline, query, sort, times, byAlbum, pins]);
+  if (isLoading) return <Loader />;
+  if (isError) return <Message text={t("Couldn't load your library.")} onRetry={() => refetch()} />;
+  return (
+    <LibRows
+      data={items}
+      refreshing={isFetching}
+      onRefresh={refetch}
+      empty={
+        query ? (
+          <NoResults query={query} />
+        ) : (
+          <EmptyState
+            icon="download-outline"
+            title={t('Nothing downloaded yet')}
+            subtitle={t('Download an album or a playlist and it shows up here.')}
+          />
+        )
+      }
+    />
+  );
+}
+
+/**
  * One row of the tab with no chip pressed: a playlist, a favourite album or a
  * favourite artist, all in the same list.
  *
@@ -572,11 +701,7 @@ function AllTab({ query, onNew }: { query: string; onNew?: () => void }) {
   const times = useLastPlayed((s) => s.times);
   const { byAlbum, byArtist } = useHistoryTimes();
   const pins = usePins((s) => s.pins);
-  const openMenu = useMediaMenu((s) => s.open);
   const grid = useSettings((s) => s.libraryLayout) === 'grid';
-  const bottomPad = useScreenBottomPadding();
-  const { columns } = useGridMetrics();
-  const listPad = useListPadding(spacing.lg);
   const lists = useQuery({
     queryKey: ['playlists'],
     queryFn: () => getPlaylists(),
@@ -635,19 +760,6 @@ function AllTab({ query, onNew }: { query: string; onNew?: () => void }) {
     );
   }, [lists.data, starred.data, query, sort, times, byAlbum, byArtist, pins]);
 
-  /** "Playlist · juan", "Album · Rojuu", "Artist". */
-  const label = (i: LibItem): string => {
-    const kind = i.kind === 'playlist' ? t('Playlist') : i.kind === 'album' ? t('Album') : t('Artist');
-    return i.by ? `${kind} · ${i.by}` : kind;
-  };
-
-  const onLongPress = (i: LibItem) => {
-    if (i.playlist) openMenu({ kind: 'playlist', playlist: i.playlist });
-    else if (i.album) openMenu({ kind: 'album', album: i.album });
-    else return;
-    haptic('light');
-  };
-
   const loading = lists.isLoading || starred.isLoading;
   const refresh = () => {
     lists.refetch();
@@ -663,22 +775,21 @@ function AllTab({ query, onNew }: { query: string; onNew?: () => void }) {
     ? [{ kind: 'playlist', id: FAVORITES_ID, name: '', href: '', recent: 0, added: 0 }, ...items]
     : items;
   return (
-    <FlatList
-      key={grid ? `grid-${columns}` : 'list'}
-      {...listPerf}
-      keyboardShouldPersistTaps="handled"
-      {...gridListProps(grid, bottomPad, columns, listPad)}
+    <LibRows
       data={data}
-      keyExtractor={(item) => `${item.kind}:${item.id}`}
-      refreshControl={
-        <RefreshControl
-          refreshing={lists.isFetching || starred.isFetching}
-          onRefresh={refresh}
-          tintColor={colors.accent}
-        />
+      refreshing={lists.isFetching || starred.isFetching}
+      onRefresh={refresh}
+      header={
+        grid ? (
+          <SmartPlaylistsEntry />
+        ) : (
+          <>
+            <FavoritesEntry />
+            <SmartPlaylistsEntry />
+          </>
+        )
       }
-      ListHeaderComponent={grid ? undefined : <FavoritesEntry />}
-      ListEmptyComponent={
+      empty={
         query ? (
           <NoResults query={query} />
         ) : (
@@ -690,6 +801,63 @@ function AllTab({ query, onNew }: { query: string; onNew?: () => void }) {
           />
         )
       }
+    />
+  );
+}
+
+/**
+ * The rows of a mixed list, in the grid or the list the tab is set to: what
+ * the tab opens on and what the Downloaded chip narrows it to, which is the
+ * same rows read off the phone. What each row says under its name and what
+ * its long press opens come from the item itself.
+ */
+function LibRows({
+  data,
+  refreshing,
+  onRefresh,
+  header,
+  empty,
+}: {
+  data: LibItem[];
+  refreshing: boolean;
+  onRefresh: () => void;
+  header?: React.ReactElement;
+  empty: React.ReactElement;
+}) {
+  const t = useT();
+  const pins = usePins((s) => s.pins);
+  const openMenu = useMediaMenu((s) => s.open);
+  const grid = useSettings((s) => s.libraryLayout) === 'grid';
+  const bottomPad = useScreenBottomPadding();
+  const { columns } = useGridMetrics();
+  const listPad = useListPadding(spacing.lg);
+
+  /** "Playlist · juan", "Album · Rojuu", "Artist". */
+  const label = (i: LibItem): string => {
+    const kind = i.kind === 'playlist' ? t('Playlist') : i.kind === 'album' ? t('Album') : t('Artist');
+    return i.by ? `${kind} · ${i.by}` : kind;
+  };
+
+  const onLongPress = (i: LibItem) => {
+    if (i.playlist) openMenu({ kind: 'playlist', playlist: i.playlist });
+    else if (i.album) openMenu({ kind: 'album', album: i.album });
+    else return;
+    haptic('light');
+  };
+
+  return (
+    <FlatList
+      key={grid ? `grid-${columns}` : 'list'}
+      {...listPerf}
+      keyboardShouldPersistTaps="handled"
+      {...gridListProps(grid, bottomPad, columns, listPad)}
+      data={data}
+      keyExtractor={(item) => `${item.kind}:${item.id}`}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+      }
+      ListHeaderComponent={header}
+      ListEmptyComponent={empty}
       renderItem={({ item }: { item: LibItem }) =>
         item.id === FAVORITES_ID ? (
           <FavoritesEntry grid />
@@ -862,6 +1030,9 @@ export default function LibraryScreen() {
   const listPad = useListPadding(spacing.lg);
   const headerPad = useSettings((s) => s.libraryLayout) === 'grid' ? spacing.lg : listPad;
   const [creating, setCreating] = useState(false);
+  // A file of somebody else's, which the same dialog takes in as its other
+  // answer: a new list is a new list, typed or handed over.
+  const m3u = useM3uImport();
   const [sortOpen, setSortOpen] = useState(false);
   // Filter over what the Library already has in memory (your favourites and
   // your lists): no server round-trip, unlike browsing the whole collection.
@@ -1069,9 +1240,18 @@ export default function LibraryScreen() {
         title={t('New playlist')}
         input={{ placeholder: t('Playlist name') }}
         confirmLabel={t('Create')}
+        neutral={{
+          label: t('Import an M3U file'),
+          icon: 'document-text-outline',
+          onPress: () => {
+            setCreating(false);
+            void m3u.start();
+          },
+        }}
         onCancel={() => setCreating(false)}
         onConfirm={onCreate}
       />
+      {m3u.element}
 
       {/* With a chip pressed the row is that chip and what narrows it further,
           behind an X that gives you the whole library back. The other two are
@@ -1136,6 +1316,8 @@ export default function LibraryScreen() {
           <PlaylistsTab onNew={() => setCreating(true)} query={filter} owner={shownOwner} />
         ) : segment === 'albums' ? (
           <AlbumsTab query={filter} />
+        ) : segment === 'downloaded' ? (
+          <DownloadedTab query={filter} />
         ) : (
           <ArtistsTab query={filter} />
         )}

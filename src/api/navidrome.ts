@@ -250,6 +250,10 @@ interface NdSong {
   explicitStatus?: string;
   size?: number;
   playCount?: number;
+  /** When the server first saw the file, and when this user last played it:
+   *  what a smart playlist's "added" and "last played" rules read. */
+  createdAt?: string;
+  playDate?: string;
   starred?: boolean;
   starredAt?: string;
   rating?: number;
@@ -294,6 +298,8 @@ function toSong(m: NdSong): Song {
     comment: m.comment,
     explicitStatus: spellExplicit(m.explicitStatus),
     playCount: m.playCount,
+    created: m.createdAt,
+    played: m.playDate,
     starred: m.starred ? (m.starredAt ?? new Date().toISOString()) : undefined,
     userRating: m.rating || undefined,
     ...(gain === undefined
@@ -480,4 +486,173 @@ export interface NdGenre {
 export async function listGenres(auth: SubsonicAuth): Promise<NdGenre[]> {
   const rows = await ndJson<NdGenre[]>(auth, '/api/genre?_sort=name&_start=0&_end=1000');
   return Array.isArray(rows) ? rows.filter((g) => g?.id && g?.name) : [];
+}
+
+// ── Composers and record labels ─────────────────────────────────────────────
+// Two lists Subsonic has no endpoint for. Navidrome keeps every credit an
+// artist holds (0.55 onwards) and files the record label tag with an id of its
+// own, so both are one listing down here, and its album list narrows to
+// either.
+
+/**
+ * Whether the native API is open to this profile: a Navidrome server, and a
+ * password to log into it with. The same test the data layer makes before
+ * listing anything natively; a profile from before the password was kept gets
+ * what Subsonic can do until it logs in again.
+ */
+export function canUseNative(auth: SubsonicAuth | null | undefined): auth is SubsonicAuth {
+  return !!auth && auth.serverType === 'navidrome' && !!(auth.ndPassword ?? auth.password);
+}
+
+/** The fields of an artist row this app reads, credits included. */
+export interface NdArtist {
+  id: string;
+  name?: string;
+  albumCount?: number;
+  /**
+   * One entry per credit the artist holds, with how much of the library it
+   * covers. `stats.composer` is the one that matters here, and its absence is
+   * what tells a server from before artist roles: that one ignores `role=` and
+   * answers with every artist, none of them carrying this.
+   */
+  stats?: Partial<Record<string, { albumCount?: number; songCount?: number }>>;
+}
+
+/** A composer, in the shape an artist row is drawn from. */
+export interface Composer {
+  id: string;
+  name: string;
+  /** How many records they are credited on, whoever performed them. */
+  albumCount?: number;
+}
+
+/** A tag row as the server files it: `tagValue` is the label's name. */
+export interface NdTag {
+  id: string;
+  tagName?: string;
+  tagValue?: string;
+}
+
+/** A record label. The id is what the album list filters by. */
+export interface RecordLabel {
+  id: string;
+  name: string;
+}
+
+/**
+ * Walks a list to its end, a thousand rows at a time.
+ *
+ * The whole list rather than a page, like the artist index the app already
+ * keeps: the box on screen then filters what is loaded, and nothing pages
+ * under a filter. The server's own `name` filter was the alternative and it
+ * does not answer for these lists — combined with `role` it matches on more
+ * than the name. The ceiling is there so this ends; no real library reaches it.
+ */
+export async function listAll<T>(auth: SubsonicAuth, path: string): Promise<T[]> {
+  const PAGE = 1000;
+  const all: T[] = [];
+  for (let start = 0; start < 20000; start += PAGE) {
+    const rows = await ndJson<T[]>(auth, `${path}&_start=${start}&_end=${start + PAGE}`);
+    if (!Array.isArray(rows)) break;
+    all.push(...rows);
+    if (rows.length < PAGE) break;
+  }
+  return all;
+}
+
+/**
+ * Every artist credited as a composer, A-Z. The id is the one `getArtist`
+ * takes, so a row opens the artist screen like any other.
+ *
+ * Endpoint: GET /api/artist?role=composer. Only rows with a composer credit
+ * are kept (see `NdArtist`), so a server that ignores the role answers with an
+ * empty list rather than with everybody.
+ */
+export async function listComposers(auth: SubsonicAuth): Promise<Composer[]> {
+  const rows = await listAll<NdArtist>(auth, '/api/artist?role=composer&_sort=name&_order=ASC');
+  return rows.flatMap((r) => {
+    const credit = r.stats?.composer;
+    return credit
+      ? [{ id: r.id, name: r.name ?? '', albumCount: credit.albumCount ?? r.albumCount }]
+      : [];
+  });
+}
+
+/**
+ * Every record label the library is tagged with, A-Z.
+ *
+ * Endpoint: GET /api/tag?tag_name=recordlabel, which is where Navidrome keeps
+ * the values of a tag it indexes; a server too old for it answers 404, which
+ * `ndJson` turns into `unsupported`. The rows carry no counts.
+ */
+export async function listRecordLabels(auth: SubsonicAuth): Promise<RecordLabel[]> {
+  const rows = await listAll<NdTag>(auth, '/api/tag?tag_name=recordlabel&_sort=tagValue&_order=ASC');
+  return rows.flatMap((r) => (r.id && r.tagValue ? [{ id: r.id, name: r.tagValue }] : []));
+}
+
+/** Which of the two lists this server has anything for. */
+export interface CatalogueExtras {
+  composers: boolean;
+  labels: boolean;
+}
+
+/**
+ * Asks, one row each, whether the server has composers and record labels to
+ * show, so the Explore tab draws chips for what exists and none for what does
+ * not. A server without the endpoint, without the role or with a library
+ * tagged with neither is a no on that side. Anything else that goes wrong is
+ * left to throw: a network that was down for a second is not an answer worth
+ * remembering.
+ */
+export async function probeCatalogueExtras(auth: SubsonicAuth): Promise<CatalogueExtras> {
+  const absent = (e: unknown) => {
+    if (e instanceof NavidromeError && e.kind === 'unsupported') return [];
+    throw e;
+  };
+  const [artists, tags] = await Promise.all([
+    ndJson<NdArtist[]>(auth, '/api/artist?role=composer&_start=0&_end=1').catch(absent),
+    ndJson<NdTag[]>(auth, '/api/tag?tag_name=recordlabel&_start=0&_end=1').catch(absent),
+  ]);
+  return {
+    composers: Array.isArray(artists) && artists.some((r) => !!r.stats?.composer),
+    labels: Array.isArray(tags) && tags.length > 0,
+  };
+}
+
+/** What an album page is narrowed to: the artist who composed it, or the
+ *  label that put it out. */
+export type AlbumFilter = { composerId: string } | { labelId: string };
+
+/**
+ * A page of albums narrowed to a composer or a record label, ordered by the
+ * server.
+ *
+ * The filters are the ones Navidrome's own pages send: `role_composer_id` is
+ * how an artist page lists the records somebody only composed on, which never
+ * arrive with `getArtist` because that files a record under whoever performed
+ * it; `recordlabel` takes a tag id from `listRecordLabels`. Anything else
+ * (`recordlabel_id`, `composer_id`) is quietly ignored and answers with the
+ * whole library, which is why these two and no others.
+ */
+export async function listAlbumsFiltered(
+  auth: SubsonicAuth,
+  filter: AlbumFilter,
+  sort: NdAlbumSort = 'max_year',
+  count = 30,
+  offset = 0,
+  libraryIds?: string[],
+  dir?: SortDirection,
+): Promise<Album[]> {
+  const order = (dir ?? naturalAlbumDir(sort)) === 'asc' ? 'ASC' : 'DESC';
+  const q = new URLSearchParams({
+    _sort: sort,
+    _order: order,
+    _start: String(offset),
+    _end: String(offset + count),
+  });
+  if ('composerId' in filter) q.set('role_composer_id', filter.composerId);
+  else q.set('recordlabel', filter.labelId);
+  for (const id of libraryIds ?? []) q.append('library_id', id);
+  const rows = await ndJson<NdAlbum[]>(auth, `/api/album?${q.toString()}`);
+  return Array.isArray(rows) ? rows.map(toAlbum) : [];
 }

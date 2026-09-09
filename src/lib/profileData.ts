@@ -32,6 +32,7 @@ const SCOPED_KEYS = [
   'resonus.localFavorites',
   'resonus.localPlaylists',
   'resonus.librarySizes',
+  'resonus.smartPlaylists',
 ];
 
 const DOWNLOADS_DIR = `${FileSystem.documentDirectory}downloads/`;
