@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 969 of them.
+Every string the app can show, under the screen it shows up on. 975 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -1222,11 +1222,17 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `Accent color` | The colour the app uses for buttons, links and anything it wants you to notice |
+| `Apply` |  |
+| `Custom color` |  |
 | `Dark (default)` | The appearance the app has always had, and what it uses unless the other is chosen. The word in brackets is the same one as `Default` |
 | `Follow system` | Theme setting: use whichever appearance the phone itself is set to, light or dark |
+| `For OLED screens. Only in the dark appearance.` | The line under “Pure black backgrounds”, explaining it |
 | `Light (experimental)` | The light appearance. The word in brackets is a warning that it is new and may still have rough edges |
 | `Mode` | Heading over the two appearances on the Theme screen. Not a playback mode and not a profile: dark or light. It is called this and not "Appearance" because Appearance is the settings screen one level up |
+| `Pure black backgrounds` |  |
+| `The accent Android takes from the wallpaper` | The line under “Use the system colors”, explaining it |
 | `Theme` | The screen where the appearance and the accent colour are chosen, and the name of the row that opens it |
+| `Use the system colors` |  |
 
 ## Smart playlist
 

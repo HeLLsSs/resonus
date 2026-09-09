@@ -1,0 +1,7 @@
+{
+  "name": "material-you",
+  "version": "0.0.1",
+  "description": "The wallpaper-derived accent of Android 12+ for Resonus (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

@@ -662,7 +662,7 @@ const styles = themed((colors) => ({
     borderRadius: radius.pill,
     backgroundColor: colors.brand,
   },
-  addAccountText: { color: colors.onAccent, fontSize: fontSize.md, fontWeight: '700' },
+  addAccountText: { color: colors.onBrand, fontSize: fontSize.md, fontWeight: '700' },
   hero: { alignItems: 'center', marginBottom: spacing.xl },
   appIcon: { width: 88, height: 88, borderRadius: 22, marginBottom: spacing.md },
   topBar: { height: 32, justifyContent: 'center', marginBottom: spacing.md },

@@ -4,12 +4,14 @@ import { create } from 'zustand';
 import { isLanguage, LANGUAGE_NAMES, type Language } from '@/i18n/languages';
 import { type TabSegment } from '@/lib/tabOrigin';
 import { hashKey } from '@/lib/localLibrary';
+import { getSystemAccent } from '@/lib/materialYou';
 import { setPerfEnabled } from '@/lib/perfLog';
 import { profileScopeGuard } from '@/lib/profileScope';
 import { queryClient } from '@/lib/query';
 import { getItem, setItem } from '@/lib/storage';
 import {
   applyAccents,
+  applyPureBlack,
   applyThemePreference,
   DEFAULT_ACCENT,
   isThemePreference,
@@ -949,8 +951,17 @@ interface SettingsState {
   /** The same under the light one, which is a separate choice: a colour picked
    *  for near-black is not always the one wanted on white. */
   accentColorLight: string;
+  /**
+   * Take the accent from the device instead (the one Android 12+ derives from
+   * the wallpaper). The two above stay as picked underneath, for the day this
+   * is turned off again.
+   */
+  systemAccent: boolean;
   /** Dark (the app's own look), light, or whichever one the device is in. */
   themeMode: ThemePreference;
+  /** The dark appearance on a page of pure black, for OLED screens. Kept
+   *  under the light one, where it changes nothing until dark comes back. */
+  pureBlack: boolean;
   /** UI font (system font family; `system` = default). */
   appFont: AppFont;
   setMaxBitRate: (value: number) => void;
@@ -1057,7 +1068,12 @@ interface SettingsState {
   setShareDownloadable: (value: boolean) => void;
   setSyncQueueFromServer: (value: boolean) => void;
   setAccentColor: (value: string, appearance: ThemeMode) => void;
+  setSystemAccent: (value: boolean) => void;
+  /** Reads the device's accent again, for when the app comes back to the
+   *  front and the wallpaper may have changed while it was away. */
+  refreshSystemAccent: () => void;
   setThemeMode: (value: ThemePreference) => void;
+  setPureBlack: (value: boolean) => void;
   setAppFont: (value: AppFont) => void;
   /** Resets to factory defaults (language is preserved). */
   resetToDefaults: () => void;
@@ -1181,9 +1197,27 @@ function snapshot(get: () => SettingsState) {
     syncQueueFromServer: s.syncQueueFromServer,
     accentColor: s.accentColor,
     accentColorLight: s.accentColorLight,
+    systemAccent: s.systemAccent,
     themeMode: s.themeMode,
+    pureBlack: s.pureBlack,
     appFont: s.appFont,
   };
+}
+
+/**
+ * Paints the accent the settings ask for: the device's own pair while
+ * `systemAccent` is on and the device has one, the stored pair otherwise.
+ * Everything that applies an accent goes through here, so that no path can
+ * put the stored colours back over the system's.
+ */
+function applyChosenAccent(s: {
+  systemAccent: boolean;
+  accentColor: string;
+  accentColorLight: string;
+}): void {
+  const system = s.systemAccent ? getSystemAccent() : null;
+  if (system) applyAccents(system.dark, system.light);
+  else applyAccents(s.accentColor, s.accentColorLight);
 }
 
 /** Factory default values for all preferences. */
@@ -1323,8 +1357,10 @@ const DEFAULTS = {
   syncQueueFromServer: true,
   accentColor: DEFAULT_ACCENT,
   accentColorLight: DEFAULT_ACCENT,
+  systemAccent: false,
   // Dark: the appearance the app was designed in. Light is opt-in.
   themeMode: 'dark' as ThemePreference,
+  pureBlack: false,
   appFont: 'system' as AppFont,
 };
 
@@ -1832,13 +1868,29 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setAccentColor: (value, appearance) => {
     set(appearance === 'light' ? { accentColorLight: value } : { accentColor: value });
-    applyAccents(get().accentColor, get().accentColorLight);
+    applyChosenAccent(get());
     persist(snapshot(get));
+  },
+
+  setSystemAccent: (systemAccent) => {
+    set({ systemAccent });
+    applyChosenAccent(get());
+    persist(snapshot(get));
+  },
+
+  refreshSystemAccent: () => {
+    if (get().systemAccent) applyChosenAccent(get());
   },
 
   setThemeMode: (themeMode) => {
     applyThemePreference(themeMode);
     set({ themeMode });
+    persist(snapshot(get));
+  },
+
+  setPureBlack: (pureBlack) => {
+    applyPureBlack(pureBlack);
+    set({ pureBlack });
     persist(snapshot(get));
   },
 
@@ -1855,8 +1907,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
   resetToDefaults: () => {
     // Language is preserved: resetting shouldn't change your language.
     set({ ...DEFAULTS, language: get().language });
-    applyAccents(DEFAULT_ACCENT, DEFAULT_ACCENT);
+    applyChosenAccent(DEFAULTS);
     applyThemePreference(DEFAULTS.themeMode);
+    applyPureBlack(DEFAULTS.pureBlack);
     persist(snapshot(get));
   },
 
@@ -1885,8 +1938,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
       // appearance are applied manually because they're side effects (the blob
       // re-applies them if present); the font is reactive and doesn't need it.
       set({ ...DEFAULTS, language: get().language });
-      applyAccents(DEFAULT_ACCENT, DEFAULT_ACCENT);
+      applyChosenAccent(DEFAULTS);
       applyThemePreference(DEFAULTS.themeMode);
+      applyPureBlack(DEFAULTS.pureBlack);
       applied = true;
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<{
@@ -1996,7 +2050,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
           syncQueueFromServer: boolean;
           accentColor: string;
           accentColorLight: string;
+          systemAccent: boolean;
           themeMode: ThemePreference;
+          pureBlack: boolean;
           appFont: AppFont;
         }>;
         if (typeof parsed.maxBitRate === 'number') {
@@ -2408,11 +2464,18 @@ export const useSettings = create<SettingsState>((set, get) => ({
           const dark = isHexColor(parsed.accentColor) ? parsed.accentColor : DEFAULT_ACCENT;
           const light = isHexColor(parsed.accentColorLight) ? parsed.accentColorLight : dark;
           set({ accentColor: dark, accentColorLight: light });
-          applyAccents(dark, light);
         }
+        if (typeof parsed.systemAccent === 'boolean') {
+          set({ systemAccent: parsed.systemAccent });
+        }
+        applyChosenAccent(get());
         if (isThemePreference(parsed.themeMode)) {
           set({ themeMode: parsed.themeMode });
           applyThemePreference(parsed.themeMode);
+        }
+        if (typeof parsed.pureBlack === 'boolean') {
+          set({ pureBlack: parsed.pureBlack });
+          applyPureBlack(parsed.pureBlack);
         }
         if (parsed.appFont && parsed.appFont in APP_FONT_FAMILY) {
           set({ appFont: parsed.appFont });
@@ -2447,8 +2510,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
       // hydration has taken over.
       if (!applied && scope.accept(token, key)) {
         set({ ...DEFAULTS, language: get().language });
-        applyAccents(DEFAULT_ACCENT, DEFAULT_ACCENT);
+        applyChosenAccent(DEFAULTS);
         applyThemePreference(DEFAULTS.themeMode);
+        applyPureBlack(DEFAULTS.pureBlack);
       }
     } finally {
       // Read or failed, what's in memory is now what this profile gets. Not

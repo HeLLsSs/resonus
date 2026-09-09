@@ -8,8 +8,8 @@
  *
  * The shape of it:
  *
- *  - `colors` is a single mutable object, rewritten in place by `applyThemeMode`
- *    and `applyAccents`.
+ *  - `colors` is a single mutable object, rewritten in place by `applyThemeMode`,
+ *    `applyPureBlack` and `applyAccents`.
  *    Anything reading `colors.text` while rendering gets the current value.
  *  - `themed(c => ({…}))` replaces `StyleSheet.create` and returns an object
  *    whose entries are rebuilt when the theme changes. It stays a plain module
@@ -81,8 +81,10 @@ export interface Palette {
    * same rule as the accent.
    */
   brand: string;
-  /** Text and icons drawn on an accent (or `brand`) fill. */
+  /** Text and icons drawn on an accent fill. */
   onAccent: string;
+  /** Text and icons drawn on a `brand` fill: the accent may be anything. */
+  onBrand: string;
   /** Text and icons drawn on a `text`-coloured fill (the white pill buttons). */
   onInverse: string;
   /**
@@ -153,7 +155,7 @@ export interface Palette {
 /** The colours each appearance sets; the accent-derived ones come from `rebuild`. */
 type BasePalette = Omit<
   Palette,
-  'accent' | 'accentPressed' | 'accentVivid' | 'onAccent' | 'brand'
+  'accent' | 'accentPressed' | 'accentVivid' | 'onAccent' | 'brand' | 'onBrand'
 >;
 
 /** The dark appearance: the app's original look, unchanged. */
@@ -182,6 +184,26 @@ const DARK: BasePalette = {
   shadow: '#000000',
   danger: '#E03131',
   success: '#2F9E44',
+};
+
+/**
+ * The dark appearance with the page turned off.
+ *
+ * On an OLED screen a black pixel is a pixel that is not lit, which is what
+ * makes this the variant people ask for: it is where the battery goes, and a
+ * page that is off has no edge on a phone whose bezel is black. The surfaces
+ * come down with it so a card is still a card on the page, and the hairlines
+ * go up a step, because a border that disappears on `#121212` is a border that
+ * was only ever being read against the surface it framed.
+ */
+const PURE_BLACK: BasePalette = {
+  ...DARK,
+  background: '#000000',
+  surface: '#0A0A0A',
+  surfaceHighlight: '#1A1A1A',
+  border: '#303030',
+  control: '#303030',
+  veil: 'rgba(0,0,0,0.6)',
 };
 
 /**
@@ -260,6 +282,19 @@ function contrast(a: string, b: string): number {
 }
 
 /**
+ * Black or white, whichever reads better on `hex`.
+ *
+ * The twelve accents of the picker are all vivid enough for black under the
+ * dark appearance, and the light one darkens whatever was picked until white is
+ * the answer, so for those this agrees with the two constants it replaces. A
+ * typed-in accent can be anything, a navy or a near-black, and there a
+ * constant is what makes the icon on the play button disappear.
+ */
+export function onColor(hex: string): string {
+  return contrast(hex, '#000000') >= contrast(hex, '#FFFFFF') ? '#000000' : '#FFFFFF';
+}
+
+/**
  * Darkens `hex` in small steps until it reads against `bg`, or gives up.
  *
  * Every accent in the picker is a vivid colour chosen to sit on near-black; on
@@ -286,9 +321,14 @@ export const colors: Palette = {
   accentVivid: DEFAULT_ACCENT,
   brand: DEFAULT_ACCENT,
   onAccent: '#000000',
+  onBrand: '#000000',
 };
 
 let currentMode: ThemeMode = 'dark';
+// Whether the dark appearance is the pure black one. Kept apart from the mode:
+// it is a way of being dark and not a third answer to "which appearance", so
+// `system` can still pick dark and land on it.
+let pureBlack = false;
 // One accent per appearance. They are two choices and not one: a colour that
 // sings on near-black can be the one that dies on white, and the picker in
 // Settings is where each is made.
@@ -321,18 +361,21 @@ function subscribe(listener: () => void): () => void {
 /** Rebuilds `colors` from the current mode + accent and wakes everyone up. */
 function rebuild(): void {
   const light = currentMode === 'light';
-  const base = light ? LIGHT : DARK;
+  const base = light ? LIGHT : pureBlack ? PURE_BLACK : DARK;
   const picked = light ? lightAccent : darkAccent;
   // On white the accent has to be dark enough to read as text; on near-black
-  // it is already fine as picked. `onAccent` follows from that: black on the
-  // vivid accent, white on the darkened one.
+  // it is already fine as picked. `onAccent` is measured against the result
+  // rather than assumed from the appearance: the accent is no longer always one
+  // of twelve vivid colours.
   const accent = light ? readableOn(picked, LIGHT.background) : picked;
+  const brand = light ? readableOn(DEFAULT_ACCENT, LIGHT.background) : DEFAULT_ACCENT;
   Object.assign(colors, base, {
     accent,
     accentPressed: darken(accent),
     accentVivid: picked,
-    brand: light ? readableOn(DEFAULT_ACCENT, LIGHT.background) : DEFAULT_ACCENT,
-    onAccent: light ? '#FFFFFF' : '#000000',
+    brand,
+    onAccent: onColor(accent),
+    onBrand: onColor(brand),
   });
   version += 1;
   for (const listener of listeners) listener();
@@ -344,6 +387,16 @@ function rebuild(): void {
 export function applyAccents(dark: string, light: string): void {
   darkAccent = dark;
   lightAccent = light;
+  rebuild();
+}
+
+/**
+ * Turns the pure black variant of the dark appearance on or off. Under the
+ * light one it only remembers, and the next switch to dark is what shows it.
+ */
+export function applyPureBlack(on: boolean): void {
+  if (on === pureBlack) return;
+  pureBlack = on;
   rebuild();
 }
 

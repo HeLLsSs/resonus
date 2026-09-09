@@ -8,7 +8,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { ActivityIndicator, AppState, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AppStartupTab } from '@/components/AppStartupTab';
@@ -27,6 +27,7 @@ import { Toast } from '@/components/Toast';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { installAppFont, setAppFont } from '@/lib/appFont';
 import { removeLegacyRadioCovers } from '@/lib/legacyRadioCovers';
+import { systemAccentAvailable } from '@/lib/materialYou';
 import { startPerfLog } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
@@ -226,6 +227,19 @@ export default function RootLayout() {
   useEffect(() => {
     if (ready && downloadsHydrated) void usePlayerStore.getState().restoreQueue();
   }, [ready, downloadsHydrated, activeProfile]);
+
+  // The wallpaper is changed outside the app, and Android does not say when.
+  // Asking again on the way back to the foreground is enough: one resource
+  // read, and from here it happens wherever the app was left, not only on the
+  // theme screen.
+  const systemAccent = useSettings((s) => s.systemAccent);
+  useEffect(() => {
+    if (!systemAccentAvailable || !systemAccent) return;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') useSettings.getState().refreshSystemAccent();
+    });
+    return () => sub.remove();
+  }, [systemAccent]);
 
   // Keep screen awake (setting). The native flag only acts with the app in
   // the foreground, so it doesn't waste extra battery in the background.
