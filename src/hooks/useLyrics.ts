@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { getSongLyrics } from '@/api/data';
 import { type Song, type SubsonicAuth } from '@/api/backend';
+import { indexLyrics } from '@/lib/lyricsIndex';
 import { queryClient } from '@/lib/query';
 import { useAuthStore } from '@/store/auth';
 import { type LyricsSource, useSettings } from '@/store/settings';
@@ -23,7 +24,15 @@ function lyricsQueryOptions(song: Song, source: LyricsSource) {
     queryKey: ['lyrics', song.id, source] as const,
     // A song's lyrics don't change: don't re-fetch for the entire session.
     staleTime: Infinity,
-    queryFn: () => getSongLyrics(song, source),
+    queryFn: async () => {
+      const lyrics = await getSongLyrics(song, source);
+      // Written down for the search tab (`lib/lyricsIndex`). Here and not in
+      // the data layer because this is the one place every answer passes,
+      // whichever of its many returns it came out of, and because the write
+      // is bookkeeping the lyrics card does not wait on.
+      if (lyrics) void indexLyrics(song, lyrics);
+      return lyrics;
+    },
   };
 }
 

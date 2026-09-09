@@ -1373,10 +1373,22 @@ export async function getLyrics(
   return res.lyrics?.value?.trim() ?? '';
 }
 
+/** One word of a line, or one syllable: whatever the file put a time on. */
+export interface LyricWord {
+  /** Milliseconds from the start of the track. */
+  start: number;
+  /** The word itself, with the space that follows it when there is one, so
+   *  that the words joined end to end are the line. */
+  text: string;
+}
+
 export interface LyricLine {
   /** Milliseconds from the start of the track; only in synced lyrics. */
   start?: number;
   value: string;
+  /** The line word by word, each with its own time (enhanced LRC). Absent
+   *  when the lyrics only time their lines, which is what servers send. */
+  words?: LyricWord[];
 }
 
 export interface SongLyrics {

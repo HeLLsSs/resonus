@@ -7,7 +7,7 @@
  */
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -22,10 +22,9 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import { COVER, songCoverUrl } from '@/api/data';
-import { type LyricLine } from '@/api/subsonic';
+import { type LyricLine, type LyricWord } from '@/api/subsonic';
 import { useDominantColor } from '@/hooks/useDominantColor';
 import { useLyrics } from '@/hooks/useLyrics';
 import { useT } from '@/i18n';
@@ -124,17 +123,32 @@ export function CoverLyrics({ size, onClose }: { size: number; onClose: () => vo
   );
 }
 
+/** How much the active line grows: `handleTap` undoes it to find a word. */
+const ACTIVE_SCALE = 1.08;
+
+/** Where a word of the active line was drawn, relative to its row. */
+interface WordBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Where a tap on it seeks to: the time of its first word. */
+  start: number;
+}
+
 /**
  * Reusable karaoke list (card and full screen): the current line lights up
  * and grows a little (spring), the rest are dimmed. Auto-scroll keeps the
  * focus above; manual scroll pauses it for a few seconds. Tapping a line
- * seeks to that point in the song.
+ * seeks to that point in the song, and with `highlightWords` a tap on a word
+ * of the active line seeks to that word.
  */
 export function SyncedLyricsView({
   lines,
   large,
   nested,
   fadeColor,
+  highlightWords,
 }: {
   lines: LyricLine[];
   /** Large typography (full screen). */
@@ -143,6 +157,8 @@ export function SyncedLyricsView({
   nested?: boolean;
   /** Color to which the top/bottom edges fade (the background). */
   fadeColor?: string;
+  /** Light the active line up word by word when it carries word times. */
+  highlightWords?: boolean;
 }) {
   const positionSec = usePlayerStore((s) => s.positionSec);
   const seekTo = usePlayerStore((s) => s.seekTo);
@@ -178,7 +194,19 @@ export function SyncedLyricsView({
   const posMs = positionSec * 1000 + 300;
   let current = -1;
   for (let i = 0; i < lines.length && (lines[i].start ?? 0) <= posMs; i++) current = i;
-  currentRef.current = current;
+  // Written as part of the commit: the rows report where they are as soon as
+  // they are laid out, which is before an effect that waited for its turn.
+  useLayoutEffect(() => {
+    currentRef.current = current;
+  });
+  // The word being sung on that line, by the same clock. Only the active
+  // line is followed this closely: the others are whole lines whatever they
+  // know, so their rows are not asked to repaint at every word.
+  const words = highlightWords && current >= 0 ? lines[current].words : undefined;
+  let sung = -1;
+  if (words) for (let i = 0; i < words.length && words[i].start <= posMs; i++) sung = i;
+  /** The words of the active line as drawn, for the tap to find one. */
+  const wordBoxes = useRef<{ line: number; boxes: WordBox[] }>({ line: -1, boxes: [] });
 
   // In full screen we anchor the active line near the center (and pad
   // top/bottom) so that when the song starts, the lyrics begin centered and
@@ -190,6 +218,12 @@ export function SyncedLyricsView({
     // Only the line being waited for, and only until it has been reached: one
     // render, not one per line.
     if (index === currentRef.current && placedFor.current !== index) setPlaced((n) => n + 1);
+  }, []);
+
+  const onMeasureWord = useCallback((line: number, index: number, box: WordBox) => {
+    const boxes = wordBoxes.current;
+    if (boxes.line !== line) wordBoxes.current = { line, boxes: [] };
+    wordBoxes.current.boxes[index] = box;
   }, []);
 
   // Each targetY change pushes the scroll from the UI thread.
@@ -214,26 +248,44 @@ export function SyncedLyricsView({
 
   // Taps are detected with a separate gesture (not each line's onPress): the
   // gesture coexists with scroll and works even while auto-scroll is active.
-  // The line is located by vertical position using actual measurements.
+  // The line is located by vertical position using actual measurements, and
+  // a word on the active line by both, the same way: a press of its own on
+  // each word would be lost to the scroll exactly as a line's was.
+  //
+  // The gesture is built once and told what to do from an effect: the handler
+  // reads the measurements, which are refs, and a function that does so is not
+  // one that can be handed to the builder while rendering. It runs on this
+  // side (`runOnJS`) since that is where the measurements are and where it
+  // was going anyway; the gesture keeps whichever handler it was given last.
   const handleTap = useCallback(
-    (yInView: number) => {
+    (xInView: number, yInView: number) => {
       const contentY = yInView + liveY.value;
       for (let i = 0; i < lines.length; i++) {
         const m = offsets.current[i];
-        if (m && contentY >= m.y && contentY < m.y + m.h) {
-          if (lines[i].start !== undefined) onLineTap(lines[i].start! / 1000);
-          return;
+        if (!m || contentY < m.y || contentY >= m.y + m.h) continue;
+        if (lines[i].start === undefined) return;
+        let seekMs = lines[i].start!;
+        if (highlightWords && i === wordBoxes.current.line) {
+          // The words were measured before the row grew (see `LyricRow`), so
+          // the tap is scaled back the same way, about the row's left middle.
+          const x = xInView / ACTIVE_SCALE;
+          const y = (contentY - m.y - m.h / 2) / ACTIVE_SCALE + m.h / 2;
+          const hit = wordBoxes.current.boxes.find(
+            (b) => b && x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height,
+          );
+          if (hit) seekMs = hit.start;
         }
+        onLineTap(seekMs / 1000);
+        return;
       }
     },
-    [lines, onLineTap, liveY],
+    [lines, onLineTap, liveY, highlightWords],
   );
 
-  const tapGesture = Gesture.Tap()
-    .maxDuration(300)
-    .onEnd((e) => {
-      scheduleOnRN(handleTap, e.y);
-    });
+  const [tapGesture] = useState(() => Gesture.Tap().runOnJS(true).maxDuration(300));
+  useEffect(() => {
+    tapGesture.onEnd((e) => handleTap(e.x, e.y));
+  }, [tapGesture, handleTap]);
 
   useEffect(() => {
     if (current < 0 || viewH === 0 || userScroll.current) return;
@@ -247,12 +299,15 @@ export function SyncedLyricsView({
     // ignores animations. Opening part way through a song is the same journey
     // as any other, taken as soon as there is somewhere to go rather than at
     // the next line.
-    targetY.value = liveY.value;
-    targetY.value = withTiming(dest, {
-      duration: motion.duration.scroll,
-      easing: motion.easing.move,
-      reduceMotion: motion.reduceMotion.essential,
-    });
+    targetY.set(liveY.value);
+    targetY.set(
+      withTiming(dest, {
+        duration: motion.duration.scroll,
+        easing: motion.easing.move,
+        reduceMotion: motion.reduceMotion.essential,
+      }),
+    );
+
   }, [current, viewH, anchor, targetY, liveY, placed]);
 
   useEffect(
@@ -297,7 +352,10 @@ export function SyncedLyricsView({
             active={i === current}
             next={i === current + 1}
             large={large}
+            words={i === current ? words : undefined}
+            sung={i === current && words ? sung : -1}
             onMeasure={onMeasure}
+            onMeasureWord={onMeasureWord}
           />
         ))}
       </Animated.ScrollView>
@@ -320,21 +378,52 @@ export function SyncedLyricsView({
   );
 }
 
-/** A lyric line with animated focus (spring on activation). */
+/**
+ * The words grouped the way a line wraps: a word breaks from the next only
+ * where there is a space, so a time set inside a word (`He`, `llo`) does not
+ * leave half of it on the line above. Each group is a range of `words`.
+ */
+function wrapGroups(words: LyricWord[]): { from: number; to: number }[] {
+  const groups: { from: number; to: number }[] = [];
+  let from = 0;
+  words.forEach((w, i) => {
+    if (/\s$/.test(w.text) || i === words.length - 1) {
+      groups.push({ from, to: i + 1 });
+      from = i + 1;
+    }
+  });
+  return groups;
+}
+
+/**
+ * A lyric line with animated focus (spring on activation). Given its `words`
+ * it is drawn word by word instead, the ones sung in the accent, the one being
+ * sung at full brightness and the ones to come dimmed, in a wrapping row of
+ * texts rather than one text: a word has to be measured to be tapped, and a
+ * span inside a text cannot be.
+ */
 const LyricRow = memo(({
   index,
   text,
   active,
   next,
   large,
+  words,
+  sung,
   onMeasure,
+  onMeasureWord,
 }: {
   index: number;
   text: string;
   active: boolean;
   next: boolean;
   large?: boolean;
+  /** The line word by word, only for the active line when words are wanted. */
+  words?: LyricWord[];
+  /** The index in `words` of the word being sung, -1 before the first. */
+  sung: number;
   onMeasure: (index: number, y: number, h: number) => void;
+  onMeasureWord: (line: number, index: number, box: WordBox) => void;
 }) => {
   // Memoized, so the screen repainting is not enough to bring this one along.
   useTheme();
@@ -362,15 +451,42 @@ const LyricRow = memo(({
   // active line, scaling from the left, doesn't overflow the edge.
   const anim = useAnimatedStyle(() => ({
     opacity: dim.value,
-    transform: [{ scale: 1 + focus.value * 0.08 }],
+    transform: [{ scale: 1 + focus.value * (ACTIVE_SCALE - 1) }],
   }));
+  // The words to come are dimmed as much as the next line is, so "not yet"
+  // reads the same at both sizes; the one being sung is the line's own colour
+  // at full strength, and the ones behind it are the accent.
+  const wordColor = (i: number) =>
+    i < sung ? colors.accent : i === sung ? colors.text : `${colors.text}8C`;
   return (
     <View
       onLayout={(e) => onMeasure(index, e.nativeEvent.layout.y, e.nativeEvent.layout.height)}
     >
-      <Animated.Text style={[lyricsStyles.line, large && lyricsStyles.lineLarge, styles.leftOrigin, anim]}>
-        {text}
-      </Animated.Text>
+      {words?.length ? (
+        <Animated.View
+          style={[styles.wordRow, large && styles.wordRowLarge, styles.leftOrigin, anim]}
+        >
+          {wrapGroups(words).map((g, k) => (
+            <Text
+              key={k}
+              style={[lyricsStyles.line, large && lyricsStyles.lineLarge, styles.wordGroup]}
+              onLayout={(e) =>
+                onMeasureWord(index, k, { ...e.nativeEvent.layout, start: words[g.from].start })
+              }
+            >
+              {words.slice(g.from, g.to).map((w, j) => (
+                <Text key={j} style={{ color: wordColor(g.from + j) }}>
+                  {w.text}
+                </Text>
+              ))}
+            </Text>
+          ))}
+        </Animated.View>
+      ) : (
+        <Animated.Text style={[lyricsStyles.line, large && lyricsStyles.lineLarge, styles.leftOrigin, anim]}>
+          {text}
+        </Animated.Text>
+      )}
     </View>
   );
 });
@@ -409,6 +525,12 @@ const styles = themed((colors) => ({
   // clipped against the edge.
   content: { paddingBottom: spacing.xl, paddingRight: '10%' },
   leftOrigin: { transformOrigin: 'left center' },
+  // The line's own vertical padding moves to the row, or every wrapped line
+  // of it would carry its own and the row would be taller than the text it
+  // replaces.
+  wordRow: { flexDirection: 'row', flexWrap: 'wrap', paddingVertical: spacing.xs },
+  wordRowLarge: { paddingVertical: spacing.sm },
+  wordGroup: { paddingVertical: 0 },
   fade: { position: 'absolute', left: 0, right: 0 },
   expand: {
     position: 'absolute',

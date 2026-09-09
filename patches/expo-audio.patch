@@ -12,7 +12,7 @@ index 36a19f2d9c4a979a940ab681a1fb844ce45f7c75..3509de4747f3ebdda1a014f05fb02f07
 +  <uses-permission android:name="android.permission.WAKE_LOCK" />
  </manifest>
 diff --git a/android/src/main/java/expo/modules/audio/AudioModule.kt b/android/src/main/java/expo/modules/audio/AudioModule.kt
-index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..04a46b5a1c184260d41bbd458d66622d829306c0 100644
+index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c658bc2ced 100644
 --- a/android/src/main/java/expo/modules/audio/AudioModule.kt
 +++ b/android/src/main/java/expo/modules/audio/AudioModule.kt
 @@ -18,6 +18,7 @@ import androidx.media3.common.C.CONTENT_TYPE_HLS
@@ -128,7 +128,28 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..04a46b5a1c184260d41bbd458d66622d
        Property("isBuffering") { player ->
          runOnMain {
            player.ref.playbackState == Player.STATE_BUFFERING
-@@ -507,6 +550,27 @@ class AudioModule : Module() {
+@@ -438,6 +481,20 @@ class AudioModule : Module() {
+         player.preservesPitch = preservesPitch
+       }
+ 
++      // Whether the player skips the stretches of near-silence in the audio
++      // (media3's own detector, in the audio sink), the way Symfonium's "skip
++      // silence" does. A property of the player, not of the source, so it
++      // holds across `replace` and the gapless advance. Android only.
++      Property("skipSilence") { player ->
++        runOnMain {
++          player.ref.skipSilenceEnabled
++        }
++      }.set { player, enabled: Boolean ->
++        runOnMain {
++          player.ref.skipSilenceEnabled = enabled
++        }
++      }
++
+       Property("currentTime") { player ->
+         runOnMain {
+           player.currentTime
+@@ -507,6 +564,27 @@ class AudioModule : Module() {
          }
        }
  
@@ -156,7 +177,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..04a46b5a1c184260d41bbd458d66622d
        Function("setActiveForLockScreen") { ref: AudioPlayer, active: Boolean, metadata: Metadata?, options: AudioLockScreenOptions? ->
          runOnMain {
            ref.setActiveForLockScreen(active, metadata, options)
-@@ -525,6 +589,14 @@ class AudioModule : Module() {
+@@ -525,6 +603,14 @@ class AudioModule : Module() {
          }
        }
  
@@ -171,7 +192,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..04a46b5a1c184260d41bbd458d66622d
        Function("setAudioSamplingEnabled") { player: AudioPlayer, enabled: Boolean ->
          runOnMain {
            player.setSamplingEnabled(enabled)
-@@ -685,7 +757,16 @@ class AudioModule : Module() {
+@@ -685,7 +771,16 @@ class AudioModule : Module() {
            }
            playlist.loadInitialPlaylist()
            playlist.onPlaybackStateChange = { isPlaying ->
@@ -189,7 +210,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..04a46b5a1c184260d41bbd458d66622d
                releaseAudioFocus()
              }
            }
-@@ -860,13 +941,29 @@ class AudioModule : Module() {
+@@ -860,13 +955,29 @@ class AudioModule : Module() {
  
    private fun createMediaItem(source: AudioSource?): MediaSource? = source?.uri?.let { uriString ->
      val uri = uriString.toUri()
@@ -220,7 +241,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..04a46b5a1c184260d41bbd458d66622d
  
      val preloadedBytes = AudioPreloadManager.get(uriString)
      val factory: DataSource.Factory = if (preloadedBytes != null) {
-@@ -914,10 +1011,32 @@ class AudioModule : Module() {
+@@ -914,10 +1025,32 @@ class AudioModule : Module() {
      }
    }
  
@@ -254,7 +275,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..04a46b5a1c184260d41bbd458d66622d
    }
  
    private fun retrieveStreamType(uri: Uri): Int = Util.inferContentType(uri)
-@@ -931,11 +1050,37 @@ class AudioModule : Module() {
+@@ -931,11 +1064,37 @@ class AudioModule : Module() {
        CONTENT_TYPE_SS -> SsMediaSource.Factory(factory)
        CONTENT_TYPE_DASH -> DashMediaSource.Factory(factory)
        CONTENT_TYPE_HLS -> HlsMediaSource.Factory(factory)
@@ -1277,10 +1298,10 @@ index cfd92ad0ff5765254c4e6db974fe44bce34aad06..78fa084cf34a5f56743d636b6501f909
  //# sourceMappingURL=AudioConstants.d.ts.map
 \ No newline at end of file
 diff --git a/build/AudioModule.types.d.ts b/build/AudioModule.types.d.ts
-index f3ae4ee4044d86032cd5c6dbcfee6f905d1ce99f..90a5811df35aa1ef06fa7743e2c0eca571f41430 100644
+index f3ae4ee4044d86032cd5c6dbcfee6f905d1ce99f..27e57be42e943a840e1c29dace8223a0e1a90f29 100644
 --- a/build/AudioModule.types.d.ts
 +++ b/build/AudioModule.types.d.ts
-@@ -31,6 +31,11 @@ export declare class AudioPlayer extends SharedObject<AudioEvents> {
+@@ -31,6 +31,17 @@ export declare class AudioPlayer extends SharedObject<AudioEvents> {
       * Unique identifier for the player object.
       */
      id: string;
@@ -1289,10 +1310,16 @@ index f3ae4ee4044d86032cd5c6dbcfee6f905d1ce99f..90a5811df35aa1ef06fa7743e2c0eca5
 +     * effects (such as an equalizer) to this player's output. Android only.
 +     */
 +    audioSessionId: number;
++    /**
++     * Whether the player skips the stretches of near-silence in the audio
++     * (the quiet gaps inside and between tracks). A property of the player,
++     * not of the source, so it holds across `replace`. Android only.
++     */
++    skipSilence: boolean;
      /**
       * Boolean value indicating whether the player is currently playing.
       */
-@@ -141,6 +146,14 @@ export declare class AudioPlayer extends SharedObject<AudioEvents> {
+@@ -141,6 +152,14 @@ export declare class AudioPlayer extends SharedObject<AudioEvents> {
       * Replaces the current audio source with a new one.
       */
      replace(source: AudioSource): void;
@@ -1307,7 +1334,7 @@ index f3ae4ee4044d86032cd5c6dbcfee6f905d1ce99f..90a5811df35aa1ef06fa7743e2c0eca5
      /**
       * Seeks the playback by the given number of seconds.
       * @param seconds The number of seconds to seek by.
-@@ -183,6 +196,18 @@ export declare class AudioPlayer extends SharedObject<AudioEvents> {
+@@ -183,6 +202,18 @@ export declare class AudioPlayer extends SharedObject<AudioEvents> {
       * This will clear the lock screen's now playing info.
       */
      clearLockScreenControls(): void;
@@ -1326,7 +1353,7 @@ index f3ae4ee4044d86032cd5c6dbcfee6f905d1ce99f..90a5811df35aa1ef06fa7743e2c0eca5
      /**
       * Remove the player from memory to free up resources.
       */
-@@ -222,6 +247,27 @@ export type AudioEvents = {
+@@ -222,6 +253,27 @@ export type AudioEvents = {
      playbackStatusUpdate(status: AudioStatus): void;
      /** Fired when audio sampling is enabled and new sample data is available. */
      audioSampleUpdate(data: AudioSample): void;
@@ -1355,7 +1382,7 @@ index f3ae4ee4044d86032cd5c6dbcfee6f905d1ce99f..90a5811df35aa1ef06fa7743e2c0eca5
  export declare class AudioRecorder extends SharedObject<RecordingEvents> {
      /**
 diff --git a/ios/AudioRecords.swift b/ios/AudioRecords.swift
-index 33db27c..7999534 100644
+index 33db27c3b8fb40fa9db6659a0787c6b2b503d1ab..7999534bb8889646b5edc109f0846a5b36d201c5 100644
 --- a/ios/AudioRecords.swift
 +++ b/ios/AudioRecords.swift
 @@ -70,6 +70,8 @@ struct LockScreenOptions: Record {
@@ -1368,7 +1395,7 @@ index 33db27c..7999534 100644
  
  enum BitRateStrategy: String, Enumerable {
 diff --git a/ios/MediaController.swift b/ios/MediaController.swift
-index e977f57..06d58dc 100644
+index e977f577cd2e16b194b56537ad76b423f40d2496..06d58dceb440bf61d64d2c653aafab8fe5b980f4 100644
 --- a/ios/MediaController.swift
 +++ b/ios/MediaController.swift
 @@ -14,6 +14,7 @@ class MediaController {

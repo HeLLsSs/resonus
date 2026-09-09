@@ -2,7 +2,9 @@ package expo.modules.audioeq
 
 import android.content.Context
 import android.media.AudioManager
+import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
+import android.media.audiofx.LoudnessEnhancer
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -16,10 +18,20 @@ import expo.modules.kotlin.modules.ModuleDefinition
  * equalised the same. The state, meaning whether it is on and what the gains
  * are, lives here and is applied to every session that attaches, including the
  * ones that turn up later when a player is recreated.
+ *
+ * Two more effects of the same family ride along on the same sessions: a bass
+ * boost (android.media.audiofx.BassBoost, strength 0..1000) and a volume boost
+ * (android.media.audiofx.LoudnessEnhancer, gain in millibels). Each exists only
+ * while its value is above zero, for the same reason the equaliser only exists
+ * while it is on (see `sessions`).
  */
 class AudioEqModule : Module() {
   /** Effect by session id. They only exist while the equaliser is on. */
   private val effects = mutableMapOf<Int, Equalizer>()
+  /** Bass boost by session id, only while `bassStrength` is above zero. */
+  private val boosts = mutableMapOf<Int, BassBoost>()
+  /** Volume boost by session id, only while `loudnessMb` is above zero. */
+  private val loudeners = mutableMapOf<Int, LoudnessEnhancer>()
   /**
    * The player's live sessions, with an effect on them or not.
    *
@@ -33,6 +45,10 @@ class AudioEqModule : Module() {
 
   /** Gain per band in millibels; null means not set up yet, so flat. */
   private var levels: ShortArray? = null
+  /** Bass boost strength, 0..1000 as the framework counts it. */
+  private var bassStrength = 0
+  /** Volume boost, in millibels of gain on top of the signal. */
+  private var loudnessMb = 0
 
   /** Pours the current state onto one effect. */
   private fun applyTo(eq: Equalizer) {
@@ -60,6 +76,53 @@ class AudioEqModule : Module() {
   private fun closeEffects() {
     effects.values.forEach { runCatching { it.release() } }
     effects.clear()
+  }
+
+  /**
+   * Creates a session's bass boost, unless it already had one. Some devices
+   * throw on construction, so a session that refuses simply goes without.
+   */
+  private fun openBoost(sessionId: Int) {
+    if (sessionId == 0 || boosts.containsKey(sessionId)) return
+    runCatching {
+      val boost = BassBoost(0, sessionId)
+      boosts[sessionId] = boost
+      applyTo(boost)
+    }
+  }
+
+  private fun applyTo(boost: BassBoost) {
+    runCatching {
+      boost.setStrength(bassStrength.toShort())
+      boost.enabled = bassStrength > 0
+    }
+  }
+
+  private fun closeBoosts() {
+    boosts.values.forEach { runCatching { it.release() } }
+    boosts.clear()
+  }
+
+  /** The same for the volume boost. */
+  private fun openLoudener(sessionId: Int) {
+    if (sessionId == 0 || loudeners.containsKey(sessionId)) return
+    runCatching {
+      val loudener = LoudnessEnhancer(sessionId)
+      loudeners[sessionId] = loudener
+      applyTo(loudener)
+    }
+  }
+
+  private fun applyTo(loudener: LoudnessEnhancer) {
+    runCatching {
+      loudener.setTargetGain(loudnessMb)
+      loudener.enabled = loudnessMb > 0
+    }
+  }
+
+  private fun closeLoudeners() {
+    loudeners.values.forEach { runCatching { it.release() } }
+    loudeners.clear()
   }
 
   /**
@@ -92,6 +155,8 @@ class AudioEqModule : Module() {
 
     OnDestroy {
       closeEffects()
+      closeBoosts()
+      closeLoudeners()
       sessions.clear()
     }
 
@@ -102,10 +167,27 @@ class AudioEqModule : Module() {
      * playing.
      */
     Function("getInfo") {
+      // The two boosts are asked the same way, each on a throwaway effect of
+      // its own: a device may have one and not the other.
+      val am = appContext.reactContext?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+      val bassBoost = am != null && runCatching {
+        val boost = BassBoost(0, am.generateAudioSessionId())
+        try {
+          boost.strengthSupported
+        } finally {
+          runCatching { boost.release() }
+        }
+      }.getOrDefault(false)
+      val loudness = am != null && runCatching {
+        LoudnessEnhancer(am.generateAudioSessionId()).release()
+        true
+      }.getOrDefault(false)
       withScratchEffect { eq ->
         val range = eq.bandLevelRange // [min, max] in millibels
         mapOf(
           "supported" to true,
+          "bassBoost" to bassBoost,
+          "loudness" to loudness,
           "bands" to (0 until eq.numberOfBands.toInt()).map { i ->
             mapOf(
               "index" to i,
@@ -117,7 +199,7 @@ class AudioEqModule : Module() {
           "maxLevel" to range[1].toInt(),
           "presets" to (0 until eq.numberOfPresets.toInt()).map { eq.getPresetName(it.toShort()) },
         )
-      } ?: mapOf("supported" to false)
+      } ?: mapOf("supported" to false, "bassBoost" to bassBoost, "loudness" to loudness)
     }
 
     /**
@@ -129,12 +211,16 @@ class AudioEqModule : Module() {
       if (sessionId == 0) return@Function
       sessions.add(sessionId)
       if (enabled) openEffect(sessionId)
+      if (bassStrength > 0) openBoost(sessionId)
+      if (loudnessMb > 0) openLoudener(sessionId)
     }
 
     /** Lets a session go, as its player is destroyed. */
     Function("detach") { sessionId: Int ->
       sessions.remove(sessionId)
       effects.remove(sessionId)?.let { runCatching { it.release() } }
+      boosts.remove(sessionId)?.let { runCatching { it.release() } }
+      loudeners.remove(sessionId)?.let { runCatching { it.release() } }
     }
 
     Function("setEnabled") { on: Boolean ->
@@ -179,5 +265,34 @@ class AudioEqModule : Module() {
 
     /** The gains as they are now, in millibels. */
     Function("getBandLevels") { readLevels() }
+
+    /**
+     * Bass boost strength, 0 (off) to 1000. At zero the effects are released
+     * rather than bypassed, for the reason given at `sessions`.
+     */
+    Function("setBassBoost") { strength: Int ->
+      bassStrength = strength.coerceIn(0, 1000)
+      if (bassStrength == 0) closeBoosts() else sessions.forEach(::openBoost)
+      boosts.values.forEach(::applyTo)
+    }
+
+    /** The strength as the effect rounded it, or as asked for when it is off. */
+    Function("getBassBoost") {
+      boosts.values.firstOrNull()?.let { boost ->
+        runCatching { boost.roundedStrength.toInt() }.getOrNull()
+      } ?: bassStrength
+    }
+
+    /**
+     * Volume boost as a gain in millibels, 0 (off) to 1500. Nothing here keeps
+     * the signal from clipping: that is for whoever sets it to hear.
+     */
+    Function("setLoudness") { gainMb: Int ->
+      loudnessMb = gainMb.coerceIn(0, 1500)
+      if (loudnessMb == 0) closeLoudeners() else sessions.forEach(::openLoudener)
+      loudeners.values.forEach(::applyTo)
+    }
+
+    Function("getLoudness") { loudnessMb }
   }
 }

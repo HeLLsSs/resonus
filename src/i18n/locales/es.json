@@ -795,6 +795,7 @@
   "Playing on {player}": "Sonando en {player}",
   "Play here": "Reproducir aquí",
   "Another device": "Otro dispositivo",
+  "In the lyrics": "En las letras",
   "Download activity": "Actividad de descargas",
   "{n} downloading · {m} waiting": "{n} descargando · {m} en espera",
   "{n} waiting": "{n} en espera",
@@ -954,6 +955,13 @@
   "Only the first {n} entries were read": "Solo se han leído las primeras {n} entradas",
   "Not found on the server": "No encontradas en el servidor",
   "Open": "Abrir",
+  "Skip silence": "Saltar silencios",
+  "Cuts the quiet gaps inside and between tracks": "Recorta los huecos de silencio dentro de las canciones y entre ellas",
+  "Keep pitch": "Mantener el tono",
+  "Boost": "Refuerzo",
+  "Bass boost": "Refuerzo de graves",
+  "Volume boost": "Refuerzo de volumen",
+  "Can distort or clip; the system volume stays the limit": "Puede distorsionar o saturar; el volumen del sistema sigue siendo el límite",
   "Include tokens and proxy headers": "Incluir tokens y cabeceras de proxy",
   "On, the ListenBrainz token and the custom headers of each profile go into the file, a proxy secret set as a header among them. Off, both are left out and have to be entered again.": "Activado, el token de ListenBrainz y las cabeceras personalizadas de cada perfil van en el archivo, incluido un secreto de proxy puesto como cabecera. Desactivado, ambos se omiten y habrá que introducirlos de nuevo.",
   "Passwords never leave the phone: a restored profile asks you to sign in again. Headers and tokens go only with the switch above.": "Las contraseñas nunca salen del teléfono: un perfil restaurado pide iniciar sesión de nuevo. Las cabeceras y los tokens solo van con el interruptor de arriba.",
@@ -966,5 +974,7 @@
   "None of these songs can be saved to a playlist": "Ninguna de estas canciones se puede guardar en una playlist",
   "A playlist called “{name}” already exists. Replace its songs?": "Ya existe una playlist llamada «{name}». ¿Reemplazar sus canciones?",
   "Replace": "Reemplazar",
-  "That file is too big to be a playlist.": "Ese archivo es demasiado grande para ser una playlist."
+  "That file is too big to be a playlist.": "Ese archivo es demasiado grande para ser una playlist.",
+  "Highlight words": "Resaltar palabras",
+  "When the lyrics carry word timings, the word being sung lights up.": "Cuando la letra trae los tiempos de cada palabra, la que se está cantando se ilumina."
 }

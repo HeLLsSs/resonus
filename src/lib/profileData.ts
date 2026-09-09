@@ -17,6 +17,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import type { SubsonicAuth } from '@/api/backend';
 import { closeCatalog } from './downloadsDb';
 import { hashKey } from './localLibrary';
+import { closeLyricsFor } from './lyricsIndex';
 import { closeMirrorFor } from './mirrorDb';
 import { removeMirrorCovers } from './mirrorCovers';
 import { primaryUrl } from './serverUrls';
@@ -38,10 +39,11 @@ const SCOPED_KEYS = [
 
 const DOWNLOADS_DIR = `${FileSystem.documentDirectory}downloads/`;
 const MIRROR_DIR = `${FileSystem.documentDirectory}library-mirror/`;
-// One more database of the profile's own: what it listened to. It is not a
-// copy of anything the server holds, so it goes with the account rather than
-// being rebuilt for the next one.
+// Two more databases of the profile's own: what it listened to, and the words
+// of the songs it looked at. Neither is a copy of anything the server holds,
+// so both go with the account rather than being rebuilt for the next one.
 const STATS_DIR = `${FileSystem.documentDirectory}stats/`;
+const LYRICS_DIR = `${FileSystem.documentDirectory}lyrics-index/`;
 
 async function remove(uri: string): Promise<void> {
   await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
@@ -54,8 +56,8 @@ async function remove(uri: string): Promise<void> {
  * whoever uses it, and nothing here is its to delete.
  */
 export async function deleteProfileData(auth: SubsonicAuth): Promise<void> {
-  // What the profile is called before it is hashed: the stats database is
-  // held open under that name, even though its file wears the hash.
+  // What the profile is called before it is hashed: the databases below are
+  // held open under that name, even though their files wear the hash.
   const profile = `${primaryUrl(auth)}|${auth.username}`;
   const scope = hashKey(profile);
   const dir = `${DOWNLOADS_DIR}${scope}/`;
@@ -66,6 +68,7 @@ export async function deleteProfileData(auth: SubsonicAuth): Promise<void> {
   await closeCatalog(dir);
   await closeMirrorFor(scope);
   await closeStatsFor(profile);
+  await closeLyricsFor(profile);
 
   // The downloads: the audio, the covers and the catalog that indexed them.
   await remove(dir);
@@ -82,8 +85,14 @@ export async function deleteProfileData(auth: SubsonicAuth): Promise<void> {
     await remove(`${MIRROR_DIR}${name}`);
   }
 
-  // The listening log, three files with its write-ahead journals.
-  for (const suffix of ['', '-wal', '-shm']) await remove(`${STATS_DIR}stats-${scope}.db${suffix}`);
+  // The listening log and the lyrics index, three files each with their
+  // write-ahead journals.
+  for (const [dir, name] of [
+    [STATS_DIR, `stats-${scope}.db`],
+    [LYRICS_DIR, `lyrics-${scope}.db`],
+  ] as const) {
+    for (const suffix of ['', '-wal', '-shm']) await remove(`${dir}${name}${suffix}`);
+  }
 
   // The covers kept for that mirror, which live in a folder of their own: one
   // file per cover plus the index that says which id each belongs to.

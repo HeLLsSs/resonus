@@ -91,6 +91,12 @@ export async function getOnlineLyrics(song: Song): Promise<SongLyrics | null> {
   return parseLrc(text);
 }
 
+/**
+ * What LRCLIB answers with. `syncedLyrics` is LRC text, and when the record
+ * was made with word timings they are in there as enhanced LRC (`<mm:ss.xx>`
+ * before each word): the API has no separate field for them, so the one
+ * request brings everything there is and `parseLrc` reads it all.
+ */
 interface LrclibResult {
   syncedLyrics?: string | null;
   plainLyrics?: string | null;

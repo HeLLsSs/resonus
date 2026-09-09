@@ -16,7 +16,7 @@ import {
 import { ScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { COVER, coverArtUrl, getPlaylists, search } from '@/api/data';
+import { COVER, coverArtUrl, getPlaylists, search, songCoverUrl } from '@/api/data';
 import { getGenres, getRadioStations } from '@/api/backend';
 import { AlbumCard } from '@/components/AlbumCard';
 import { Cover } from '@/components/Cover';
@@ -29,13 +29,15 @@ import { TrackRow } from '@/components/TrackRow';
 import { useDebounce } from '@/hooks/useDebounce';
 import { songsLabel, useT } from '@/i18n';
 import { haptic } from '@/lib/haptics';
+import { searchLyrics } from '@/lib/lyricsIndex';
 import { onTabReselect, takeSearchFocus } from '@/lib/tabOrigin';
 import { bump } from '@/lib/perfLog';
-import { useAuthStore } from '@/store/auth';
+import { profileScopeId, useAuthStore } from '@/store/auth';
 import { useMediaMenu } from '@/store/mediaMenu';
 import { currentSong, usePlayerStore } from '@/store/player';
 import { useRecentSearches, type RecentItem } from '@/store/recentSearches';
 import { useSettings } from '@/store/settings';
+import { useSongMenu } from '@/store/songMenu';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
 import { useScreenBottomPadding } from '@/hooks/useScreenBottomPadding';
 import { centredPadding, useScreenSize } from '@/hooks/useScreenSize';
@@ -191,6 +193,19 @@ export default function SearchScreen() {
           r.name.toLowerCase().includes(debouncedQuery.toLowerCase()),
         )
       : [];
+  // Songs whose lyrics say the words, from the index of every set of lyrics
+  // this phone has shown (`lib/lyricsIndex`, which also says why there is no
+  // button to fill it). Three letters, where the server search asks two: two
+  // are in every song there is. Per profile, since the ids are the server's.
+  // Never cached: the index grows while you listen, and a search made again
+  // should find the song that played in between.
+  const openSongMenu = useSongMenu((s) => s.open);
+  const { data: lyricsMatches } = useQuery({
+    queryKey: ['lyrics-search', profileScopeId(), debouncedQuery],
+    queryFn: () => searchLyrics(debouncedQuery),
+    enabled: debouncedQuery.length >= 3,
+    staleTime: 0,
+  });
 
   // Built once per genre list and not on every render of this screen. There is
   // no ceiling on how many a library has, they are all laid out at once (no
@@ -312,7 +327,8 @@ export default function SearchScreen() {
           data.albums.length === 0 &&
           data.songs.length === 0 &&
           playlistMatches.length === 0 &&
-          stationMatches.length === 0 ? (
+          stationMatches.length === 0 &&
+          !lyricsMatches?.length ? (
           <EmptyState
             icon="search-outline"
             title={t('No results')}
@@ -415,6 +431,41 @@ export default function SearchScreen() {
                   playQueue(data.songs, i);
                 }}
               />
+            ))}
+          </View>
+        ) : null}
+
+        {lyricsMatches && lyricsMatches.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('In the lyrics')}</Text>
+            {/* Not a `TrackRow`: its second line is the artist, and here the
+                line that matters is the one the words were found on. The row
+                is the one the playlists and the radios below use, with the
+                song's own gestures on it: tap to play it on its own, and a
+                long press for the same menu the ⋯ on a track row opens. */}
+            {lyricsMatches.map(({ song, excerpt }) => (
+              <Pressable
+                key={song.id}
+                style={styles.recentRow}
+                onPress={() => playQueue([song], 0)}
+                onLongPress={() => {
+                  haptic('light');
+                  openSongMenu(song);
+                }}
+              >
+                <Cover uri={songCoverUrl(song, COVER.thumb)} size={48} />
+                <View style={styles.recentInfo}>
+                  <Text
+                    style={[styles.recentTitle, playing?.id === song.id && { color: colors.accent }]}
+                    numberOfLines={1}
+                  >
+                    {song.title}
+                  </Text>
+                  <Text style={styles.recentSub} numberOfLines={1}>
+                    {song.artist ? `${song.artist} · ${excerpt}` : excerpt}
+                  </Text>
+                </View>
+              </Pressable>
             ))}
           </View>
         ) : null}

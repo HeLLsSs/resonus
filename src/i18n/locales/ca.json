@@ -795,6 +795,7 @@
   "Playing on {player}": "Sonant a {player}",
   "Play here": "Reprodueix aquí",
   "Another device": "Un altre dispositiu",
+  "In the lyrics": "A les lletres",
   "Download activity": "Activitat de baixades",
   "{n} downloading · {m} waiting": "{n} baixant · {m} en espera",
   "{n} waiting": "{n} en espera",
@@ -954,6 +955,13 @@
   "Only the first {n} entries were read": "Només s'han llegit les primeres {n} entrades",
   "Not found on the server": "No trobades al servidor",
   "Open": "Obre",
+  "Skip silence": "Saltar silencis",
+  "Cuts the quiet gaps inside and between tracks": "Retalla els buits de silenci dins de les cançons i entre elles",
+  "Keep pitch": "Mantenir el to",
+  "Boost": "Reforç",
+  "Bass boost": "Reforç de greus",
+  "Volume boost": "Reforç de volum",
+  "Can distort or clip; the system volume stays the limit": "Pot distorsionar o saturar; el volum del sistema continua sent el límit",
   "Include tokens and proxy headers": "Incloure tokens i capçaleres de proxy",
   "On, the ListenBrainz token and the custom headers of each profile go into the file, a proxy secret set as a header among them. Off, both are left out and have to be entered again.": "Activat, el token de ListenBrainz i les capçaleres personalitzades de cada perfil van al fitxer, inclòs un secret de proxy posat com a capçalera. Desactivat, tots dos s'ometen i caldrà introduir-los de nou.",
   "Passwords never leave the phone: a restored profile asks you to sign in again. Headers and tokens go only with the switch above.": "Les contrasenyes mai surten del telèfon: un perfil restaurat demana iniciar sessió de nou. Les capçaleres i els tokens només van amb l'interruptor de dalt.",
@@ -966,5 +974,7 @@
   "None of these songs can be saved to a playlist": "Cap d'aquestes cançons es pot desar en una playlist",
   "A playlist called “{name}” already exists. Replace its songs?": "Ja existeix una playlist anomenada «{name}». Vols reemplaçar-ne les cançons?",
   "Replace": "Reemplaça",
-  "That file is too big to be a playlist.": "Aquest fitxer és massa gran per ser una playlist."
+  "That file is too big to be a playlist.": "Aquest fitxer és massa gran per ser una playlist.",
+  "Highlight words": "Ressaltar paraules",
+  "When the lyrics carry word timings, the word being sung lights up.": "Quan la lletra porta els temps de cada paraula, la que s'està cantant s'il·lumina."
 }

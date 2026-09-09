@@ -78,6 +78,8 @@ export default function PlayerSettings() {
   const setCoverTapAction = useSettings((s) => s.setCoverTapAction);
   const lyricsSource = useSettings((s) => s.lyricsSource);
   const setLyricsSource = useSettings((s) => s.setLyricsSource);
+  const wordLyrics = useSettings((s) => s.wordLyrics);
+  const setWordLyrics = useSettings((s) => s.setWordLyrics);
   const marqueeTitles = useSettings((s) => s.marqueeTitles);
   const setMarqueeTitles = useSettings((s) => s.setMarqueeTitles);
   const showQueueButton = useSettings((s) => s.showQueueButton);
@@ -313,6 +315,12 @@ export default function PlayerSettings() {
               description: t('The lyrics card below the player controls.'),
               value: showLyricsCard,
               onChange: setShowLyricsCard,
+            },
+            {
+              label: t('Highlight words'),
+              description: t('When the lyrics carry word timings, the word being sung lights up.'),
+              value: wordLyrics,
+              onChange: setWordLyrics,
             },
           ]}
         />

@@ -13,7 +13,7 @@
  * Settings › Player.
  */
 import { useRouter } from 'expo-router';
-import { ScrollView, Text } from 'react-native';
+import { Platform, ScrollView, Text } from 'react-native';
 
 import {
   SelectList,
@@ -69,6 +69,8 @@ export default function PlaybackSettings() {
   const batteryWarning = useSettings((s) => s.batteryWarning);
   const setBatteryWarning = useSettings((s) => s.setBatteryWarning);
   const setKeepScreenAwake = useSettings((s) => s.setKeepScreenAwake);
+  const skipSilence = useSettings((s) => s.skipSilence);
+  const setSkipSilence = useSettings((s) => s.setSkipSilence);
 
   // Only "Original" is a word; the rest are a number and a unit that read the
   // same in every language.
@@ -235,6 +237,21 @@ export default function PlaybackSettings() {
           chevron
           onPress={() => router.push('/settings/equalizer')}
         />
+        {/* Android only: it is media3's own detector, and there is nothing to
+            switch on anywhere else, so the row is not shown rather than shown
+            doing nothing. */}
+        {Platform.OS === 'android' ? (
+          <SwitchList
+            options={[
+              {
+                label: t('Skip silence'),
+                description: t('Cuts the quiet gaps inside and between tracks'),
+                value: skipSilence,
+                onChange: setSkipSilence,
+              },
+            ]}
+          />
+        ) : null}
 
         <Text style={settingsStyles.sectionTitle}>{t('Playback')}</Text>
         <SwitchList

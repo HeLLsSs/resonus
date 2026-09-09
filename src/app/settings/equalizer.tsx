@@ -1,5 +1,6 @@
 /**
- * Settings › Equalizer: toggle, device presets and one band per row.
+ * Settings › Equalizer: toggle, device presets and one band per row, then the
+ * two boosts (bass and volume) the same module carries.
  * Processing is done by the system equalizer (native module modules/audio-eq);
  * here you only choose gains, which are saved and applied to the app audio
  * immediately.
@@ -16,7 +17,7 @@ import {
   SwitchList,
 } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
-import { useEqualizer } from '@/store/equalizer';
+import { BASS_BOOST_MAX, LOUDNESS_MAX_MB, useEqualizer } from '@/store/equalizer';
 import { useTheme } from '@/theme';
 
 /** 62 → «62 Hz»; 16000 → «16 kHz». */
@@ -46,6 +47,12 @@ export default function EqualizerSettings() {
   const setBandLevel = useEqualizer((s) => s.setBandLevel);
   const applyPreset = useEqualizer((s) => s.applyPreset);
   const reset = useEqualizer((s) => s.reset);
+  const bassBoostSupported = useEqualizer((s) => s.bassBoostSupported);
+  const loudnessSupported = useEqualizer((s) => s.loudnessSupported);
+  const bassBoost = useEqualizer((s) => s.bassBoost);
+  const setBassBoost = useEqualizer((s) => s.setBassBoost);
+  const loudness = useEqualizer((s) => s.loudness);
+  const setLoudness = useEqualizer((s) => s.setLoudness);
 
   // The selected preset is view-only: touching a band clears the preset
   // («Custom»). What's saved are the gains.
@@ -118,6 +125,36 @@ export default function EqualizerSettings() {
             reset();
           }}
         />
+
+        {/* Under a heading of their own: two more sliders straight after the
+            bands would read as two more bands. Each only where the device has
+            the effect, and neither depends on the equalizer switch above: they
+            are effects of their own, on or off by their value alone. */}
+        {bassBoostSupported || loudnessSupported ? (
+          <Text style={settingsStyles.sectionTitle}>{t('Boost')}</Text>
+        ) : null}
+        {bassBoostSupported ? (
+          <SliderRow
+            label={t('Bass boost')}
+            value={bassBoost}
+            max={BASS_BOOST_MAX}
+            step={50}
+            formatValue={(v) => (v === 0 ? t('Off') : `${Math.round(v / 10)}%`)}
+            onChange={setBassBoost}
+          />
+        ) : null}
+        {loudnessSupported ? (
+          <SliderRow
+            label={t('Volume boost')}
+            description={t('Can distort or clip; the system volume stays the limit')}
+            value={loudness}
+            max={LOUDNESS_MAX_MB}
+            // 1 dB steps: the range is in millibels.
+            step={100}
+            formatValue={(v) => (v === 0 ? t('Off') : formatGain(v))}
+            onChange={setLoudness}
+          />
+        ) : null}
       </ScrollView>
     </SettingsPage>
   );

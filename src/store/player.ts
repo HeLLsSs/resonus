@@ -22,7 +22,7 @@ import {
   type AudioStatus,
 } from 'expo-audio';
 import { fetch as expoFetch } from 'expo/fetch';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { create } from 'zustand';
 
 import { CLIENT_NAME } from '@/api/subsonic';
@@ -133,6 +133,8 @@ const SLEEP_FADE_MS = 30_000;
 
 let sleepFadeTimeout: ReturnType<typeof setTimeout> | null = null;
 let sleepFadeTimer: ReturnType<typeof setInterval> | null = null;
+/** When the fade began and how long it has, so any clock can advance it. */
+let sleepFade: { t0: number; ms: number } | null = null;
 
 /** Cuts the sleep fade in progress, if any. Volume is restored by whoever
  *  calls (`cutCrossfade`, which is the path all interventions go through). */
@@ -141,30 +143,40 @@ function clearSleepFade() {
   sleepFadeTimeout = null;
   if (sleepFadeTimer) clearInterval(sleepFadeTimer);
   sleepFadeTimer = null;
+  sleepFade = null;
 }
 
 /**
- * Lowers the volume to zero in `ms`. Does not capture the player or its volume:
- * reads them on each tick and applies the fade as a factor on `effectiveVolume`.
- * This way it still holds if the track changes midway (ReplayGain is per song)
- * and the new one doesn't start at full volume.
+ * One step of the fade, from wherever the wall clock says it has got to. Does
+ * not capture the player or its volume: reads them on each tick and applies
+ * the fade as a factor on `effectiveVolume`. This way it still holds if the
+ * track changes midway (ReplayGain is per song) and the new one doesn't start
+ * at full volume. Idempotent, like `tickFade`: the `setInterval` drives it in
+ * the foreground and the `onStatus` heartbeat in the background, where the
+ * interval is frozen with the screen off, which is where every sleep timer
+ * runs. Left to the interval alone, the fade stopped at its first step and
+ * the music was still at full volume when the timer cut it.
  */
+function tickSleepFade() {
+  if (!sleepFade) return;
+  const x = Math.min(1, (Date.now() - sleepFade.t0) / sleepFade.ms);
+  const p = activePlayer();
+  if (p) {
+    try {
+      p.volume = effectiveVolume(currentSong(usePlayerStore.getState())) * (1 - x);
+    } catch {
+      // ignore
+    }
+  }
+  if (x >= 1) clearSleepFade();
+}
+
+/** Lowers the volume to zero in `ms`. */
 function startSleepFade(ms: number) {
   if (remoteKind()) return; // the remote device's volume is not ours
   clearSleepFade();
-  const t0 = Date.now();
-  sleepFadeTimer = setInterval(() => {
-    const x = Math.min(1, (Date.now() - t0) / ms);
-    const p = activePlayer();
-    if (p) {
-      try {
-        p.volume = effectiveVolume(currentSong(usePlayerStore.getState())) * (1 - x);
-      } catch {
-        // ignore
-      }
-    }
-    if (x >= 1) clearSleepFade();
-  }, 100);
+  sleepFade = { t0: Date.now(), ms };
+  sleepFadeTimer = setInterval(tickSleepFade, 100);
 }
 
 /** Schedules the fade to finish right at expiry. */
@@ -252,9 +264,38 @@ function ensurePlayer(idx: number): AudioPlayer {
   // Since they are singletons (two alternating for crossfade), it's enough to
   // do it on creation; the saved state is applied automatically.
   useEqualizer.getState().attach(p.audioSessionId);
+  // Skip silence is a property of the player too, and a setting: a player made
+  // after it was switched on starts out without it otherwise.
+  applySkipSilence(p);
   players[idx] = p;
   return p;
 }
+
+/** Gives a player the skip silence setting (Android only, a no-op elsewhere). */
+function applySkipSilence(p: AudioPlayer) {
+  if (Platform.OS !== 'android') return;
+  try {
+    p.skipSilence = useSettings.getState().skipSilence;
+  } catch {
+    // ignore
+  }
+}
+
+// Both players exist for as long as the app does, so the setting has to reach
+// them when it changes and not only when they are made.
+useSettings.subscribe((s, prev) => {
+  if (s.skipSilence === prev.skipSilence) return;
+  for (const p of players) if (p) applySkipSilence(p);
+});
+
+// The equalizer's own saved state is read asynchronously, and a player made
+// before that read is done was refused by `attach` for as long as nothing
+// loaded another track afterwards: the app opened on a paused queue, and the
+// equalizer sat switched on in the settings and off in the ear.
+useEqualizer.subscribe((st, prev) => {
+  if (!st.supported || prev.supported) return;
+  for (const p of players) if (p) useEqualizer.getState().attach(p.audioSessionId);
+});
 
 /** Configures audio mode (exclusive focus) only once. */
 async function ensureAudioMode() {
@@ -520,6 +561,9 @@ async function ensureTranscodeOffsetSupport(): Promise<boolean> {
   return transcodeOffsetAsking;
 }
 
+/** Which seek is the latest, so an older one waiting on the server stands down. */
+let seekGen = 0;
+
 /**
  * Seek on the active player: native seek, or a `timeOffset` re-request when the
  * stream has no random access. Shared by the user's seek and by every path that
@@ -528,6 +572,7 @@ async function ensureTranscodeOffsetSupport(): Promise<boolean> {
 function seekActive(sec: number) {
   const state = usePlayerStore.getState();
   const song = currentSong(state);
+  const seek = ++seekGen;
   pendingSeek = { sec, at: Date.now() };
   usePlayerStore.setState({ positionSec: sec });
   // Which of the three ways out this seek took, and whether anybody was
@@ -552,7 +597,11 @@ function seekActive(sec: number) {
   bump('seek · offset asked');
   void ensureTranscodeOffsetSupport().then((supported) => {
     bump('seek · offset answered');
-    // If the track changed while resolving, don't touch the new player.
+    // If the track changed while resolving, don't touch the new player. Nor if
+    // a later seek has been asked for: two drags of the slider moments apart
+    // both waited on the same answer, and the first one to come back landed
+    // the stream on a second nobody wanted any more.
+    if (seek !== seekGen) return;
     if (currentSong(usePlayerStore.getState()) !== song) return;
     const p = activePlayer();
     if (!p) return;
@@ -955,6 +1004,11 @@ type HistoryEntry = {
   originalQueue: Song[] | null;
   shuffle: boolean;
   queueDealt: boolean;
+  // Whether that context was a mix, and around which song. Left out, going
+  // back from a mix to the album it was started from kept the mix switched on,
+  // and the album grew similar songs at its end as if it were one.
+  radioMode: boolean;
+  radioSeed: Song | null;
 };
 const HISTORY_MAX = 100;
 let playedHistory: HistoryEntry[] = [];
@@ -998,10 +1052,20 @@ function rememberQueue() {
 
 /** Pushes the current context before advancing or skipping to another track. */
 function pushHistory() {
-  const { queue, index, source, sourceHref, originalQueue, shuffle, queueDealt } =
+  const { queue, index, source, sourceHref, originalQueue, shuffle, queueDealt, radioMode, radioSeed } =
     usePlayerStore.getState();
   if (!queue[index]) return;
-  playedHistory.push({ queue, index, source, sourceHref, originalQueue, shuffle, queueDealt });
+  playedHistory.push({
+    queue,
+    index,
+    source,
+    sourceHref,
+    originalQueue,
+    shuffle,
+    queueDealt,
+    radioMode,
+    radioSeed,
+  });
   if (playedHistory.length > HISTORY_MAX) playedHistory.shift();
 }
 
@@ -1268,8 +1332,17 @@ const PRELOAD_AHEAD = 5;
  *  (playQueue). */
 const warmedIds = new Set<string>();
 
+/**
+ * Forgets what was warmed, and lets go of what is still warming. The chain
+ * below is serial and a request on it may sit for two minutes, so the five
+ * queued for the album just left would have kept the ones of the album just
+ * started waiting behind them; and on a change of account they were this
+ * account's streams being asked for on behalf of the next.
+ */
 function resetWarmed() {
   warmedIds.clear();
+  warmGen++;
+  warmInFlight?.abort();
 }
 
 function warmUpcoming() {
@@ -1326,9 +1399,14 @@ const WARM_TIMEOUT_MS = 120_000;
  * time, in window order, so the song coming next is the one warming.
  */
 let warmChain: Promise<void> = Promise.resolve();
+/** Bumped by `resetWarmed`: a warm queued under an older number is stale. */
+let warmGen = 0;
+/** The request on the wire right now, for `resetWarmed` to hang up on. */
+let warmInFlight: AbortController | null = null;
 
 function warmStream(id: string, url: string) {
-  warmChain = warmChain.then(() => warmRequest(id, url));
+  const gen = warmGen;
+  warmChain = warmChain.then(() => (gen === warmGen ? warmRequest(id, url) : undefined));
 }
 
 async function warmRequest(id: string, url: string) {
@@ -1337,6 +1415,7 @@ async function warmRequest(id: string, url: string) {
   if (useAuthStore.getState().offline) return;
   bump('preload · asked the server');
   const ctrl = new AbortController();
+  warmInFlight = ctrl;
   const timer = setTimeout(() => ctrl.abort(), WARM_TIMEOUT_MS);
   try {
     // `expoFetch`, not the global one: this runs while a song is playing, which
@@ -1361,6 +1440,7 @@ async function warmRequest(id: string, url: string) {
     warmedIds.delete(id);
   } finally {
     clearTimeout(timer);
+    if (warmInFlight === ctrl) warmInFlight = null;
   }
 }
 
@@ -1858,9 +1938,12 @@ useSettings.subscribe((s) => {
 
 // ── Playback speed ──────────────────────────────────────────────────────────
 // Playing along with a record on an instrument is the reason this exists
-// (#151), so the pitch does not move with the speed: media3 stretches time
-// (`shouldCorrectPitch`, which expo-audio has on by default) and a song slowed
-// to three quarters is still in its own key.
+// (#151), so by default the pitch does not move with the speed: media3
+// stretches time (`shouldCorrectPitch`, which expo-audio has on by default)
+// and a song slowed to three quarters is still in its own key. The speed sheet
+// has a switch for the other behaviour (`speedKeepsPitch` off), where the
+// pitch follows the speed the way a turntable's does; on Android that is
+// `shouldCorrectPitch` off, which makes the player pass the rate as the pitch.
 //
 // It is a property of the player and not of the source, so every place that
 // installs a source applies it: a `replace()` keeps whatever rate the player
@@ -1888,12 +1971,21 @@ function applySpeed(p: AudioPlayer | null, song: Song | null | undefined) {
   try {
     // Before the rate, not after: the pitch is worked out when the rate is
     // set, so a player told to correct it afterwards keeps the old parameters.
-    p.shouldCorrectPitch = true;
+    // Only Android is offered the turntable behaviour; elsewhere the key is
+    // always kept.
+    p.shouldCorrectPitch = Platform.OS !== 'android' || useSettings.getState().speedKeepsPitch;
     p.setPlaybackRate(speedFor(song));
   } catch {
     // ignore
   }
 }
+
+// Heard on the spot, like a change of speed: only the player that is sounding,
+// the reserve gets it with its next source (see `setSpeed`).
+useSettings.subscribe((s, prev) => {
+  if (s.speedKeepsPitch === prev.speedKeepsPitch || remoteKind()) return;
+  applySpeed(activePlayer(), currentSong(usePlayerStore.getState()));
+});
 
 // ── Crossfade ───────────────────────────────────────────────────────────────
 // When nearing the end of the track, the next one starts on the reserve player
@@ -2354,6 +2446,8 @@ function maybeDetectStall(intendPlay: boolean, buffering: boolean, positionSec: 
 /** Which track the attempts below belong to, and how many it has had. */
 let errorTrackId: string | null = null;
 let errorAttempts = 0;
+/** Both tries spent on `errorTrackId`: its errors are old news from here. */
+let errorGaveUp = false;
 /** Two: enough to ride out a hiccup, few enough not to retry a dead source. */
 const MAX_ERROR_ATTEMPTS = 2;
 
@@ -2387,8 +2481,15 @@ function onPlaybackError(message: string, wasPlaying: boolean): void {
   if (errorTrackId !== song.id) {
     errorTrackId = song.id;
     errorAttempts = 0;
+    errorGaveUp = false;
   }
+  // The failed source stays in the player, and it reports the same error with
+  // every status until something replaces it: twice a second, each one a toast
+  // and a store write. Once the track is given up on, only a press of play is
+  // worth answering again, and that is the one case where `wasPlaying` holds.
+  if (errorGaveUp && !wasPlaying) return;
   if (errorAttempts >= MAX_ERROR_ATTEMPTS) {
+    errorGaveUp = true;
     bump('player · gave up on the track');
     usePlayerStore.setState({ isPlaying: false, isBuffering: false });
     useToast.getState().show(tg("Couldn't play the song"));
@@ -2458,6 +2559,8 @@ function onStatus(status: AudioStatus) {
     const left = endsAt - Date.now();
     if (left <= SLEEP_FADE_MS) startSleepFade(left);
   }
+  // And once armed, it is this heartbeat that moves it along in the background.
+  tickSleepFade();
   // Crossfade fallback: its setInterval freezes in background, but
   // this native heartbeat stays alive, so the volume ramp advances anyway and
   // the incoming song stops staying silent at volume 0 on minimize.
@@ -2477,6 +2580,7 @@ function onStatus(status: AudioStatus) {
   if (status.playing && errorTrackId) {
     errorTrackId = null;
     errorAttempts = 0;
+    errorGaveUp = false;
   }
   const buffering =
     intendPlay && !status.didJustFinish && (status.isBuffering || !status.isLoaded);
@@ -2751,7 +2855,10 @@ function clearQueueLocal() {
 let lastAdoptCheck = 0;
 /** When the app last left the foreground, so a quick trip to another app is
  *  not treated as somebody coming back from a different player. */
-let wentAway = 0;
+// Counted from the start, not from zero: the app comes to the foreground once
+// on opening, and measured against zero that first arrival looked like a
+// return from a very long absence.
+let wentAway = Date.now();
 
 async function adoptNewerServerQueue(): Promise<void> {
   if (!useSettings.getState().syncQueueFromServer) return;
@@ -2843,16 +2950,27 @@ async function serverQueueIsSomeoneElses(auth: SubsonicAuth): Promise<boolean> {
   try {
     const saved = await getPlayQueue(auth);
     theirs = !!saved && saved.entries.length > 0 && !!saved.changedBy && saved.changedBy !== CLIENT_NAME;
-  } catch {
-    // Unreachable, timed out, or a server with no getPlayQueue at all: not an
-    // answer, and refusing to push on a failed request would quietly stop the
-    // queue syncing for those servers. Not cached either, so the next push
-    // asks again rather than inheriting a guess.
-    return false;
+  } catch (e) {
+    // A server with no getPlayQueue at all answers with an error, and that is
+    // not a reason to stop the queue syncing for it: the push goes ahead, as
+    // it did in every version before this one. Unreachable or timed out is a
+    // different thing: the other player's queue may well be there, unread,
+    // and a push that goes ahead over that is the trampling #188 was about.
+    // Playing here pushes without asking, so nothing is lost by waiting. Not
+    // cached either way, so the next push asks again rather than inheriting a
+    // guess.
+    return e instanceof SubsonicRequestError && e.network;
   }
   lastOwnerCheck = { at: Date.now(), theirs };
   return theirs;
 }
+
+/** The paused push in flight, if any: another is not started until it lands. */
+let pausedPush: Promise<void> | null = null;
+
+/** The look at the server's queue that the opening puts off by a few seconds,
+ *  held so that a change of account in those seconds can call it off. */
+let adoptTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Saves the queue on this device and, if there is a session, on the server. */
 function syncQueueNow(force = false, syncRemote = true) {
@@ -2877,16 +2995,23 @@ function syncQueueNow(force = false, syncRemote = true) {
         markPlayedHere();
         markWeOwnServerQueue();
         void savePlayQueue(auth, ids, current.id, positionMs);
-      } else if (playedHere) {
-        // Paused, or on the way to the background. One look before writing.
-        void (async () => {
-          if (await serverQueueIsSomeoneElses(auth)) return;
-          // Playback may have resumed while the server answered, and then the
-          // ids and the second gathered above are already out of date; the
-          // tick that comes with playing will push the current ones.
-          if (usePlayerStore.getState().isPlaying) return;
-          markWeOwnServerQueue();
-          await savePlayQueue(auth, ids, current.id, positionMs);
+      } else if (playedHere && !pausedPush) {
+        // Paused, or on the way to the background. One look before writing,
+        // and one at a time: pausing and then leaving the app is two of these
+        // moments apart, and each was its own look and its own write, in
+        // whatever order the server answered them.
+        pausedPush = (async () => {
+          try {
+            if (await serverQueueIsSomeoneElses(auth)) return;
+            // Playback may have resumed while the server answered, and then
+            // the ids and the second gathered above are already out of date;
+            // the tick that comes with playing will push the current ones.
+            if (usePlayerStore.getState().isPlaying) return;
+            markWeOwnServerQueue();
+            await savePlayQueue(auth, ids, current.id, positionMs);
+          } finally {
+            pausedPush = null;
+          }
         })();
       }
     }
@@ -3023,6 +3148,7 @@ export function initRemoteIntegration() {
         positionSec,
         durationSec: durationSec || song.duration || state.durationSec,
       });
+      scrobbledThisTrack = false;
       onTrackChanged(song);
     },
     onDisconnected: (lastPositionSec) => {
@@ -3664,6 +3790,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         originalQueue: entry.originalQueue,
         shuffle: entry.shuffle,
         queueDealt: entry.queueDealt,
+        radioMode: entry.radioMode,
+        radioSeed: entry.radioSeed,
         queuedCount: 0,
         positionSec: 0,
         durationSec: 0,
@@ -4140,7 +4268,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // the first screens are asking for what they draw (#50). It replaces this
       // one only if it turns out to be newer, and only while nobody has started
       // listening here.
-      setTimeout(() => void adoptNewerServerQueue(), 4000);
+      if (adoptTimer) clearTimeout(adoptTimer);
+      adoptTimer = setTimeout(() => {
+        adoptTimer = null;
+        void adoptNewerServerQueue();
+      }, 4000);
     });
   },
 
@@ -4182,6 +4314,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     clearLockScreen();
     playedHistory = [];
+    // What was still to come for this queue: the lyrics of its next song, the
+    // streams warming for it, and the look at the server's copy of it. Each of
+    // them would otherwise fire on the next account's behalf.
+    if (nextLyricsTimer) {
+      clearTimeout(nextLyricsTimer);
+      nextLyricsTimer = null;
+    }
+    if (adoptTimer) {
+      clearTimeout(adoptTimer);
+      adoptTimer = null;
+    }
+    resetWarmed();
     setStreamOffset(0);
     sourceHasLength = null;
     scrobbledThisTrack = false;
@@ -4194,6 +4338,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     failedSource.clear();
     errorTrackId = null;
     errorAttempts = 0;
+    errorGaveUp = false;
     set({
       queue: [],
       index: 0,

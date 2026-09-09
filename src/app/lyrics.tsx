@@ -6,10 +6,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COVER, serverImageSource, songCoverUrl } from '@/api/data';
+import { Cover } from '@/components/Cover';
 import { lyricsStyles, SyncedLyricsView } from '@/components/LyricsCard';
 import { SeekBar } from '@/components/SeekBar';
 import { useDominantColor } from '@/hooks/useDominantColor';
@@ -26,7 +28,7 @@ export default function LyricsScreen() {
   useTheme();
   const router = useRouter();
   const t = useT();
-  const { width } = useScreenSize();
+  const { width, landscape } = useScreenSize();
   const song = usePlayerStore(currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const durationSec = usePlayerStore((s) => s.durationSec);
@@ -35,6 +37,7 @@ export default function LyricsScreen() {
   const next = usePlayerStore((s) => s.next);
   const { data, isLoading } = useLyrics(song ?? undefined);
   const background = useSettings((s) => s.lyricsBackground);
+  const wordLyrics = useSettings((s) => s.wordLyrics);
   const cover = song ? songCoverUrl(song, COVER.card) : undefined;
   // Only extract the palette when it's actually going to be used.
   const dominant = useDominantColor(background === 'color' ? cover : undefined);
@@ -49,6 +52,15 @@ export default function LyricsScreen() {
   // Inside a full-screen modal iOS reports no top inset, and the close
   // button would sit against the edge.
   const topPad = insets.top > 0 ? insets.top : 12;
+  // On a phone on its side the lyrics have four hundred points of height and
+  // a cover on top of them would take half of it, so the cover goes beside
+  // them instead, on the left, and the lyrics and the controls share the rest
+  // (the player lays itself out the same way, #131). The cover is a square as
+  // big as its column allows, and the column is measured rather than worked
+  // out from the screen: the header and the insets have taken their share
+  // before it is drawn.
+  const [coverBox, setCoverBox] = useState({ width: 0, height: 0 });
+  const coverSize = Math.min(coverBox.width, coverBox.height) - spacing.xl * 2;
 
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
@@ -87,13 +99,35 @@ export default function LyricsScreen() {
         <View style={{ width: 26 }} />
       </View>
 
+      <View style={landscape ? styles.pageColumns : styles.pageStack}>
+      {landscape ? (
+        <View
+          style={styles.coverColumn}
+          onLayout={(e) => setCoverBox(e.nativeEvent.layout)}
+        >
+          {coverSize > 0 ? (
+            /* No `transition`: this only ever draws the song that is playing,
+               and a fade on the way in is a fade over the same picture blurred
+               on the wall behind it. */
+            <Cover uri={cover} size={coverSize} transition={0} />
+          ) : null}
+        </View>
+      ) : null}
+      <View style={styles.pageStack}>
       {/* Lyrics are a column of text: across a tablet a line runs the whole
-          width and the eye loses the next one on the way back (#131). */}
-      <View style={[styles.body, { paddingHorizontal: centredPadding(width, spacing.xl) }]}>
+          width and the eye loses the next one on the way back (#131). Beside
+          the cover the column is already narrow, and the padding is only the
+          page's own. */}
+      <View
+        style={[
+          styles.body,
+          { paddingHorizontal: landscape ? spacing.xl : centredPadding(width, spacing.xl) },
+        ]}
+      >
         {isLoading ? (
           <ActivityIndicator style={{ marginTop: spacing.xxl }} color={colors.text} />
         ) : data?.synced ? (
-          <SyncedLyricsView lines={data.lines} large fadeColor={fadeColor} />
+          <SyncedLyricsView lines={data.lines} large fadeColor={fadeColor} highlightWords={wordLyrics} />
         ) : data ? (
           <ScrollView contentContainerStyle={styles.plainContent} showsVerticalScrollIndicator={false}>
             <Text style={[lyricsStyles.line, lyricsStyles.lineLarge]}>
@@ -140,6 +174,8 @@ export default function LyricsScreen() {
         </View>
       </View>
       </View>
+      </View>
+      </View>
     </View>
   );
 }
@@ -156,6 +192,15 @@ const styles = themed((colors) => ({
     gap: spacing.md,
   },
   titleBox: { flex: 1, alignItems: 'center' },
+  /** The lyrics and the controls, one under the other, as they have always
+   *  been. `minHeight: 0` is what lets a flex child shrink below its content:
+   *  without it the lyrics push the controls off the bottom of a short screen. */
+  pageStack: { flex: 1, minHeight: 0 },
+  /** The same, with the cover in a column of its own beside them (#131). */
+  pageColumns: { flex: 1, minHeight: 0, flexDirection: 'row', alignItems: 'stretch' },
+  /** About two fifths of the width, the way the player splits itself, with the
+   *  cover in the middle of it. */
+  coverColumn: { width: '40%', alignItems: 'center', justifyContent: 'center' },
   title: { color: colors.text, fontSize: fontSize.md, fontWeight: '700' },
   artist: { color: colors.textSecondary, fontSize: fontSize.xs },
   body: { flex: 1 },

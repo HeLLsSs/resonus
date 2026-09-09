@@ -754,6 +754,17 @@ interface SettingsState {
   replayGainPreampDb: number;
   /** Keep screen on while the app is in the foreground. */
   keepScreenAwake: boolean;
+  /**
+   * The player skips the near-silent stretches of the audio, the quiet gaps
+   * inside and between tracks. Android only (media3's own detector).
+   */
+  skipSilence: boolean;
+  /**
+   * A speed other than 1 keeps the song in its own key (media3 stretches
+   * time). Off, the pitch follows the speed the way a turntable's does. On by
+   * default: playing along on an instrument is what the speed is for (#151).
+   */
+  speedKeepsPitch: boolean;
   /** Subtle vibration on key actions (favorite, long-press, drag…). */
   hapticsEnabled: boolean;
   /**
@@ -778,6 +789,8 @@ interface SettingsState {
    * disabled. Defaults to 'local' (local first, LRCLIB as fallback).
    */
   lyricsSource: LyricsSource;
+  /** When the lyrics time their words, the word being sung lights up. */
+  wordLyrics: boolean;
   /** When a downloaded song plays from disk instead of being streamed. */
   preferDownloads: PreferDownloads;
   /** Circular artist photo next to the name on the album screen. */
@@ -974,6 +987,8 @@ interface SettingsState {
   setReplayGain: (value: ReplayGainMode) => void;
   setReplayGainPreampDb: (value: number) => void;
   setKeepScreenAwake: (value: boolean) => void;
+  setSkipSilence: (value: boolean) => void;
+  setSpeedKeepsPitch: (value: boolean) => void;
   setHapticsEnabled: (value: boolean) => void;
   /** Both at once, empty to forget: they are only ever set from a token that
    *  ListenBrainz has just said whose it is. */
@@ -981,6 +996,7 @@ interface SettingsState {
   setLyricsBackground: (value: ScreenBackground) => void;
   setLyricsCardBackground: (value: CardBackground) => void;
   setLyricsSource: (value: LyricsSource) => void;
+  setWordLyrics: (value: boolean) => void;
   setPreferDownloads: (value: PreferDownloads) => void;
   setShowArtistPhoto: (value: boolean) => void;
   setShowDiscHeaders: (value: boolean) => void;
@@ -1104,12 +1120,15 @@ function snapshot(get: () => SettingsState) {
     replayGain: s.replayGain,
     replayGainPreampDb: s.replayGainPreampDb,
     keepScreenAwake: s.keepScreenAwake,
+    skipSilence: s.skipSilence,
+    speedKeepsPitch: s.speedKeepsPitch,
     hapticsEnabled: s.hapticsEnabled,
     listenBrainzToken: s.listenBrainzToken,
     listenBrainzUser: s.listenBrainzUser,
     lyricsBackground: s.lyricsBackground,
     lyricsCardBackground: s.lyricsCardBackground,
     lyricsSource: s.lyricsSource,
+    wordLyrics: s.wordLyrics,
     preferDownloads: s.preferDownloads,
     showArtistPhoto: s.showArtistPhoto,
     showDiscHeaders: s.showDiscHeaders,
@@ -1208,6 +1227,8 @@ const DEFAULTS = {
   replayGain: 'off' as ReplayGainMode,
   replayGainPreampDb: 0,
   keepScreenAwake: false,
+  skipSilence: false,
+  speedKeepsPitch: true,
   hapticsEnabled: false,
   listenBrainzToken: '',
   listenBrainzUser: '',
@@ -1216,6 +1237,7 @@ const DEFAULTS = {
   lyricsBackground: 'cover' as ScreenBackground,
   lyricsCardBackground: 'color' as CardBackground,
   lyricsSource: 'local' as LyricsSource,
+  wordLyrics: true,
   preferDownloads: 'always' as PreferDownloads,
   showArtistPhoto: true,
   showDiscHeaders: true,
@@ -1489,6 +1511,16 @@ export const useSettings = create<SettingsState>((set, get) => ({
     persist(snapshot(get));
   },
 
+  setSkipSilence: (skipSilence) => {
+    set({ skipSilence });
+    persist(snapshot(get));
+  },
+
+  setSpeedKeepsPitch: (speedKeepsPitch) => {
+    set({ speedKeepsPitch });
+    persist(snapshot(get));
+  },
+
   setHapticsEnabled: (hapticsEnabled) => {
     set({ hapticsEnabled });
     persist(snapshot(get));
@@ -1511,6 +1543,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setLyricsSource: (lyricsSource) => {
     set({ lyricsSource });
+    persist(snapshot(get));
+  },
+
+  setWordLyrics: (wordLyrics) => {
+    set({ wordLyrics });
     persist(snapshot(get));
   },
 
@@ -1886,6 +1923,8 @@ export const useSettings = create<SettingsState>((set, get) => ({
           replayGain: ReplayGainMode;
           replayGainPreampDb: number;
           keepScreenAwake: boolean;
+          skipSilence: boolean;
+          speedKeepsPitch: boolean;
           hapticsEnabled: boolean;
           listenBrainzToken?: string;
           listenBrainzUser?: string;
@@ -1893,6 +1932,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           lyricsCardBackground: CardBackground;
           lyricsColorBackground: boolean;
           lyricsSource?: LyricsSource;
+          wordLyrics?: boolean;
           preferDownloads?: PreferDownloads;
           lyricsOnlineFallback?: boolean;
           showArtistPhoto: boolean;
@@ -2081,6 +2121,12 @@ export const useSettings = create<SettingsState>((set, get) => ({
         if (typeof parsed.keepScreenAwake === 'boolean') {
           set({ keepScreenAwake: parsed.keepScreenAwake });
         }
+        if (typeof parsed.skipSilence === 'boolean') {
+          set({ skipSilence: parsed.skipSilence });
+        }
+        if (typeof parsed.speedKeepsPitch === 'boolean') {
+          set({ speedKeepsPitch: parsed.speedKeepsPitch });
+        }
         if (typeof parsed.hapticsEnabled === 'boolean') {
           set({ hapticsEnabled: parsed.hapticsEnabled });
         }
@@ -2121,6 +2167,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         } else if (typeof parsed.lyricsOnlineFallback === 'boolean') {
           // Migrate the old boolean: on = local first with online fallback, off = no online.
           set({ lyricsSource: parsed.lyricsOnlineFallback ? 'local' : 'off' });
+        }
+        if (typeof parsed.wordLyrics === 'boolean') {
+          set({ wordLyrics: parsed.wordLyrics });
         }
         if (
           parsed.preferDownloads === 'always' ||
@@ -2402,8 +2451,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
         applyThemePreference(DEFAULTS.themeMode);
       }
     } finally {
-      // Read or failed, what's in memory is now what this profile gets.
-      set({ hydrated: true });
+      // Read or failed, what's in memory is now what this profile gets. Not
+      // when a newer read has taken over, though: that one is still on its
+      // way, and saying "read" here handed the defaults to whoever waits for
+      // the flag, the battery dialog among them, on every cold start.
+      if (scope.accept(token, key)) set({ hydrated: true });
       // Here rather than where the value is read, so it is also settled for a
       // profile that saved nothing about it: the measuring starts on, to catch
       // the startup it would otherwise miss, and this is where it is told

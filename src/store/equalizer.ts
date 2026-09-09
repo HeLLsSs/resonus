@@ -8,6 +8,12 @@
  *
  * Gains are in millibels (100 mB = 1 dB), which is the unit of
  * android.media.audiofx.Equalizer.
+ *
+ * The same module carries two boosts on the same sessions: a bass boost
+ * (strength 0..1000, as android.media.audiofx.BassBoost counts it) and a volume
+ * boost (a gain in millibels, android.media.audiofx.LoudnessEnhancer). Kept and
+ * restored here alongside the bands, and attached natively to every session the
+ * way the bands are.
  */
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { create } from 'zustand';
@@ -31,6 +37,10 @@ interface EqInfo {
   minLevel?: number;
   maxLevel?: number;
   presets?: string[];
+  /** The device offers a bass boost. */
+  bassBoost?: boolean;
+  /** The device offers a volume boost. */
+  loudness?: boolean;
 }
 
 interface NativeAudioEq {
@@ -42,7 +52,19 @@ interface NativeAudioEq {
   setBandLevel: (band: number, millibels: number) => void;
   usePreset: (preset: number) => number[];
   getBandLevels: () => number[];
+  setBassBoost: (strength: number) => void;
+  getBassBoost: () => number;
+  setLoudness: (gainMb: number) => void;
+  getLoudness: () => number;
 }
+
+/** The framework's own top for the bass boost strength. */
+export const BASS_BOOST_MAX = 1000;
+/**
+ * The top offered for the volume boost, in millibels. The effect goes to 1500,
+ * but past +10 dB nearly everything clips, so the slider stops there.
+ */
+export const LOUDNESS_MAX_MB = 1000;
 
 // Optional: in a build without the module (or iOS) there is simply no equalizer.
 const native = requireOptionalNativeModule<NativeAudioEq>('AudioEq');
@@ -50,6 +72,8 @@ const native = requireOptionalNativeModule<NativeAudioEq>('AudioEq');
 interface Stored {
   enabled: boolean;
   levels: number[];
+  bassBoost?: number;
+  loudness?: number;
 }
 
 interface EqState {
@@ -62,6 +86,12 @@ interface EqState {
   enabled: boolean;
   /** Per-band gain in millibels. */
   levels: number[];
+  bassBoostSupported: boolean;
+  loudnessSupported: boolean;
+  /** Bass boost strength, 0 (off) to `BASS_BOOST_MAX`. */
+  bassBoost: number;
+  /** Volume boost in millibels, 0 (off) to `LOUDNESS_MAX_MB`. */
+  loudness: number;
   hydrate: () => Promise<void>;
   /** Attaches the equalizer to a player's audio session (called by the player). */
   attach: (sessionId: number) => void;
@@ -73,11 +103,25 @@ interface EqState {
   applyPreset: (preset: number) => void;
   /** Resets all bands to 0 dB. */
   reset: () => void;
+  setBassBoost: (strength: number) => void;
+  setLoudness: (gainMb: number) => void;
 }
 
-function persist(s: Pick<EqState, 'enabled' | 'levels'>) {
-  const data: Stored = { enabled: s.enabled, levels: s.levels };
+function persist(s: Pick<EqState, 'enabled' | 'levels' | 'bassBoost' | 'loudness'>) {
+  const data: Stored = {
+    enabled: s.enabled,
+    levels: s.levels,
+    bassBoost: s.bassBoost,
+    loudness: s.loudness,
+  };
   void setItem(KEY, JSON.stringify(data));
+}
+
+/** A whole number inside `[0, max]`, whatever the disk or a finger handed over. */
+function clampBoost(value: unknown, max: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(0, Math.round(value)))
+    : 0;
 }
 
 export const useEqualizer = create<EqState>((set, get) => ({
@@ -88,6 +132,10 @@ export const useEqualizer = create<EqState>((set, get) => ({
   presets: [],
   enabled: false,
   levels: [],
+  bassBoostSupported: false,
+  loudnessSupported: false,
+  bassBoost: 0,
+  loudness: 0,
 
   hydrate: async () => {
     if (!native) return;
@@ -110,6 +158,8 @@ export const useEqualizer = create<EqState>((set, get) => ({
         ? stored.levels
         : flat;
     const enabled = !!stored?.enabled;
+    const bassBoost = info.bassBoost ? clampBoost(stored?.bassBoost, BASS_BOOST_MAX) : 0;
+    const loudness = info.loudness ? clampBoost(stored?.loudness, LOUDNESS_MAX_MB) : 0;
     set({
       supported: true,
       bands: info.bands,
@@ -118,11 +168,17 @@ export const useEqualizer = create<EqState>((set, get) => ({
       presets: info.presets ?? [],
       enabled,
       levels,
+      bassBoostSupported: !!info.bassBoost,
+      loudnessSupported: !!info.loudness,
+      bassBoost,
+      loudness,
     });
     // Dumps saved state to the native effect (already attached sessions, if any,
     // pick it up; future ones receive it on attach).
     native.setBandLevels(levels);
     native.setEnabled(enabled);
+    native.setBassBoost(bassBoost);
+    native.setLoudness(loudness);
   },
 
   attach: (sessionId) => {
@@ -139,7 +195,7 @@ export const useEqualizer = create<EqState>((set, get) => ({
     if (!native) return;
     native.setEnabled(on);
     set({ enabled: on });
-    persist({ enabled: on, levels: get().levels });
+    persist(get());
   },
 
   setBandLevel: (band, millibels) => {
@@ -148,7 +204,7 @@ export const useEqualizer = create<EqState>((set, get) => ({
     const levels = get().levels.slice();
     levels[band] = millibels;
     set({ levels });
-    persist({ enabled: get().enabled, levels });
+    persist(get());
   },
 
   applyPreset: (preset) => {
@@ -157,7 +213,7 @@ export const useEqualizer = create<EqState>((set, get) => ({
     // sliders show what's actually set.
     const levels = native.usePreset(preset);
     set({ levels });
-    persist({ enabled: get().enabled, levels });
+    persist(get());
   },
 
   reset: () => {
@@ -165,6 +221,21 @@ export const useEqualizer = create<EqState>((set, get) => ({
     const levels = get().bands.map(() => 0);
     native.setBandLevels(levels);
     set({ levels });
-    persist({ enabled: get().enabled, levels });
+    persist(get());
+  },
+
+  setBassBoost: (strength) => {
+    if (!native) return;
+    native.setBassBoost(clampBoost(strength, BASS_BOOST_MAX));
+    // What the effect rounded it to, so the slider shows what is actually set.
+    set({ bassBoost: native.getBassBoost() });
+    persist(get());
+  },
+
+  setLoudness: (gainMb) => {
+    if (!native) return;
+    native.setLoudness(clampBoost(gainMb, LOUDNESS_MAX_MB));
+    set({ loudness: native.getLoudness() });
+    persist(get());
   },
 }));

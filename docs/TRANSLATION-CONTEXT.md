@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 959 of them.
+Every string the app can show, under the screen it shows up on. 969 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -504,6 +504,7 @@ you are actually typing into, which is easier than reading it here.
 | `Devices` | The audio output devices to cast to |
 | `Explicit` | A value of `Content`: the recording carries a parental advisory (strong language). Also read out for the E badge next to a title |
 | `Forward {n} seconds` | Read out by the screen reader for the seek button. `{n}` is how many seconds it is set to |
+| `Keep pitch` |  |
 | `Next` | Player control: the next track (accessibility label) |
 | `No devices found` |  |
 | `NOW PLAYING` | Small label above the cover, in the same place and style as `PLAYING FROM`, when there is nothing to name |
@@ -634,6 +635,7 @@ you are actually typing into, which is easier than reading it here.
 | `Artists` | A heading over a list of them, never a count |
 | `Clear all` | Throw away the whole list: the history, the queue, or what you searched for |
 | `Couldn't reach the server. Check your connection.` | Error on Home when the server does not answer at all |
+| `In the lyrics` |  |
 | `Radio` | Internet radio stations. Most languages keep the word |
 | `Recent searches` | What was searched for before, kept on the phone |
 | `Song` | In search results, the little word under a result saying what kind of thing it is |
@@ -834,11 +836,15 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `Apply the equalizer to the app audio.` | The line under “Equalizer”, explaining it |
 | `Bands` | The equalizer's frequency sliders |
+| `Bass boost` |  |
+| `Boost` |  |
+| `Can distort or clip; the system volume stays the limit` | The line under “Volume boost”, explaining it |
 | `Custom` | Settings › Equalizer, the first option of the preset list: none of the presets below it, the bands left wherever you dragged them. The only place this word is used |
 | `Equalizer` |  |
 | `Preset` | An equalizer preset. Not a bitrate |
 | `Reset bands` | Put the equalizer's frequency sliders back to flat |
 | `This device does not offer an equalizer.` |  |
+| `Volume boost` |  |
 
 ## Settings › Explore sections
 
@@ -989,7 +995,6 @@ you are actually typing into, which is easier than reading it here.
 | `Language` |  |
 | `Navigation` | Section header: how you move around the app |
 | `Navigation bar` | Settings screen: which tabs are on the bar at the bottom, and in what order |
-| `Off` | A setting value meaning disabled (crossfade, normalization…) |
 | `Open the app on` | Which tab the app opens on, and comes back to after a while away |
 | `Quick grid` | The grid of shortcut tiles on Home |
 | `Show, hide and reorder the album rows on Home.` | The line under “Home sections”, explaining it |
@@ -1020,6 +1025,7 @@ you are actually typing into, which is easier than reading it here.
 | `Codec to transcode to. At “Original” quality nothing is transcoded.` |  |
 | `Codec to transcode to. Your server must support it.` |  |
 | `Crossfade` | One song fading into the next |
+| `Cuts the quiet gaps inside and between tracks` | The line under “Skip silence”, explaining it |
 | `Equalizer` |  |
 | `Evens out loudness between songs using your files' ReplayGain tags.` | The line under “Normalize volume”, explaining it |
 | `Keep playing similar songs when your queue ends. A mix you start yourself always does, even with this off.` | The line under “Autoplay”, explaining it |
@@ -1029,7 +1035,6 @@ you are actually typing into, which is easier than reading it here.
 | `No` | A setting value meaning none or zero, not the answer to a question: no crossfade, no seek buttons |
 | `Normalize volume` |  |
 | `Not used` | Replaces the codec's value when that network's quality is `Original`. Nothing is transcoded then, so the codec setting has nothing to do and the row is greyed out |
-| `Off` | A setting value meaning disabled (crossfade, normalization…) |
 | `On mobile data only` | A value of when a downloaded song is played from the file instead of streamed |
 | `Only if it is the original file` | One of the values of “Play downloaded songs from the phone” |
 | `Original` | Quality option: the file exactly as it is on the server, nothing transcoded. It also appears in quotes inside two descriptions on those screens, so use the same wording in all three |
@@ -1041,6 +1046,7 @@ you are actually typing into, which is easier than reading it here.
 | `Quality & playback` |  |
 | `Request the next few tracks ahead of time so they start instantly. Helps with proxy servers and slow sources that fetch each track on demand.` | The line under “Preload upcoming tracks”, explaining it |
 | `Scrobbling` | Reporting a song as played, to the user's own server and from there to Last.fm or ListenBrainz. The title of its own screen and the row that opens it. The word comes from Last.fm and most languages keep it; use whatever those services call it in yours if they do |
+| `Skip silence` |  |
 | `Songs blend into each other when one ends.` | The line under “Crossfade”, explaining it |
 | `Sound` | Section header: normalization and the pre-amp |
 | `Streaming` | Section header: everything about music coming from the server as it plays |
@@ -1072,6 +1078,7 @@ you are actually typing into, which is easier than reading it here.
 | `Elements` | Which player elements to show |
 | `Fit cover art` | Show the whole cover even if it is not square, instead of cropping it to fill |
 | `Go to album` | Leave this sheet and open the album the song is on |
+| `Highlight words` |  |
 | `Jump back or forward next to the play button.` | The line under “Skip buttons”, explaining it |
 | `Keep paused when skipping` |  |
 | `Keep the tracks before the current one in the queue, dimmed. Tap one to go back.` |  |
@@ -1121,6 +1128,7 @@ you are actually typing into, which is easier than reading it here.
 | `What fills the space behind the player.` | The line under “Player background”, explaining it |
 | `What tapping the cover art in the player does.` | The line under “On cover tap”, explaining it |
 | `What the previous button does partway through a song.` | The line under “Previous button”, explaining it |
+| `When the lyrics carry word timings, the word being sung lights up.` | The line under “Highlight words”, explaining it |
 | `Where to get lyrics from. Online search uses LRCLIB (sends the artist and title).` |  |
 
 ## Settings › Quick grid
@@ -1174,7 +1182,6 @@ you are actually typing into, which is easier than reading it here.
 | `Loves are sent by the app, not the server, so they need the token above.` |  |
 | `None of the loved tracks is in this library.` |  |
 | `Nothing is loved on ListenBrainz yet.` |  |
-| `Off` | A setting value meaning disabled (crossfade, normalization…) |
 | `Opens your ListenBrainz settings; copy the token shown there.` | The line under “Get your user token”, explaining it |
 | `Part of the song` | How much of a song must have played before it counts, as a percentage. One of the two scrobble rules, and it can be `Off` |
 | `Restore defaults` | Button at the end of the `Scrobbling` screen, putting both rules back to what they came as |
@@ -1392,6 +1399,7 @@ you are actually typing into, which is easier than reading it here.
 | `Not available offline` | This one is not downloaded, so it cannot play without a connection |
 | `Nothing here is downloaded` | Toast when playing something that is not downloaded, offline |
 | `Nothing to shuffle yet` | Empty state: there is nothing here to play in random order |
+| `Off` | A setting value meaning disabled (crossfade, normalization…) |
 | `Offline` | The toast shown when the app falls into offline mode by itself, and the badge that says it is in it |
 | `Password` | The password field, on the login screen and wherever the server asks again |
 | `Pause` | Read out by the screen reader for the pause button. A verb |

@@ -788,6 +788,7 @@
   "Couldn't load your library.": "Impossible de charger ta bibliothèque.",
   "Public": "Publiques",
   "Something went wrong": "Une erreur s'est produite",
+  "In the lyrics": "Dans les paroles",
   "Download activity": "Activité des téléchargements",
   "{n} downloading · {m} waiting": "{n} en cours · {m} en attente",
   "{n} waiting": "{n} en attente",
@@ -954,6 +955,13 @@
   "Only the first {n} entries were read": "Seules les {n} premières entrées ont été lues",
   "Not found on the server": "Introuvables sur le serveur",
   "Open": "Ouvrir",
+  "Skip silence": "Sauter les silences",
+  "Cuts the quiet gaps inside and between tracks": "Coupe les blancs à l'intérieur des morceaux et entre eux",
+  "Keep pitch": "Garder la tonalité",
+  "Boost": "Renfort",
+  "Bass boost": "Renfort des basses",
+  "Volume boost": "Renfort du volume",
+  "Can distort or clip; the system volume stays the limit": "Peut distordre ou saturer ; le volume du système reste la limite",
   "Include tokens and proxy headers": "Inclure les jetons et les en-têtes de proxy",
   "On, the ListenBrainz token and the custom headers of each profile go into the file, a proxy secret set as a header among them. Off, both are left out and have to be entered again.": "Activé, le jeton ListenBrainz et les en-têtes personnalisés de chaque profil vont dans le fichier, y compris un secret de proxy défini comme en-tête. Désactivé, les deux sont omis et devront être saisis à nouveau.",
   "Passwords never leave the phone: a restored profile asks you to sign in again. Headers and tokens go only with the switch above.": "Les mots de passe ne quittent jamais le téléphone : un profil restauré demande de se reconnecter. Les en-têtes et les jetons ne partent qu'avec l'interrupteur ci-dessus.",
@@ -966,5 +974,7 @@
   "None of these songs can be saved to a playlist": "Aucun de ces titres ne peut être enregistré dans une playlist",
   "A playlist called “{name}” already exists. Replace its songs?": "Une playlist nommée « {name} » existe déjà. Remplacer ses titres ?",
   "Replace": "Remplacer",
-  "That file is too big to be a playlist.": "Ce fichier est trop gros pour être une playlist."
+  "That file is too big to be a playlist.": "Ce fichier est trop gros pour être une playlist.",
+  "Highlight words": "Surligner les mots",
+  "When the lyrics carry word timings, the word being sung lights up.": "Quand les paroles portent le minutage des mots, le mot chanté s'allume."
 }
