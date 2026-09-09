@@ -892,10 +892,10 @@ export async function reorderPlaylist(
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString(),
   });
-  if (!res.ok) throw new Error(`Error de red (${res.status})`);
+  if (!res.ok) throw new Error(`Network error (${res.status})`);
   const json = await res.json();
   const sub = json['subsonic-response'];
-  if (sub?.status === 'failed') throw new Error(sub.error?.message ?? 'Error de Subsonic');
+  if (sub?.status === 'failed') throw new Error(sub.error?.message ?? 'Subsonic error');
 }
 
 /** Removes a song from a playlist by its index (position in the list). */

@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 697 of them.
+Every string the app can show, under the screen it shows up on. 698 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -91,6 +91,7 @@ you are actually typing into, which is easier than reading it here.
 | `Sleep timer ({n} min left)` | The menu row while it is counting down. `{n}` is minutes still to go |
 | `Sleep timer (end of song)` | The same row when it is set to stop at the end of this song |
 | `Sleep timer off` | The toast that says it was turned off |
+| `Something went wrong` |  |
 | `Song information` | The menu action and the sheet's title: what is known about the track |
 | `Start mix` | Start an auto-generated radio mix from this song |
 | `The link expires in` | Heading over the choices below. They are spans from the moment the link is made, not times of day |

@@ -69,6 +69,13 @@ for (const key of enKeys) {
   if (!sites.has(key)) fail(`en.json has "${key}", which nothing in the app uses`);
 }
 
+// And the other way round: a string the code asks for that en.json does not
+// hold is never offered to a translator, so every other language shows it in
+// English without anyone noticing.
+for (const key of sites.keys()) {
+  if (!(baseKey(key) in en)) fail(`the app uses "${key}", which is not in en.json`);
+}
+
 // And the page somebody reads on GitHub says what the code says.
 try {
   execFileSync('node', [join(ROOT, 'scripts/i18n-docs.mjs'), '--check'], { stdio: 'pipe' });

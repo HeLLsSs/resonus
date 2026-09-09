@@ -694,5 +694,16 @@
   "Navigation bar": "Панель навігації",
   "Which tabs are at the bottom, and in what order.": "Які вкладки розташовані внизу та в якому порядку.",
   "Which icons are at the top of Home, and in what order.": "Які іконки розташовані вгорі головного екрана та в якому порядку.",
-  "Always shown": "Завжди показувати"
+  "Always shown": "Завжди показувати",
+  "Animated cover background": "Анімована обкладинка як фон",
+  "An animated cover fills the player behind the controls, with a still copy of it beside the title.": "Анімована обкладинка заповнює плеєр позаду елементів керування, а її нерухома копія показується поруч із назвою.",
+  "Explore sections": "Розділи вкладки «Огляд»",
+  "In what order the sections of Explore are.": "У якому порядку розташовані розділи вкладки «Огляд».",
+  "Drag to reorder.": "Перетягуйте, щоб змінити порядок.",
+  "Yours": "Ваші",
+  "Nothing here yet": "Тут ще нічого немає",
+  "Your playlists and what you star show up here.": "Тут з'являться ваші плейлисти й те, що ви позначили зірочкою.",
+  "Couldn't load your library.": "Не вдалося завантажити вашу бібліотеку.",
+  "Public": "Публічні",
+  "Something went wrong": "Щось пішло не так"
 }

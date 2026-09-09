@@ -56,10 +56,10 @@ export function useT(): TFunction {
  * languages like Russian (one/few/many).
  */
 const PLURALS: Record<string, Partial<Record<Language, string[]>>> = {
-  song: { es: ['canción', 'canciones'], en: ['song', 'songs'], de: ['Titel', 'Titel'], ca: ['cançó', 'cançons'], ru: ['композиция', 'композиции', 'композиций'], it: ['canzone', 'canzoni'], uk: ['пісня', 'пісні', 'пісень'] },
-  album: { es: ['álbum', 'álbumes'], en: ['album', 'albums'], de: ['Album', 'Alben'], ca: ['àlbum', 'àlbums'], ru: ['альбом', 'альбома', 'альбомов'], it: ['album', 'album'], uk: ['альбом', 'альбоми', 'альбомів'] },
-  playlist: { es: ['lista', 'listas'], en: ['playlist', 'playlists'], de: ['Playlist', 'Playlists'], ca: ['llista', 'llistes'], ru: ['плейлист', 'плейлиста', 'плейлистов'], it: ['playlist', 'playlist'], uk: ['плейлист', 'плейлисти', 'плейлистів'] },
-  artist: { es: ['artista', 'artistas'], en: ['artist', 'artists'], ca: ['artista', 'artistes'], uk: ['виконавець', 'виконавці', 'виконавців'] },
+  song: { es: ['canción', 'canciones'], en: ['song', 'songs'], de: ['Titel', 'Titel'], ca: ['cançó', 'cançons'], ru: ['композиция', 'композиции', 'композиций'], it: ['canzone', 'canzoni'], uk: ['пісня', 'пісні', 'пісень'], fr: ['titre', 'titres'], 'zh-CN': ['首歌曲', '首歌曲'] },
+  album: { es: ['álbum', 'álbumes'], en: ['album', 'albums'], de: ['Album', 'Alben'], ca: ['àlbum', 'àlbums'], ru: ['альбом', 'альбома', 'альбомов'], it: ['album', 'album'], uk: ['альбом', 'альбоми', 'альбомів'], fr: ['album', 'albums'], 'zh-CN': ['张专辑', '张专辑'] },
+  playlist: { es: ['lista', 'listas'], en: ['playlist', 'playlists'], de: ['Playlist', 'Playlists'], ca: ['llista', 'llistes'], ru: ['плейлист', 'плейлиста', 'плейлистов'], it: ['playlist', 'playlist'], uk: ['плейлист', 'плейлисти', 'плейлистів'], fr: ['playlist', 'playlists'], 'zh-CN': ['个播放列表', '个播放列表'] },
+  artist: { es: ['artista', 'artistas'], en: ['artist', 'artists'], de: ['Künstler', 'Künstler'], ca: ['artista', 'artistes'], ru: ['исполнитель', 'исполнителя', 'исполнителей'], it: ['artista', 'artisti'], uk: ['виконавець', 'виконавці', 'виконавців'], fr: ['artiste', 'artistes'], 'zh-CN': ['位艺术家', '位艺术家'] },
 };
 
 /**
@@ -86,6 +86,9 @@ const PLURAL_RULE: Partial<Record<Language, (n: number) => number>> = {
     if (d >= 2 && d <= 4 && (c < 12 || c > 14)) return 1;
     return 2;
   },
+  // French (CLDR): 2 forms [one, other], but unlike English the singular
+  // covers 0 as well: "0 titre", "1 titre", "2 titres".
+  fr: (n) => (n <= 1 ? 0 : 1),
 };
 
 function pluralIndex(lang: Language, n: number): number {
