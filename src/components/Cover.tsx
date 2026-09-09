@@ -4,7 +4,7 @@ import { Image, type ImageContentFit, type ImageStyle } from 'expo-image';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { AppState, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { CACHED_COVER, COVER } from '@/api/data';
+import { CACHED_COVER, COVER, serverImageSource } from '@/api/data';
 import { bump } from '@/lib/perfLog';
 import { colors, radius } from '@/theme';
 
@@ -304,11 +304,15 @@ export function Cover({
 }: Props) {
   // If the image fails to load (e.g. offline without cache or download), we fall
   // back to the placeholder instead of leaving a gap. Reset on `uri` change
-  // because lists recycle the same instance with a different song.
+  // because lists recycle the same instance with a different song: while
+  // rendering, so the new song never gets a frame of the old one's failure.
   const [failed, setFailed] = useState(false);
-  useEffect(() => {
+  const [failedFor, setFailedFor] = useState(uri);
+  if (failedFor !== uri) {
+    setFailedFor(uri);
     setFailed(false);
-  }, [uri]);
+  }
+
   // Offline, a cover that is not downloaded arrives marked (see `CACHED_COVER`
   // in the data layer): it may be shown, but only if it is already in the image
   // cache from when it was seen online, and never fetched. This is the only
@@ -372,7 +376,7 @@ export function Cover({
     <Image
       key={redraw.nonce}
       ref={imageRef}
-      source={{ uri: shown }}
+      source={serverImageSource(shown)}
       style={[{ width: size, height: size, borderRadius }, style as StyleProp<ImageStyle>]}
       contentFit={contentFit}
       transition={transition}

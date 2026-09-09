@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 852 of them.
+Every string the app can show, under the screen it shows up on. 959 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -437,19 +437,21 @@ you are actually typing into, which is easier than reading it here.
 | `Choose the server type` | The line above the list of server kinds |
 | `Couldn't sign in` | Error when we do not know why it failed |
 | `Couldn't sign in; check the account` | Error when the server answered and refused the credentials |
+| `Custom headers` |  |
 | `Its downloads and its offline copy of the library will be deleted from this device.` | The line under that title |
 | `Language` |  |
 | `Listen to music stored on your device, without a server. Choose where from:` | The line under `Music on your device`, before the two ways of finding it |
 | `Local profile` | The on-device profile, with no server account. Its library screen is `Local music` |
 | `Media server` | The type subtitle under Jellyfin |
 | `Music on your device` | Signing in to nothing at all and playing the phone's own files |
+| `Not a header line: {line}` |  |
 | `Only the music in the folder you choose.` | The line under `Choose a folder (recommended)` |
-| `Password` | The password field, on the login screen and wherever the server asks again |
 | `Plain-text password authentication` |  |
 | `Remove profile?` | Dialog title: take a saved account off this phone |
 | `Saved profiles` | The accounts already signed in to, to pick one |
 | `Scan the whole phone` | The other way: look everywhere for audio files |
 | `Sends the password directly instead of a salted token. Only enable it if your server sits behind a reverse proxy or SSO that requires it.` |  |
+| `Sent with every request to this server. One per line, as Name: value.` |  |
 | `Sign in` | The button that signs in. A verb |
 | `Subsonic server` | The type subtitle under Navidrome's logo, the same kind of line as `Media server` |
 | `Subsonic-compatible` | The subtitle under OpenSubsonic / Ampache |
@@ -546,7 +548,6 @@ you are actually typing into, which is easier than reading it here.
 | `Edit playlist` | Menu action, and the title of the sheet it opens |
 | `Export as M3U` |  |
 | `Name` | The Name field when editing a playlist or a station |
-| `Password` | The password field, on the login screen and wherever the server asks again |
 | `Playlist` | A list saved on the server. Not the queue |
 | `Playlist deleted` | Toast, with an undo button |
 | `Playlist updated` | Toast after saving a change |
@@ -612,7 +613,6 @@ you are actually typing into, which is easier than reading it here.
 | `Find a station` | The search box's placeholder on the radio screen |
 | `Name` | The Name field when editing a playlist or a station |
 | `No radio stations` | Empty state heading |
-| `Password` | The password field, on the login screen and wherever the server asks again |
 | `Pin to top` | Keep this at the top of its list, above everything else. `Unpin` undoes it |
 | `Radio` | Internet radio stations. Most languages keep the word |
 | `Remove “{name}” from your server?` | Dialog title: stations live on the server, so this deletes it for everybody |
@@ -673,6 +673,85 @@ you are actually typing into, which is easier than reading it here.
 | `What's new` | Opens what changed in this version |
 | `You're on the latest version` | Answer when that check finds nothing newer |
 | `Your preferences will go back to their defaults. Your language stays.` | The line under that dialog |
+
+## Settings › Account
+
+| String | What it is |
+| --- | --- |
+| `{count} visits` |  |
+| `1 visit` |  |
+| `A local profile has no account: sign in to a server to see one.` |  |
+| `Account` |  |
+| `Change password` |  |
+| `Changing the password needs the server: come back online first.` |  |
+| `Changing…` |  |
+| `Confirm new password` |  |
+| `Couldn't change the password` |  |
+| `Couldn't delete the link` |  |
+| `Couldn't load the share links.` |  |
+| `Current password` |  |
+| `Delete share link` |  |
+| `E-mail` |  |
+| `expired {date}` |  |
+| `expires {date}` |  |
+| `Link deleted` |  |
+| `never expires` |  |
+| `New password` |  |
+| `Nothing shared yet. Share a song, an album or a playlist and it shows up here.` |  |
+| `Password changed` |  |
+| `Server` |  |
+| `Share` | Make a link on the server that others can open. Getting the file itself out is `Export` |
+| `Share links` |  |
+| `Share links live on the server: come back online to see them.` |  |
+| `Sharing is turned off on this server, or not allowed for this account.` |  |
+| `Sign in to this profile again to change the password from here.` |  |
+| `The current password is wrong` |  |
+| `The link stops working for everyone who has it.` |  |
+| `The new passwords don't match` |  |
+| `This server doesn't let you edit your own account` |  |
+| `Username` | The username field |
+| `Your password is changed on the server, not from here.` |  |
+
+## Settings › Backup
+
+| String | What it is |
+| --- | --- |
+| `Already here` |  |
+| `App version` |  |
+| `Backup & restore` |  |
+| `Backup restored` |  |
+| `Couldn't read the file` |  |
+| `Couldn't write the backup` |  |
+| `Created` |  |
+| `Entries skipped as unreadable` |  |
+| `Export a backup` |  |
+| `In this file` |  |
+| `Include tokens and proxy headers` |  |
+| `New` |  |
+| `On, the ListenBrainz token and the custom headers of each profile go into the file, a proxy secret set as a header among them. Off, both are left out and have to be entered again.` |  |
+| `Optional. Without one the file is saved as plain JSON: keep it somewhere private.` |  |
+| `Passphrase` |  |
+| `Passwords never leave the phone: a restored profile asks you to sign in again. Headers and tokens go only with the switch above.` |  |
+| `Profiles` |  |
+| `Profiles added` |  |
+| `Profiles already on this phone` |  |
+| `Profiles already on this phone are left as they are: a file can only add new ones. Settings in the file replace the ones here. After restoring, sign in to each new profile from the profile list.` |  |
+| `Restore` | Restore settings to their defaults |
+| `Restore from a file` |  |
+| `Restore this backup` |  |
+| `Restored` |  |
+| `Restoring…` |  |
+| `Settings entries written` |  |
+| `Sharing is not available on this device` |  |
+| `That file is not a backup` |  |
+| `The file is encrypted with it; you will need it to restore.` |  |
+| `The new profiles have no password yet: sign in to each one from the profile list.` |  |
+| `This backup is encrypted.` | The line under “Passphrase”, explaining it |
+| `This backup was made by a newer version of the app` |  |
+| `Unlock this backup` |  |
+| `Working…` |  |
+| `Wrong passphrase` |  |
+| `Your profiles and every setting, pin and smart playlist kept under them, as one file. Downloads, play history and listening stats stay on this device.` |  |
 
 ## Settings › Diagnostics
 
@@ -1062,12 +1141,52 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `{songs} added to favorites` |  |
+| `A favorite here is a love there, and taking it off takes the love off. Favorites made offline stay here.` |  |
+| `Accounts` |  |
+| `Checking…` |  |
+| `Couldn't import loved tracks` |  |
+| `Couldn't link ListenBrainz` |  |
+| `Couldn't reach ListenBrainz` |  |
+| `Couldn't unlink Last.fm` |  |
+| `Couldn't unlink ListenBrainz` |  |
+| `Every listen counted here is sent by the server.` | The line under “Linked”, explaining it |
+| `Every loved track in this library is already a favorite.` |  |
+| `Every track loved on ListenBrainz that is in this library becomes a favorite.` | The line under “Syncing loves as {name}”, explaining it |
+| `Forget token` |  |
+| `Get your user token` |  |
 | `How far into a song it counts as played. Whichever of the two comes first.` | At the top of the `Scrobbling` screen, over the two rows below it |
+| `Import loved tracks` |  |
+| `Importing…` |  |
+| `Last.fm` |  |
+| `Last.fm asks you to allow it in the browser, then sends you back to the server.` | The line under “Link Last.fm”, explaining it |
+| `Link Last.fm` |  |
+| `Link ListenBrainz` |  |
+| `Linked` |  |
+| `Linked as {name}` |  |
+| `Linking an account needs the server: come back online first.` |  |
+| `Linking…` |  |
+| `ListenBrainz` |  |
+| `ListenBrainz does not know this token.` |  |
+| `Listens go to your server, which is where ListenBrainz and Last.fm are set up.` |  |
+| `Loved tracks on ListenBrainz` |  |
+| `Loves are sent by the app, not the server, and the server keeps its token to itself: paste the same one here once more.` |  |
+| `Loves are sent by the app, not the server, so they need the token above.` |  |
+| `None of the loved tracks is in this library.` |  |
+| `Nothing is loved on ListenBrainz yet.` |  |
 | `Off` | A setting value meaning disabled (crossfade, normalization…) |
+| `Opens your ListenBrainz settings; copy the token shown there.` | The line under “Get your user token”, explaining it |
 | `Part of the song` | How much of a song must have played before it counts, as a percentage. One of the two scrobble rules, and it can be `Off` |
 | `Restore defaults` | Button at the end of the `Scrobbling` screen, putting both rules back to what they came as |
 | `Scrobbling` | Reporting a song as played, to the user's own server and from there to Last.fm or ListenBrainz. The title of its own screen and the row that opens it. The word comes from Last.fm and most languages keep it; use whatever those services call it in yours if they do |
+| `Sign in to this profile again to link ListenBrainz or Last.fm from here.` |  |
+| `Syncing loves as {name}` |  |
+| `The server has no Last.fm API key; its operator sets one up.` |  |
 | `Time played` | How long a song must have played before it counts, as a time. The other scrobble rule, and it can be `Off` too. Whichever of the two comes first is the one that counts |
+| `Turned off on this server.` |  |
+| `Unlink` |  |
+| `Use for loved tracks` |  |
+| `User token` |  |
 | `With both off nothing is reported, not even to your own server.` | Shown only when both scrobble rules are `Off`, since that also stops the play counts on the user's own server |
 
 ## Settings › Song lists
@@ -1274,6 +1393,7 @@ you are actually typing into, which is easier than reading it here.
 | `Nothing here is downloaded` | Toast when playing something that is not downloaded, offline |
 | `Nothing to shuffle yet` | Empty state: there is nothing here to play in random order |
 | `Offline` | The toast shown when the app falls into offline mode by itself, and the badge that says it is in it |
+| `Password` | The password field, on the login screen and wherever the server asks again |
 | `Pause` | Read out by the screen reader for the pause button. A verb |
 | `Play` | Read out by the screen reader for the play button. A verb |
 | `Play next` | Action: put this song right after the one playing, without clearing the rest |

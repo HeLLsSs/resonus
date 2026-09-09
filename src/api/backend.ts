@@ -18,7 +18,7 @@ import {
   type YearRange,
 } from './subsonic';
 
-export { COVER, normalizeUrl, SubsonicRequestError } from './subsonic';
+export { authHeaders, COVER, normalizeUrl, parseHeaderLines, SubsonicRequestError } from './subsonic';
 export type {
   Album,
   AlbumListType,
@@ -38,6 +38,7 @@ export type {
   SavedQueue,
   ScanStatus,
   SearchResult,
+  Share,
   Song,
   SongListSort, SongLyrics, SortDirection, Starred, StarType, SubsonicAuth, YearRange
 } from './subsonic';
@@ -53,9 +54,10 @@ export function makeAuth(
   password: string,
   serverType?: string,
   plainAuth?: boolean,
+  headers?: Record<string, string>,
 ): Promise<SubsonicAuth> {
-  if (serverType === 'jellyfin') return Jellyfin.makeAuth(serverUrl, username, password);
-  return Subsonic.makeAuth(serverUrl, username, password, serverType, plainAuth);
+  if (serverType === 'jellyfin') return Jellyfin.makeAuth(serverUrl, username, password, headers);
+  return Subsonic.makeAuth(serverUrl, username, password, serverType, plainAuth, headers);
 }
 
 export const ping = (auth: SubsonicAuth) => api(auth).ping(auth);
@@ -271,7 +273,13 @@ export const reportPlayback = (
     ? Jellyfin.reportPlayback(auth, id, state, positionSec)
     : Subsonic.reportPlayback(auth, id, state, positionSec);
 
-// Bookmarks are Subsonic's. Jellyfin keeps a resume position of its own
+// Share links: Subsonic protocol only (Jellyfin has no such thing; the UI
+// asks `useCanShare` before drawing anything), so they delegate directly.
+export const getShares = (auth: SubsonicAuth) => Subsonic.getShares(auth);
+
+export const deleteShare = (auth: SubsonicAuth, id: string) => Subsonic.deleteShare(auth, id);
+
+// Bookmarks are Subsonic's too. Jellyfin keeps a resume position of its own
 // per user, but nothing here reads it yet, so a Jellyfin account has none
 // and saving one is a no-op rather than a request it cannot answer.
 export const getBookmarks = (auth: SubsonicAuth): Promise<Bookmark[]> =>

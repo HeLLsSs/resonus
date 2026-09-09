@@ -101,9 +101,14 @@ export default function SettingsScreen() {
     // a ping, which is one of the two requests offline mode lets through. A
     // local profile has no server, so there is nothing for it here.
     ...(auth ? [{ key: 'network', title: 'Network', icon: 'git-network-outline' as const }] : []),
+    ...(auth ? [{ key: 'account', title: 'Account', icon: 'person-circle-outline' as const }] : []),
+    // Scrobbling is also reachable from Quality & playback, where the thresholds
+    // live; the accounts to link are what people come looking for.
+    ...(auth ? [{ key: 'scrobbling', title: 'Scrobbling', icon: 'radio-outline' as const }] : []),
     // Theme lives inside Appearance (row with chevron, like Language).
     { key: 'personalization', title: 'Appearance', icon: 'color-palette-outline' as const },
     { key: 'about', title: 'About::app', icon: 'information-circle-outline' as const },
+    { key: 'backup', title: 'Backup & restore', icon: 'archive-outline' as const },
   ];
 
   return (

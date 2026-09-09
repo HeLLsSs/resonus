@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CACHED_COVER, COVER, coverArtUrl, getArtistInfo } from '@/api/data';
+import { CACHED_COVER, COVER, coverArtUrl, getArtistInfo, serverImageSource } from '@/api/data';
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
 import { currentSong, usePlayerStore } from '@/store/player';
@@ -58,7 +58,7 @@ export function ArtistPlayerCard() {
       <Pressable accessibilityRole="button" onPress={() => router.push(`/artist/${artistId}`)}>
         <View style={styles.photo}>
           {imageUri ? (
-            <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <Image source={serverImageSource(imageUri)} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : null}
           <Text style={styles.label}>{t('About the artist')}</Text>
         </View>

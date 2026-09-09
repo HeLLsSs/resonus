@@ -26,6 +26,7 @@ import { useOfflineQueue, type PlayOp, type QueuePlaylist } from '@/store/offlin
 import { usePlayHistory } from '@/store/playHistory';
 import { isManualOffline } from './netGate';
 import { getLocalLyrics, getOnlineLyrics } from '@/lib/localLyrics';
+import { setFeedback } from '@/lib/listenBrainz';
 import { useSettings, type LyricsSource } from '@/store/settings';
 import * as Navidrome from './navidrome';
 import * as Subsonic from './backend';
@@ -159,8 +160,39 @@ async function currentPlaylistSongIds(id: string): Promise<string[]> {
   return (d?.songs ?? []).map((s) => s.id);
 }
 
-export type { Album, AlbumListType, Artist, ArtistInfo, Bookmark, FolderContents, FolderEntry, Genre, MusicFolder, NowPlayingEntry, Playlist, RadioStation, SearchResult, Song, StarType, Starred, SubsonicAuth, YearRange } from './subsonic';
+export type { Album, AlbumListType, Artist, ArtistInfo, Bookmark, FolderContents, FolderEntry, Genre, MusicFolder, NowPlayingEntry, Playlist, RadioStation, SearchResult, Share, Song, StarType, Starred, SubsonicAuth, YearRange } from './subsonic';
 export { COVER, normalizeUrl } from './subsonic';
+
+/**
+ * Is this URL the signed-in server's? Any of the profile's addresses counts,
+ * since a cover URL built under one of them may still be on screen after the
+ * network switched to another. The slash after the base is what keeps
+ * `https://music.example` from vouching for `https://music.example.evil`.
+ */
+function isServerUrl(url: string): boolean {
+  const a = useAuthStore.getState().auth;
+  if (!a) return false;
+  return (a.urls ?? [a.serverUrl]).some((base) => url.startsWith(`${base}/`));
+}
+
+/**
+ * An image source for `expo-image` (or React Native's `Image`), with the
+ * profile's extra headers on it when the picture comes from the server.
+ *
+ * Every picture the app shows goes through here so a server behind an
+ * authenticating proxy shows its covers. The headers stay off anything else:
+ * a `file://` copy, a cover marked cache-only (see `CACHED_COVER`, which is
+ * not a URL and never fetched), an artist photo the server pointed at on
+ * some other site, and a station's own logo. Headers meant for one host
+ * must not be sent to another.
+ */
+export function serverImageSource(
+  uri: string | undefined,
+): { uri?: string; headers?: Record<string, string> } {
+  if (!uri || !/^https?:\/\//i.test(uri) || !isServerUrl(uri)) return { uri };
+  const headers = Subsonic.authHeaders(auth());
+  return Object.keys(headers).length > 0 ? { uri, headers } : { uri };
+}
 
 /**
  * Marks a cover that may only be shown if it is already in the image cache.
@@ -1299,7 +1331,56 @@ async function mirrorStarred(): Promise<Subsonic.Starred> {
   return { songs: annotate(songs), albums, artists };
 }
 
-export function star(id: string, type?: Subsonic.StarType): Promise<void> {
+/**
+ * Where a favourite came from, when it did not come from a finger. One that
+ * ListenBrainz sent (the import on the scrobbling screen) is not sent back to
+ * it: that would be a request per song telling it what it just told us.
+ */
+export type StarOrigin = 'listenbrainz';
+
+/**
+ * Tells ListenBrainz about a favourite that the server has just accepted.
+ *
+ * This is the one place every favourite of a song passes through, whichever
+ * heart it was tapped on: the player, the ⋯ menu, a row's swipe, the multiple
+ * selection, the "add favourites" search, and the deferred removal behind
+ * «Undo» all end in `star` or `unstar` below. `applyStarChange` in
+ * `favoritesCache` is not that place: half its callers have no song object to
+ * hand it, and it runs before the server is asked (the undo path runs it and
+ * then never asks), so a love sent from there could be for a favourite that
+ * never existed. Here it goes out after the server said yes, and only then.
+ *
+ * Best effort, and never in the way. The caller's promise is the server's
+ * answer and nothing else; what happens with ListenBrainz is off to the side,
+ * and a failure there is a count in the diagnostics rather than a toast, since
+ * the favourite itself went through. The song is fetched again for its
+ * `musicBrainzId` because an id is all the callers agree on; without one the
+ * recording cannot be named and nothing is sent.
+ *
+ * Favourites made offline never reach ListenBrainz: the outbox replays them to
+ * the server through `Subsonic.star` directly, and there is no second outbox
+ * for ListenBrainz. Whoever hearts a song on the train gets the server's
+ * favourite when the train comes out of the tunnel and not the love.
+ */
+function pushLove(a: Subsonic.SubsonicAuth, id: string, loved: boolean): void {
+  const token = useSettings.getState().listenBrainzToken;
+  // Only Subsonic servers carry `musicBrainzId`, and only the Subsonic client
+  // has `getSong`: Jellyfin ids would be asked of an endpoint it lacks.
+  if (!token || a.serverType === 'jellyfin') return;
+  void getSong(a, id)
+    .then((song) => {
+      if (!song?.musicBrainzId) {
+        bump('listenbrainz · love skipped, no mbid');
+        return;
+      }
+      return setFeedback(token, song.musicBrainzId, loved ? 1 : 0).then(() =>
+        bump(loved ? 'listenbrainz · loved' : 'listenbrainz · unloved'),
+      );
+    })
+    .catch(() => bump('listenbrainz · love failed'));
+}
+
+export function star(id: string, type?: Subsonic.StarType, origin?: StarOrigin): Promise<void> {
   if (isOffline()) {
     // Server offline: recorded in the outbox and uploaded on reconnect.
     if (serverOffline()) {
@@ -1308,7 +1389,15 @@ export function star(id: string, type?: Subsonic.StarType): Promise<void> {
     }
     return Local.starLocal(id, type);
   }
-  return Subsonic.star(auth(), id, type);
+  const a = auth();
+  const done = Subsonic.star(a, id, type);
+  // Chained off to the side, so the caller still sees the server's own answer
+  // (including its rejection, which the empty handler here only keeps from
+  // being reported twice).
+  if ((type ?? 'song') === 'song' && origin !== 'listenbrainz') {
+    void done.then(() => pushLove(a, id, true), () => {});
+  }
+  return done;
 }
 
 export function unstar(id: string, type?: Subsonic.StarType): Promise<void> {
@@ -1319,7 +1408,10 @@ export function unstar(id: string, type?: Subsonic.StarType): Promise<void> {
     }
     return Local.unstarLocal(id, type);
   }
-  return Subsonic.unstar(auth(), id, type);
+  const a = auth();
+  const done = Subsonic.unstar(a, id, type);
+  if ((type ?? 'song') === 'song') void done.then(() => pushLove(a, id, false), () => {});
+  return done;
 }
 
 /**
@@ -1735,6 +1827,16 @@ export async function reorderPlaylist(id: string, songIds: string[]): Promise<vo
     return;
   }
   return Subsonic.reorderPlaylist(auth(), id, songIds);
+}
+
+// Share links live on the server and nowhere else: there is no offline shape
+// for them, and the screen that lists them only asks while online.
+export function getShares(): Promise<Subsonic.Share[]> {
+  return Subsonic.getShares(auth());
+}
+
+export function deleteShare(id: string): Promise<void> {
+  return Subsonic.deleteShare(auth(), id);
 }
 
 // Bookmarks live on the server: the position kept in a long song is

@@ -27,6 +27,7 @@ import {
   getArtistInfo,
   getTopSongs,
   COVER,
+  serverImageSource,
 } from '@/api/data';
 import { type Album, type Artist, type Song } from '@/api/subsonic';
 import { AlbumCard } from '@/components/AlbumCard';
@@ -390,7 +391,7 @@ export default function ArtistScreen() {
             onPress={() => setPhotoOpen(true)}
           >
             <Animated.Image
-              source={{ uri: headerUri }}
+              source={serverImageSource(headerUri)}
               style={[
                 styles.headerImg,
                 { width: screenW, height: headerH, transform: [{ translateY: imgTranslate }] },

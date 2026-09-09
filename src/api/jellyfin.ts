@@ -5,8 +5,11 @@
  * `/Users/AuthenticateByName` is called and the token and user id are saved in
  * the profile (`jfToken`/`jfUserId`); each request carries the
  * `Authorization: MediaBrowser ... Token="..."` header. URLs consumed by
- * native views (cover art, streaming) cannot carry headers, so they use the
- * `api_key` parameter.
+ * native views (cover art, streaming) are also handed to other devices, which
+ * cannot be given headers, so they use the `api_key` parameter. The profile's
+ * own extra headers (`SubsonicAuth.headers`, for a proxy in front of the
+ * server) do go with those URLs wherever this app is the one fetching; see
+ * `authHeaders`.
  *
  * The exported functions mirror the signatures of `subsonic.ts`; the
  * `backend.ts` module picks one implementation or the other based on server
@@ -16,6 +19,7 @@ import Constants from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 
 import {
+  authHeaders,
   CLIENT_NAME,
   normalizeUrl,
   SubsonicRequestError,
@@ -195,6 +199,7 @@ async function request<T>(
     res = await fetch(buildUrl(auth, path, params), {
       method: init.method ?? 'GET',
       headers: {
+        ...authHeaders(auth),
         Authorization: authHeader(auth),
         ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },
@@ -227,6 +232,7 @@ export async function makeAuth(
   serverUrl: string,
   username: string,
   password: string,
+  headers?: Record<string, string>,
 ): Promise<SubsonicAuth> {
   const url = normalizeUrl(serverUrl);
   const deviceId = randomHex(16);
@@ -238,6 +244,10 @@ export async function makeAuth(
     res = await fetch(`${url}/Users/AuthenticateByName`, {
       method: 'POST',
       headers: {
+        // The proxy in front of the server sees this request too, before the
+        // session even exists: without its headers here the sign-in would be
+        // the one request it turns away.
+        ...(headers ?? {}),
         'Content-Type': 'application/json',
         Authorization:
           `MediaBrowser Client="${CLIENT_NAME}", Device="${CLIENT_DEVICE}", ` +
@@ -270,6 +280,7 @@ export async function makeAuth(
     jfToken: data.AccessToken,
     jfUserId: data.User.Id,
     jfDeviceId: deviceId,
+    ...(headers && Object.keys(headers).length > 0 ? { headers } : {}),
   };
 }
 

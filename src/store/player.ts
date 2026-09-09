@@ -40,6 +40,7 @@ import {
   SubsonicRequestError,
   supportsPlaybackReport,
   supportsTranscodeOffset,
+  authHeaders,
   type Album,
   type PlaybackState,
   type Song,
@@ -394,8 +395,13 @@ function sourceFor(song: Song, timeOffsetSec = 0): AudioSource {
   );
   const auth = useAuthStore.getState().auth!;
   const format = effectiveStreamFormat();
+  const headers = authHeaders(auth);
   return {
     uri: streamUrl(auth, song.id, effectiveMaxBitRate(), timeOffsetSec, format),
+    // The profile's own headers ride on the stream too (Media3 sets them on
+    // every request the player makes for this source), or a server behind an
+    // authenticating proxy would answer the API and refuse the audio.
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
     metadata,
     mediaId,
   };
@@ -576,6 +582,12 @@ function seekActive(sec: number) {
  * Cover art for the notification and the media session, resolved like every
  * screen resolves it: that path hands back the file on disk, which is the only
  * place a cover comes from with no connection.
+ *
+ * A plain URL, and the profile's extra headers (`SubsonicAuth.headers`) do not
+ * go with it: the media session takes a URI and fetches it itself, and so does
+ * the car (Android Auto downloads the artwork on the host). Behind a proxy
+ * that wants those headers the notification and the car show no picture; the
+ * rest of the app is unaffected. Expected, and not worth more than this note.
  */
 function artworkUrlFor(song: Song): string | undefined {
   // A radio has no album to fall back to, but the server may hold an image for
@@ -1330,7 +1342,11 @@ async function warmRequest(id: string, url: string) {
     // `expoFetch`, not the global one: this runs while a song is playing, which
     // is exactly when the app is in the background and React Native's stops
     // answering. See the note in `src/api/subsonic.ts`.
-    await expoFetch(url, { headers: { Range: 'bytes=0-1' }, signal: ctrl.signal });
+    const auth = useAuthStore.getState().auth;
+    await expoFetch(url, {
+      headers: { ...(auth ? authHeaders(auth) : {}), Range: 'bytes=0-1' },
+      signal: ctrl.signal,
+    });
     // Headers back: whatever the server had to do to have this track ready is
     // done, and the file it wrote outlives the connection. `expo/fetch` hands
     // the body over as a stream nobody reads, so hanging up here is what keeps

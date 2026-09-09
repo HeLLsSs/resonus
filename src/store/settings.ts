@@ -756,6 +756,19 @@ interface SettingsState {
   keepScreenAwake: boolean;
   /** Subtle vibration on key actions (favorite, long-press, drag…). */
   hapticsEnabled: boolean;
+  /**
+   * The ListenBrainz user token the app sends loves with, and whose it is
+   * (see `lib/listenBrainz.ts`). Both empty until a token has been checked,
+   * and both go together: the name is what the screen shows and what the
+   * import reads the loved list under, so one without the other means nothing.
+   *
+   * The token is a secret, and it sits in this blob with everything else
+   * because the blob is already in SecureStore (`lib/storage.ts` keeps every
+   * per-profile setting encrypted), which is the same place the server
+   * password lives. A store of its own would be a second copy of that.
+   */
+  listenBrainzToken: string;
+  listenBrainzUser: string;
   /** Lyrics screen background: flat, cover color, or blurred cover art. */
   lyricsBackground: ScreenBackground;
   /** Lyrics card (under the player controls): flat or cover color. */
@@ -962,6 +975,9 @@ interface SettingsState {
   setReplayGainPreampDb: (value: number) => void;
   setKeepScreenAwake: (value: boolean) => void;
   setHapticsEnabled: (value: boolean) => void;
+  /** Both at once, empty to forget: they are only ever set from a token that
+   *  ListenBrainz has just said whose it is. */
+  setListenBrainzLoves: (token: string, user: string) => void;
   setLyricsBackground: (value: ScreenBackground) => void;
   setLyricsCardBackground: (value: CardBackground) => void;
   setLyricsSource: (value: LyricsSource) => void;
@@ -1089,6 +1105,8 @@ function snapshot(get: () => SettingsState) {
     replayGainPreampDb: s.replayGainPreampDb,
     keepScreenAwake: s.keepScreenAwake,
     hapticsEnabled: s.hapticsEnabled,
+    listenBrainzToken: s.listenBrainzToken,
+    listenBrainzUser: s.listenBrainzUser,
     lyricsBackground: s.lyricsBackground,
     lyricsCardBackground: s.lyricsCardBackground,
     lyricsSource: s.lyricsSource,
@@ -1191,6 +1209,8 @@ const DEFAULTS = {
   replayGainPreampDb: 0,
   keepScreenAwake: false,
   hapticsEnabled: false,
+  listenBrainzToken: '',
+  listenBrainzUser: '',
   // Same as the player's: the blurred artwork, which is what the screen it
   // opens from is already showing.
   lyricsBackground: 'cover' as ScreenBackground,
@@ -1471,6 +1491,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setHapticsEnabled: (hapticsEnabled) => {
     set({ hapticsEnabled });
+    persist(snapshot(get));
+  },
+
+  setListenBrainzLoves: (listenBrainzToken, listenBrainzUser) => {
+    set({ listenBrainzToken, listenBrainzUser });
     persist(snapshot(get));
   },
 
@@ -1862,6 +1887,8 @@ export const useSettings = create<SettingsState>((set, get) => ({
           replayGainPreampDb: number;
           keepScreenAwake: boolean;
           hapticsEnabled: boolean;
+          listenBrainzToken?: string;
+          listenBrainzUser?: string;
           lyricsBackground: ScreenBackground;
           lyricsCardBackground: CardBackground;
           lyricsColorBackground: boolean;
@@ -2056,6 +2083,19 @@ export const useSettings = create<SettingsState>((set, get) => ({
         }
         if (typeof parsed.hapticsEnabled === 'boolean') {
           set({ hapticsEnabled: parsed.hapticsEnabled });
+        }
+        // Only as a pair: a token whose user is unknown cannot import, and a
+        // user without a token cannot send, so half of one is none of it.
+        if (
+          typeof parsed.listenBrainzToken === 'string' &&
+          typeof parsed.listenBrainzUser === 'string' &&
+          parsed.listenBrainzToken &&
+          parsed.listenBrainzUser
+        ) {
+          set({
+            listenBrainzToken: parsed.listenBrainzToken,
+            listenBrainzUser: parsed.listenBrainzUser,
+          });
         }
         if (parsed.lyricsBackground === 'none' || parsed.lyricsBackground === 'color' || parsed.lyricsBackground === 'cover') {
           set({ lyricsBackground: parsed.lyricsBackground });

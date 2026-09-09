@@ -22,6 +22,7 @@ import {
   type ServerProfile,
   useAuthStore,
 } from '@/store/auth';
+import { parseHeaderLines } from '@/api/backend';
 import { Dialog } from '@/components/Dialog';
 import { ensureAudioPermission, pickFolder } from '@/lib/localLibrary';
 import { useToast } from '@/store/toast';
@@ -63,6 +64,9 @@ function isOffline(p: Profile): p is OfflineProfile {
  *  somebody looking for a word they know, not for the English one. */
 const SORTED_LANGUAGES = [...LANGUAGES].sort((a, b) => a.name.localeCompare(b.name));
 const LANGUAGE_NAME = Object.fromEntries(LANGUAGES.map((l) => [l.code, l.name]));
+
+/** What the headers box shows empty: the Cloudflare Access pair, the common case. */
+const HEADERS_EXAMPLE = 'CF-Access-Client-Id: xxxxx.access\nCF-Access-Client-Secret: xxxxx';
 
 function ProfileRow({ profile, onTap, onRemove }: {
   profile: Profile;
@@ -137,6 +141,9 @@ export default function LoginScreen() {
   // Plain-text auth (`p=enc:`) for proxy/SSO setups that don't validate the
   // salted hash; off by default (token+salt is standard and secure).
   const [plainAuth, setPlainAuth] = useState(false);
+  // Extra headers for a proxy in front of the server, one `Name: value` per
+  // line; parsed on submit (see `parseHeaderLines`) and kept with the profile.
+  const [headersText, setHeadersText] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -165,6 +172,7 @@ export default function LoginScreen() {
     setServer(key);
     setError(null);
     setPlainAuth(false);
+    setHeadersText('');
     setShowAdvanced(false);
     setStep('form');
   }
@@ -189,9 +197,14 @@ export default function LoginScreen() {
 
   async function onSubmit() {
     setError(null);
+    const { headers, bad } = parseHeaderLines(headersText);
+    if (bad !== undefined) {
+      setError(t('Not a header line: {line}', { line: bad }));
+      return;
+    }
     setLoading(true);
     try {
-      await login(serverUrl, username, password, server, supportsPlainAuth && plainAuth);
+      await login(serverUrl, username, password, server, supportsPlainAuth && plainAuth, headers);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("Couldn't sign in"));
     } finally {
@@ -421,39 +434,60 @@ export default function LoginScreen() {
                     />
                   </View>
 
-                  {supportsPlainAuth ? (
-                    <View>
-                      <Pressable
-                        style={styles.advancedToggle}
-                        onPress={() => setShowAdvanced((v) => !v)}
-                      >
-                        <Text style={styles.advancedLink}>{t('Advanced')}</Text>
-                        <Ionicons
-                          name={showAdvanced ? 'chevron-up' : 'chevron-down'}
-                          size={16}
-                          color={colors.textSecondary}
-                        />
-                      </Pressable>
-                      {showAdvanced ? (
-                        <View style={styles.switchRow}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.switchLabel}>
-                              {t('Plain-text password authentication')}
-                            </Text>
-                            <Text style={styles.switchDesc}>
-                              {t('Sends the password directly instead of a salted token. Only enable it if your server sits behind a reverse proxy or SSO that requires it.')}
-                            </Text>
-                          </View>
-                          <Switch
-                            value={plainAuth}
-                            onValueChange={setPlainAuth}
-                            trackColor={{ false: colors.control, true: colors.accent }}
-                            thumbColor={colors.knob}
-                          />
+                  <View>
+                    <Pressable
+                      style={styles.advancedToggle}
+                      onPress={() => setShowAdvanced((v) => !v)}
+                    >
+                      <Text style={styles.advancedLink}>{t('Advanced')}</Text>
+                      <Ionicons
+                        name={showAdvanced ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color={colors.textSecondary}
+                      />
+                    </Pressable>
+                    {showAdvanced && supportsPlainAuth ? (
+                      <View style={styles.switchRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.switchLabel}>
+                            {t('Plain-text password authentication')}
+                          </Text>
+                          <Text style={styles.switchDesc}>
+                            {t('Sends the password directly instead of a salted token. Only enable it if your server sits behind a reverse proxy or SSO that requires it.')}
+                          </Text>
                         </View>
-                      ) : null}
-                    </View>
-                  ) : null}
+                        <Switch
+                          value={plainAuth}
+                          onValueChange={setPlainAuth}
+                          trackColor={{ false: colors.control, true: colors.accent }}
+                          thumbColor={colors.knob}
+                        />
+                      </View>
+                    ) : null}
+                    {showAdvanced ? (
+                      /* Every server type can sit behind an authenticating
+                         proxy, so this one is not tied to `supportsPlainAuth`. */
+                      <View style={styles.headersBlock}>
+                        <Text style={styles.switchLabel}>{t('Custom headers')}</Text>
+                        <Text style={styles.switchDesc}>
+                          {t('Sent with every request to this server. One per line, as Name: value.')}
+                        </Text>
+                        <TextInput
+                          style={styles.headersInput}
+                          placeholder={HEADERS_EXAMPLE}
+                          placeholderTextColor={colors.textMuted}
+                          multiline
+                          numberOfLines={3}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          spellCheck={false}
+                          textAlignVertical="top"
+                          value={headersText}
+                          onChangeText={setHeadersText}
+                        />
+                      </View>
+                    ) : null}
+                  </View>
 
                   {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -732,6 +766,17 @@ const styles = themed((colors) => ({
   },
   switchLabel: { color: colors.text, fontSize: fontSize.sm, fontWeight: '600' },
   switchDesc: { color: colors.textMuted, fontSize: fontSize.xs, marginTop: 2 },
+  headersBlock: { marginTop: spacing.md, gap: spacing.xs },
+  headersInput: {
+    backgroundColor: colors.surfaceHighlight,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    color: colors.text,
+    fontSize: fontSize.sm,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    minHeight: 84,
+  },
   error: { color: colors.danger, fontSize: fontSize.sm },
   button: {
     borderRadius: radius.pill,

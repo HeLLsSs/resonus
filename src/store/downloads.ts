@@ -19,6 +19,7 @@ import * as Network from 'expo-network';
 import { create } from 'zustand';
 
 import {
+  authHeaders,
   COVER,
   coverArtUrl,
   downloadUrl,
@@ -709,7 +710,7 @@ async function downloadArt(
       return { uri: file, bytes: (existing as { size?: number }).size ?? 0 };
     }
     await FileSystem.makeDirectoryAsync(`${dir}covers/`, { intermediates: true }).catch(() => {});
-    const res = await FileSystem.downloadAsync(url, file);
+    const res = await FileSystem.downloadAsync(url, file, { headers: authHeaders(auth) });
     // Same care as with audio, and we also need to delete: the download writes
     // whatever comes, and with the bad file on disk the shortcut above
     // (`existing.exists`) would consider it a valid cover forever.
@@ -1100,7 +1101,9 @@ export const useDownloads = create<DownloadsState>((set, get) => {
       const fetchSong = async (song: Song): Promise<void> => {
         const { url, ext, bitRate: dlBitRate } = songFileUrl(auth, song);
         const file = `${dir}files/${hashKey(song.id)}.${ext}`;
-        const task = FileSystem.createDownloadResumable(url, file, {}, (p) => {
+        // The profile's own headers go with the file too: a proxy that wants
+        // them in front of the API wants them in front of `/rest/stream` too.
+        const task = FileSystem.createDownloadResumable(url, file, { headers: authHeaders(auth) }, (p) => {
           progressTransfer(song.id, p.totalBytesWritten, p.totalBytesExpectedToWrite);
           if (p.totalBytesExpectedToWrite > 0) {
             const fraction = p.totalBytesWritten / p.totalBytesExpectedToWrite;

@@ -153,6 +153,8 @@ interface AuthState {
     password: string,
     serverType?: string,
     plainAuth?: boolean,
+    /** Extra headers for a proxy in front of the server; see `SubsonicAuth.headers`. */
+    headers?: Record<string, string>,
   ) => Promise<void>;
   /**
    * Enters a saved profile. With a server profile and no network, instead of
@@ -179,6 +181,12 @@ interface AuthState {
    * (for profiles created before login stored it).
    */
   saveNativePassword: (password: string) => Promise<void>;
+  /**
+   * The password was changed on the server (Settings › Account): everything
+   * the active profile derives from it is made again, or the next request is
+   * the one that signs the account out.
+   */
+  savePassword: (password: string) => Promise<void>;
   enterOffline: () => Promise<void>;
   /**
    * Puts the server account into offline mode (show/play downloads)
@@ -264,8 +272,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  login: async (serverUrl, username, password, serverType, plainAuth) => {
-    const base = await makeAuth(serverUrl, username, password, serverType, plainAuth);
+  login: async (serverUrl, username, password, serverType, plainAuth, headers) => {
+    const base = await makeAuth(serverUrl, username, password, serverType, plainAuth, headers);
     const auth: ServerProfile = {
       ...base,
       // Born with its URL as the only candidate; more are added from Settings › Network.
@@ -283,6 +291,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // And the name it is filed under, or signing in again through an address
       // that was edited would look at an empty profile.
       auth.scopeUrl = existing.scopeUrl;
+    }
+    // And its headers, unless new ones were typed: signing in again is the
+    // one way to reach a server behind a proxy that wants them, and the form
+    // opens empty.
+    if (existing?.headers && Object.keys(auth.headers ?? {}).length === 0) {
+      auth.headers = existing.headers;
     }
     await ping(auth);
     // The just-used profile goes first (last-used ordering).
@@ -484,6 +498,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await setItem(ACTIVE_KEY, JSON.stringify(auth));
     await setItem(PROFILES_KEY, JSON.stringify(profiles));
     set({ auth, profiles });
+  },
+
+  savePassword: async (password) => {
+    const current = get().auth;
+    if (!current) return;
+    // The same derivation as signing in: a fresh salt and token, the cleartext
+    // copy where the profile keeps one (`password` for classic auth,
+    // `ndPassword` for Navidrome's own API) and nothing where it does not.
+    // Laid over the profile rather than replacing it, so the addresses, the
+    // scope and the switching preference stay what they were.
+    const derived = await makeAuth(
+      current.serverUrl,
+      current.username,
+      password,
+      current.serverType,
+      current.plainAuth,
+    );
+    const auth: SubsonicAuth = { ...current, ...derived };
+    await persistActive(get, set, auth, (p) => ({ ...p, ...derived }));
   },
 
   enterOffline: async () => {

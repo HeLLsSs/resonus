@@ -9,7 +9,7 @@
 // in `src/api/subsonic.ts`.
 import { File, UploadType, type UploadResult } from 'expo-file-system';
 import { fetch } from 'expo/fetch';
-import { type Album, type Song, type SortDirection, type SubsonicAuth } from './subsonic';
+import { authHeaders, type Album, type Song, type SortDirection, type SubsonicAuth } from './subsonic';
 import { assertCanRequest } from './netGate';
 
 /** Typed error to provide useful messages in the UI. */
@@ -36,7 +36,7 @@ export class NavidromeError extends Error {
  * half an hour is short enough that nothing has to watch them expire, and a
  * rejected one is thrown away and asked for again (see `ndJson`).
  */
-let cached: { key: string; token: string; at: number } | null = null;
+let cached: { key: string; token: string; at: number; userId?: string } | null = null;
 const TOKEN_TTL = 30 * 60 * 1000;
 
 function tokenKey(auth: SubsonicAuth): string {
@@ -57,7 +57,7 @@ async function ndLogin(auth: SubsonicAuth, fresh = false): Promise<string> {
   try {
     res = await fetch(`${auth.serverUrl}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...authHeaders(auth), 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: auth.username, password }),
     });
   } catch {
@@ -65,10 +65,18 @@ async function ndLogin(auth: SubsonicAuth, fresh = false): Promise<string> {
   }
   if (res.status === 401) throw new NavidromeError('Credenciales incorrectas', 'auth');
   if (!res.ok) throw new NavidromeError(`Error de red (${res.status})`, 'other');
-  const json = (await res.json()) as { token?: string };
+  const json = (await res.json()) as { token?: string; id?: string };
   if (!json.token) throw new NavidromeError('Respuesta inesperada del servidor', 'other');
-  cached = { key, token: json.token, at: Date.now() };
+  cached = { key, token: json.token, at: Date.now(), userId: json.id };
   return json.token;
+}
+
+/** The account's id on the server, which the Last.fm hand-off names. */
+async function ndUserId(auth: SubsonicAuth): Promise<string> {
+  await ndLogin(auth);
+  const id = cached?.userId;
+  if (!id) throw new NavidromeError('Respuesta inesperada del servidor', 'other');
+  return id;
 }
 
 /** What an answer from the native API means, for the paths that write. */
@@ -88,7 +96,7 @@ async function ndFetch(auth: SubsonicAuth, path: string, init: RequestInit): Pro
   try {
     res = await fetch(`${auth.serverUrl}${path}`, {
       ...init,
-      headers: { ...init.headers, 'x-nd-authorization': `Bearer ${token}` },
+      headers: { ...authHeaders(auth), ...init.headers, 'x-nd-authorization': `Bearer ${token}` },
     });
   } catch {
     throw new NavidromeError('No se pudo conectar con el servidor', 'other');
@@ -166,7 +174,7 @@ export async function uploadCoverImage(
         // extension.
         fieldName: 'image',
         mimeType: image.type,
-        headers: { 'x-nd-authorization': `Bearer ${token}` },
+        headers: { ...authHeaders(auth), 'x-nd-authorization': `Bearer ${token}` },
       },
     );
   } catch {
@@ -254,6 +262,8 @@ interface NdSong {
    *  what a smart playlist's "added" and "last played" rules read. */
   createdAt?: string;
   playDate?: string;
+  /** The MusicBrainz recording, which is how ListenBrainz names a track. */
+  mbzRecordingID?: string;
   starred?: boolean;
   starredAt?: string;
   rating?: number;
@@ -300,6 +310,7 @@ function toSong(m: NdSong): Song {
     playCount: m.playCount,
     created: m.createdAt,
     played: m.playDate,
+    musicBrainzId: m.mbzRecordingID || undefined,
     starred: m.starred ? (m.starredAt ?? new Date().toISOString()) : undefined,
     userRating: m.rating || undefined,
     ...(gain === undefined
@@ -322,7 +333,7 @@ async function ndJson<T>(auth: SubsonicAuth, path: string): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${auth.serverUrl}${path}`, {
-        headers: { 'x-nd-authorization': `Bearer ${token}` },
+        headers: { ...authHeaders(auth), 'x-nd-authorization': `Bearer ${token}` },
       });
     } catch {
       throw new NavidromeError('No se pudo conectar con el servidor', 'other');
@@ -337,6 +348,194 @@ async function ndJson<T>(auth: SubsonicAuth, path: string): Promise<T> {
     return (await res.json()) as T;
   }
   throw new NavidromeError('Credenciales incorrectas', 'auth');
+}
+
+/**
+ * Like `ndJson`, for the calls that send something and want the answer back.
+ * A refused write carries its reason in the body (`{error}`), which is what
+ * the message becomes: "Invalid token" is worth more to the person pasting
+ * one than the number 400.
+ */
+async function ndCall<T>(
+  auth: SubsonicAuth,
+  path: string,
+  method: 'PUT' | 'DELETE',
+  body?: unknown,
+): Promise<T> {
+  for (const fresh of [false, true]) {
+    const token = await ndLogin(auth, fresh);
+    let res: Response;
+    try {
+      res = await fetch(`${auth.serverUrl}${path}`, {
+        method,
+        headers: {
+          ...authHeaders(auth),
+          'x-nd-authorization': `Bearer ${token}`,
+          ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    } catch {
+      throw new NavidromeError('No se pudo conectar con el servidor', 'other');
+    }
+    if (res.status === 401 && !fresh) continue;
+    if (res.status === 401) throw new NavidromeError('Credenciales incorrectas', 'auth');
+    if (res.status === 403) throw new NavidromeError('Sin permiso', 'forbidden');
+    if (res.status === 404) throw new NavidromeError('El servidor no lo soporta', 'unsupported');
+    const text = await res.text();
+    if (!res.ok) {
+      let reason = '';
+      try {
+        const body = JSON.parse(text) as { error?: string; errors?: Record<string, string> };
+        // A refused edit of a record (user, share) comes back as a 400 with one
+        // reason per field, `{errors: {currentPassword: "…"}}`, the shape the
+        // server's own forms read. Kept as "field: reason" so the caller can
+        // tell which one it was; see `changePassword`.
+        reason =
+          String(body.error ?? '') ||
+          Object.entries(body.errors ?? {})
+            .map(([field, why]) => `${field}: ${why}`)
+            .join(', ');
+      } catch {
+        // Not JSON: the status is all there is.
+      }
+      throw new NavidromeError(reason || `Error del servidor (${res.status})`, 'other', res.status);
+    }
+    return (text ? JSON.parse(text) : {}) as T;
+  }
+  throw new NavidromeError('Credenciales incorrectas', 'auth');
+}
+
+// ── Scrobbling accounts ─────────────────────────────────────────────────────
+// Navidrome does the scrobbling to ListenBrainz and Last.fm itself, for every
+// client at once, and its own web page is where the accounts get linked. That
+// page is one somebody with only a phone never opens, so the same three calls
+// its page makes are here, and the settings screen draws them.
+
+export interface ListenBrainzLink {
+  linked: boolean;
+  /** The ListenBrainz user name, once linked. */
+  user?: string;
+}
+
+/** Whether this account scrobbles to ListenBrainz, and as whom. */
+export async function getListenBrainzLink(auth: SubsonicAuth): Promise<ListenBrainzLink> {
+  const r = await ndJson<{ status?: boolean; user?: string }>(auth, '/api/listenbrainz/link');
+  return { linked: !!r.status, user: r.user };
+}
+
+/**
+ * Links the account with a ListenBrainz user token (the one on
+ * listenbrainz.org/settings). The server checks it with ListenBrainz before
+ * keeping it, so a refused one comes back as an error with its reason.
+ */
+export async function linkListenBrainz(auth: SubsonicAuth, token: string): Promise<ListenBrainzLink> {
+  const r = await ndCall<{ status?: boolean; user?: string }>(auth, '/api/listenbrainz/link', 'PUT', {
+    token: token.trim(),
+  });
+  return { linked: !!r.status, user: r.user };
+}
+
+export async function unlinkListenBrainz(auth: SubsonicAuth): Promise<void> {
+  await ndCall(auth, '/api/listenbrainz/link', 'DELETE');
+}
+
+export interface LastfmLink {
+  linked: boolean;
+  /** Where to send the person to authorise, or nothing when the server has
+   *  no Last.fm API key of its own (the operator has to set one). */
+  authUrl?: string;
+}
+
+/**
+ * Whether this account scrobbles to Last.fm, and if not, where linking it
+ * starts. Last.fm is not a token to paste but a page to say yes on: the
+ * server hands out the address, Last.fm sends the browser back to the server
+ * with a session key, and the server keeps it. The app only opens the page
+ * and asks again afterwards.
+ */
+export async function getLastfmLink(auth: SubsonicAuth): Promise<LastfmLink> {
+  const r = await ndJson<{ status?: boolean; apiKey?: string; linkToken?: string }>(
+    auth,
+    '/api/lastfm/link',
+  );
+  if (r.status) return { linked: true };
+  if (!r.apiKey) return { linked: false };
+  const uid = await ndUserId(auth);
+  const callback = `${auth.serverUrl}/api/lastfm/link/callback?uid=${encodeURIComponent(uid)}${
+    r.linkToken ? `&token=${encodeURIComponent(r.linkToken)}` : ''
+  }`;
+  return {
+    linked: false,
+    authUrl: `https://www.last.fm/api/auth/?api_key=${encodeURIComponent(r.apiKey)}&cb=${encodeURIComponent(callback)}`,
+  };
+}
+
+export async function unlinkLastfm(auth: SubsonicAuth): Promise<void> {
+  await ndCall(auth, '/api/lastfm/link', 'DELETE');
+}
+
+// ── The account ─────────────────────────────────────────────────────────────
+// Same reasoning as the scrobbling accounts: the password is changed from
+// Navidrome's own web page, and that page is one somebody with only a phone
+// never opens. So the same edit its page makes is here.
+
+/** The account as the server has it: the fields its edit form carries. */
+export interface NdAccount {
+  id: string;
+  userName: string;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+}
+
+/**
+ * The signed-in account, from GET /api/user/{id}. The id is the one the login
+ * answered with; a non-admin may only read their own, which this is.
+ */
+export async function getAccount(auth: SubsonicAuth): Promise<NdAccount> {
+  const id = await ndUserId(auth);
+  const u = await ndJson<Partial<NdAccount>>(auth, `/api/user/${encodeURIComponent(id)}`);
+  return {
+    id: u.id ?? id,
+    userName: u.userName ?? auth.username,
+    name: u.name ?? '',
+    email: u.email ?? '',
+    isAdmin: !!u.isAdmin,
+  };
+}
+
+/** The server's word for a current password that is not the current one. */
+export const WRONG_CURRENT_PASSWORD = 'passwordDoesNotMatch';
+
+/**
+ * Changes the account's password, through PUT /api/user/{id}.
+ *
+ * The PUT is a whole record and not a patch: the server writes every column
+ * from what it is sent, so the name and the e-mail go along or they come back
+ * empty. Hence `getAccount` first. `password` is the new one and
+ * `currentPassword` the old, which the server insists on for anyone editing
+ * their own account (admins editing somebody else's are the only exception,
+ * and that is not this): a wrong one is refused as a 400 naming
+ * `currentPassword`, which `ndCall` turns into a message containing
+ * `WRONG_CURRENT_PASSWORD`. A 403 is a server whose operator turned user
+ * editing off (`ND_ENABLEUSEREDITING`).
+ *
+ * Only the server is told. What this profile keeps, and the Subsonic token
+ * derived from it, is the store's to update once this has gone through (see
+ * `savePassword` in `store/auth`).
+ */
+export async function changePassword(
+  auth: SubsonicAuth,
+  currentPassword: string,
+  password: string,
+): Promise<void> {
+  const account = await getAccount(auth);
+  await ndCall(auth, `/api/user/${encodeURIComponent(account.id)}`, 'PUT', {
+    ...account,
+    password,
+    currentPassword,
+  });
 }
 
 /**

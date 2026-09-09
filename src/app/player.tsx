@@ -29,7 +29,7 @@ import Animated, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { CACHED_COVER, COVER, songCoverUrl, star, unstar, type Song } from '@/api/data';
+import { CACHED_COVER, COVER, serverImageSource, songCoverUrl, star, unstar, type Song } from '@/api/data';
 import { ArtistPlayerCard } from '@/components/ArtistPlayerCard';
 import { AudioQualityBadge } from '@/components/AudioQualityBadge';
 import { SeekBar } from '@/components/SeekBar';
@@ -373,14 +373,18 @@ export default function PlayerScreen() {
    *  itself: that is the jump. */
   const [laidOut, setLaidOut] = useState(false);
   // Another screen under an open player: what was measured describes the old
-  // one, so it goes and the page falls back to the estimate.
-  useEffect(() => {
-    if (lastLayout?.for === screenH) return;
-    setPageH(0);
-    setCoverBoxH(0);
-    setCoverBoxW(0);
-    setStarsH(0);
-  }, [screenH]);
+  // one, so it goes and the page falls back to the estimate. Done while
+  // rendering, so the old numbers are never drawn on the new screen.
+  const [measuredFor, setMeasuredFor] = useState(screenH);
+  if (measuredFor !== screenH) {
+    setMeasuredFor(screenH);
+    if (lastLayout?.for !== screenH) {
+      setPageH(0);
+      setCoverBoxH(0);
+      setCoverBoxW(0);
+      setStarsH(0);
+    }
+  }
   // The cover's size and vertical offset both come from the measured slot
   // (`coverBoxH`) and the page height (`pageH`), neither known on the first
   // paint. Rendered eagerly, the cover flashes full-width pinned to the top and
@@ -443,9 +447,9 @@ export default function PlayerScreen() {
    * difference. That is the jump, and it happens on every open with the rating
    * on, whatever the page height turns out to be.
    */
-  useEffect(() => {
-    if (laidOut && pageH > 0 && coverBoxH > 0 && (!canRate || starsH > 0)) setCoverStable(true);
-  }, [laidOut, pageH, coverBoxH, starsH, canRate]);
+  if (!coverStable && laidOut && pageH > 0 && coverBoxH > 0 && (!canRate || starsH > 0)) {
+    setCoverStable(true);
+  }
   /** Kept for the next open, and only whole: half a layout is a memory that
    *  draws the next one wrong. */
   useEffect(() => {
@@ -558,8 +562,8 @@ export default function PlayerScreen() {
           ? i - 1
           : -1;
     if (to < 0) {
-      spinsSV.value -= advance;
-      offset.value = withSpring(-spinsSV.value * screenW, { damping: 20, stiffness: 200 });
+      spinsSV.set((n) => n - advance);
+      offset.set(withSpring(-spinsSV.get() * screenW, { damping: 20, stiffness: 200 }));
       return;
     }
     setSpins((n) => n + advance);
@@ -572,7 +576,7 @@ export default function PlayerScreen() {
     .activeOffsetX([-20, 20])
     .failOffsetY([-20, 20])
     .onStart(() => {
-      dragBase.value = offset.value;
+      dragBase.set(offset.get());
     })
     .onUpdate((e) => {
       // Dragging right reveals the previous track, left reveals the next. Past
@@ -584,7 +588,7 @@ export default function PlayerScreen() {
       const rest = spinsSV.value;
       const min = canNext ? -(rest + 1) * screenW : -rest * screenW;
       const max = canPrev ? -(rest - 1) * screenW : -rest * screenW;
-      offset.value = Math.min(max, Math.max(min, raw));
+      offset.set(Math.min(max, Math.max(min, raw)));
     })
     .onEnd((e) => {
       const swipe = screenW * SWIPE_SHARE;
@@ -598,20 +602,22 @@ export default function PlayerScreen() {
         // track changes at the end. If React lags, it's not noticeable: the
         // centered panel already shows the right cover and the swap happens
         // in the hidden panel.
-        offset.value = withTiming(
-          target,
-          { duration: motion.duration.move, easing: motion.easing.move },
-          (finished) => {
-            // Counted where the strip actually arrived, and only if it did: a
-            // travel cut short by the next swipe never happened.
-            if (finished) {
-              spinsSV.value = base + advance;
-              scheduleOnRN(commitSwipe, advance as 1 | -1);
-            }
-          },
+        offset.set(
+          withTiming(
+            target,
+            { duration: motion.duration.move, easing: motion.easing.move },
+            (finished) => {
+              // Counted where the strip actually arrived, and only if it did: a
+              // travel cut short by the next swipe never happened.
+              if (finished) {
+                spinsSV.set(base + advance);
+                scheduleOnRN(commitSwipe, advance as 1 | -1);
+              }
+            },
+          ),
         );
       } else {
-        offset.value = withSpring(target, { damping: 20, stiffness: 200 });
+        offset.set(withSpring(target, { damping: 20, stiffness: 200 }));
       }
     });
   // Cover tap shows lyrics (if any). Coexists with swipe: tap only wins if
@@ -622,9 +628,11 @@ export default function PlayerScreen() {
   // cover (toggle), «screen» opens the full screen, «none» nothing.
   const [inlineLyrics, setInlineLyrics] = useState(false);
   // When the song changes, go back to the cover (each song is tapped separately).
-  useEffect(() => {
+  const [lyricsFor, setLyricsFor] = useState(song?.id);
+  if (lyricsFor !== song?.id) {
+    setLyricsFor(song?.id);
     setInlineLyrics(false);
-  }, [song?.id]);
+  }
   /**
    * The heart, from a gesture instead of from the button.
    *
@@ -851,7 +859,7 @@ export default function PlayerScreen() {
             <Image
               key={animatedBg.nonce}
               ref={animatedBgRef}
-              source={{ uri: cover }}
+              source={serverImageSource(cover)}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               transition={BACKDROP_FADE}
@@ -876,7 +884,7 @@ export default function PlayerScreen() {
             <Image
               key={backdrop.nonce}
               ref={backdropRef}
-              source={{ uri: backdropSource.shown }}
+              source={serverImageSource(backdropSource.shown)}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               blurRadius={60}

@@ -8,6 +8,7 @@ import { Image } from 'expo-image';
 import { type ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 
+import { serverImageSource } from '@/api/data';
 import { radius, spacing } from '@/theme';
 
 export function CoverViewer({
@@ -45,7 +46,7 @@ export function CoverViewer({
     >
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button">
         <Image
-          source={uri ? { uri } : undefined}
+          source={uri ? serverImageSource(uri) : undefined}
           // Not square: the box is the whole area and `contain` fits the image
           // inside it, so nothing is cropped whatever its shape. No radius
           // there — the corners would be the box's, not the image's.

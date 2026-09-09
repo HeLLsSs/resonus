@@ -22,7 +22,7 @@
  */
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { COVER, coverArtUrl, type SubsonicAuth } from '@/api/backend';
+import { authHeaders, COVER, coverArtUrl, type SubsonicAuth } from '@/api/backend';
 import { isOfflineMode } from '@/api/netGate';
 import { whenIdle } from '@/lib/idle';
 import { bump } from '@/lib/perfLog';
@@ -315,7 +315,7 @@ function runCovers(
           if (!url) return;
           const file = fileFor(profile, id);
           await FileSystem.makeDirectoryAsync(DIR, { intermediates: true }).catch(() => {});
-          const res = await FileSystem.downloadAsync(url, file);
+          const res = await FileSystem.downloadAsync(url, file, { headers: authHeaders(auth) });
           // A server that answers an error writes that error to the file, and a
           // broken file on disk would pass for a cover for good.
           if (res.status !== 200) {

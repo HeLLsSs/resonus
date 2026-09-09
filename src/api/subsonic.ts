@@ -78,6 +78,17 @@ export interface SubsonicAuth {
   jfToken?: string;
   jfUserId?: string;
   jfDeviceId?: string;
+  /**
+   * Extra HTTP headers sent with every request to this server, for a server
+   * that sits behind an authenticating reverse proxy (Cloudflare Access's
+   * `CF-Access-Client-Id`/`CF-Access-Client-Secret`, Authelia, a plain
+   * `Authorization: Basic`...). Typed by the user at login, kept with the
+   * profile, and read only through `authHeaders()`. They travel with every
+   * request this app makes itself: the API, the streams, the covers and the
+   * downloads. They cannot travel with a URL handed to another device (UPnP),
+   * which fetches for itself.
+   */
+  headers?: Record<string, string>;
 }
 
 export interface Song {
@@ -374,6 +385,7 @@ export async function makeAuth(
   password: string,
   serverType?: string,
   plainAuth?: boolean,
+  headers?: Record<string, string>,
 ): Promise<SubsonicAuth> {
   const salt = randomSalt();
   const token = await Crypto.digestStringAsync(
@@ -393,7 +405,51 @@ export async function makeAuth(
     ...(plainAuth ? { plainAuth: true } : {}),
     // Navidrome: the native API (uploading covers) needs the password.
     ...(serverType === 'navidrome' ? { ndPassword: password } : {}),
+    ...(headers && Object.keys(headers).length > 0 ? { headers } : {}),
   };
+}
+
+/**
+ * The profile's own headers, for anything that opens a connection to the
+ * server itself: `fetch`, the audio player, the image loader, the file
+ * downloads. Always an object, so callers spread it without a guard. Never
+ * for a URL that leaves the phone (see `SubsonicAuth.headers`).
+ */
+export function authHeaders(auth: Pick<SubsonicAuth, 'headers'>): Record<string, string> {
+  return auth.headers ?? {};
+}
+
+/**
+ * A header name as HTTP allows it (RFC 9110 `token`), and a value the request
+ * can actually carry: OkHttp throws on any byte outside 0x20..0x7e in a header
+ * value, and that throw would take every request with it.
+ */
+const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
+const HEADER_VALUE = /^[\x20-\x7e]*$/;
+
+/**
+ * Reads the headers a user typed, one `Name: value` per line. Blank lines are
+ * skipped. The first line that is not a header comes back as `bad`, so the
+ * form can point at it rather than saving half of what was written; nothing
+ * is saved in that case. A name typed twice keeps the last value, the way the
+ * proxy would read it.
+ */
+export function parseHeaderLines(
+  text: string,
+): { headers: Record<string, string>; bad?: string } {
+  const headers: Record<string, string> = {};
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const colon = line.indexOf(':');
+    const name = colon === -1 ? '' : line.slice(0, colon).trim();
+    const value = colon === -1 ? '' : line.slice(colon + 1).trim();
+    if (!HEADER_NAME.test(name) || !value || !HEADER_VALUE.test(value)) {
+      return { headers: {}, bad: line };
+    }
+    headers[name] = value;
+  }
+  return { headers };
 }
 
 /** Strips trailing slash and ensures the http(s) scheme. */
@@ -514,7 +570,10 @@ async function request<T>(
   let res: Response;
   try {
     res = await timed(`net ${endpoint}`, () =>
-      fetch(buildUrl(auth, endpoint, extra), { signal: controller.signal }),
+      fetch(buildUrl(auth, endpoint, extra), {
+        headers: authHeaders(auth),
+        signal: controller.signal,
+      }),
     );
   } catch {
     if (controller.signal.aborted) {
@@ -904,7 +963,7 @@ export async function reorderPlaylist(
   assertCanRequest();
   const res = await fetch(`${auth.serverUrl}/rest/createPlaylist.view`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { ...authHeaders(auth), 'Content-Type': 'application/x-www-form-urlencoded' },
     body: params.toString(),
   });
   if (!res.ok) throw new Error(`Network error (${res.status})`);
@@ -1395,7 +1454,7 @@ export async function savePlayQueue(
     assertCanRequest();
     await fetch(`${auth.serverUrl}/rest/savePlayQueue.view`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { ...authHeaders(auth), 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString(),
     });
   } catch {
@@ -1772,6 +1831,40 @@ export async function createShare(
   // The id comes back too, and it is what lets Navidrome's own API be asked for
   // the one thing Subsonic left out (see `setShareDownloadable`).
   return { id: share.id, url: share.url };
+}
+
+/** A share link as the server lists it: what it points at and how it did. */
+export interface Share {
+  id: string;
+  url: string;
+  /** What the person typed when sharing; Navidrome fills it with the names of
+   *  the contents when they typed nothing. */
+  description?: string;
+  /** ISO dates. No `expires` means the link never does. */
+  created: string;
+  expires?: string;
+  lastVisited?: string;
+  visitCount: number;
+  /** What is behind the link: the songs, or the albums, one child each. */
+  entry?: { id: string; title?: string; name?: string; album?: string; artist?: string }[];
+}
+
+/**
+ * Every share link this account has made, newest first.
+ *
+ * Its own web page is where a Navidrome user would otherwise see these, and it
+ * is a page somebody with only a phone never opens; so the list is here, and
+ * so is the way to take one back (`deleteShare`). An account with none gets
+ * `shares: {}` from Navidrome rather than an empty array, hence the defaults.
+ */
+export async function getShares(auth: SubsonicAuth): Promise<Share[]> {
+  const res = await request<{ shares?: { share?: Share[] } }>(auth, 'getShares.view');
+  return res.shares?.share ?? [];
+}
+
+/** Takes a share link back: whoever has it gets nothing from it any more. */
+export async function deleteShare(auth: SubsonicAuth, id: string): Promise<void> {
+  await request(auth, 'deleteShare.view', { id });
 }
 
 /**

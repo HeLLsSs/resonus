@@ -321,8 +321,10 @@ export default function RootLayout() {
                 <Stack.Screen name="settings/home-sections" />
                 <Stack.Screen name="settings/equalizer" />
                 <Stack.Screen name="settings/scrobbling" />
+                <Stack.Screen name="settings/account" />
                 <Stack.Screen name="settings/theme" />
                 <Stack.Screen name="settings/about" />
+                <Stack.Screen name="settings/backup" />
               </Stack.Protected>
               <Stack.Protected guard={offline && !offlineSource && !hasDownloads}>
                 <Stack.Screen name="offline" />

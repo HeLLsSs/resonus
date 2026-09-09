@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COVER, songCoverUrl } from '@/api/data';
+import { COVER, serverImageSource, songCoverUrl } from '@/api/data';
 import { lyricsStyles, SyncedLyricsView } from '@/components/LyricsCard';
 import { SeekBar } from '@/components/SeekBar';
 import { useDominantColor } from '@/hooks/useDominantColor';
@@ -57,7 +57,7 @@ export default function LyricsScreen() {
           {/* Same as the player: no `recyclingKey`, or the change of song
               blanks this to black before the next cover arrives. */}
           <Image
-            source={{ uri: cover }}
+            source={serverImageSource(cover)}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             blurRadius={60}

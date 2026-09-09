@@ -13,7 +13,7 @@
  */
 import { useEffect, useState } from 'react';
 
-import { CACHED_COVER, COVER } from '@/api/data';
+import { CACHED_COVER, COVER, serverImageSource } from '@/api/data';
 import { colors as theme, useThemeMode, type ThemeMode } from '@/theme';
 
 function hexToRgb(hex: string): [number, number, number] | null {
@@ -162,17 +162,26 @@ export function useDominantColor(uri?: string): string {
   // second download.
   const mode = useThemeMode();
 
+  // A cover marked as cache-only (offline, see `CACHED_COVER`) is not a URL
+  // and is not ours to fetch: `getColors` downloads on its own, so it would
+  // be exactly the request offline mode is there to avoid. The tint goes back
+  // to the plain one, which is what a cover nobody can see should look like,
+  // and it does so while rendering rather than a frame later from the effect.
+  const plain = !uri || uri.startsWith(CACHED_COVER);
+  const [shown, setShown] = useState({ uri, mode });
+  if (shown.uri !== uri || shown.mode !== mode) {
+    setShown({ uri, mode });
+    if (plain) setColor(theme.surfaceHighlight);
+  }
+
   useEffect(() => {
+    if (!uri || plain) return;
     let active = true;
-    // A cover marked as cache-only (offline, see `CACHED_COVER`) is not a URL
-    // and is not ours to fetch: `getColors` downloads on its own, so it would
-    // be exactly the request offline mode is there to avoid. The tint stays the
-    // plain one, which is what a cover nobody can see should look like.
-    if (!uri || uri.startsWith(CACHED_COVER)) {
-      setColor(theme.surfaceHighlight);
-      return;
-    }
     const src = paletteUri(uri);
+    // `getColors` fetches the cover itself, so a server behind an
+    // authenticating proxy needs the profile's headers on this request too, or
+    // it answers with an error page and the tint stays plain.
+    const { headers } = serverImageSource(src);
     // Keyed by the small URL: two screens showing the same cover at different
     // sizes now share one cached palette. `quality` is read on iOS only, where
     // it decides how much of the image is looked at before averaging, and the
@@ -185,6 +194,7 @@ export function useDominantColor(uri?: string): string {
           cache: true,
           key: src,
           quality: 'high',
+          headers,
         }),
       )
       .then((res) => {
@@ -205,7 +215,7 @@ export function useDominantColor(uri?: string): string {
     return () => {
       active = false;
     };
-  }, [uri, mode]);
+  }, [uri, mode, plain]);
 
   return color;
 }
