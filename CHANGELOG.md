@@ -7,6 +7,41 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.8.1] - 2026-09-11
+
+### Added
+
+- A YouTube tab, fed by the Navifind proxy where it is signed in to a YouTube account of your own: the shelves of the home page it is shown, your playlists, the tracks you liked and the records you keep, and a card opens its tracks. A tap plays, and the proxy files the song into the library by itself after ten seconds of listening, so there is nothing here to download and nothing to sync. The tab starts off and is only offered where the Navifind switch is on, under Settings > Appearance > Navigation bar. With no account it falls back to YouTube's anonymous home, and it says which of the two things went wrong: no account configured on the proxy at all, or a session that has run out and needs signing in again.
+- The YouTube account Navifind reads is signed in from the phone, under Settings > Navifind > YouTube: one button opens Google's own sign-in page inside the app, and the session it leaves behind goes to the proxy by itself. It is a real browser, so two-factor, passkeys and account recovery all behave as they do anywhere else, and no password passes through the app. The page starts signed in to nobody, which is what makes signing in as somebody else work, and nothing of the session is left on the phone once it has been handed over. The proxy tries it against YouTube before keeping anything, so a session that does not work changes nothing. Pasting the `Cookie` header of a desktop browser is still there underneath, for a build without the sign-in or an account already signed in somewhere else. The screen says which of four things is true — signed in, and as whom; a session YouTube has ended; no account at all; or a proxy that did not answer — and can make the proxy forget the one it holds and say what that left it with. Nothing of the session is ever shown on screen, kept once it has been sent, or carried in an address. The YouTube tab's own notices, for an expired session and for no account, lead here.
+- Music Assistant as an output of its own, spoken to directly rather than through Home Assistant: its speakers are listed in the Output sheet once the address and an account are given under Settings. Nothing is polled, since the server says when something changes, and no address is handed to a speaker: a song is named by its id in the library Music Assistant already keeps of the server, and Music Assistant fetches it itself. So a server behind custom headers casts like any other, and the phone does not have to stay awake for the music to go on.
+- While Resonus drives a Music Assistant player, that player's queue stops filling itself. Music Assistant can keep a queue from ever running dry by adding songs of its own as the end nears, which is right when it owns the queue and wrong when the app does: one track added to a queue of one left it holding twenty-seven. It is switched off while the app is playing and put back the way it was found when it lets go.
+- A song list can be sorted by what the songs themselves carry: the date they were added to the library, their year, their length, how often they have been played and the stars given to them, either way round, next to the orders that were already there. A song the server says nothing about — no year on an untagged file, no plays on a fresh library — goes to the end of the list whichever way it runs, rather than scattering among the ones that do. In a playlist, "Recently added" still means what it always did, the order the songs were put into that list, and "Date added" is the new one about the files.
+- The same menu can narrow a list to the downloaded songs, or to the favorites, for as long as you are looking at it. While one is on it is written across the top of the list with how much it is hiding and a tap to put it all back; play and shuffle start what is on screen, and leaving the screen forgets it. For the durable version of the idea there are still smart playlists. Sorting and narrowing now reach an album, a smart playlist and the bookmarks as well as the favorites, playlists and an artist's songs. An album opens in its own disc and track order as it always has, and going back to "Album order" undoes anything done to it.
+- Home Assistant as an output: the media players it knows, Chromecast, DLNA and Sonos among them, are listed in the Output sheet. Off until an address and a long-lived token are given under Settings. One speaker is often several entities there, so they are kept one per name, the fullest of them, and the one that can wake a speaker in standby is remembered and asked first.
+- A "For you" button on Home, and a row of the same name at the top of the car's Home tab: one press and it plays music picked from what this account actually listens to, weaving the library's answers for the artists and genres played most together with the account's favorites and, where a YouTube account is connected, what YouTube Music picks for it. What was heard in the last three hours is left out, and a song the server and YouTube both have is taken once. It leaves a dated "For you" playlist behind: the library's songs go in at once, and each YouTube track joins as the proxy finishes fetching it, so the music starts immediately rather than waiting on the playlist. The button can be moved or turned off under Settings > Appearance > Home buttons.
+- A song can be kept as a favorite from the car's playback screen, which until now meant picking up the phone. The heart shows whether the song already is one and follows a favorite set anywhere else. It takes one of the two places beside the transport keys, so shuffle moves into the overflow menu.
+- The car says when a song will not play. A server that goes out of reach used to stop the music and leave the screen saying nothing, the only word about it being a toast on a phone in a pocket.
+- The car's browser explains itself when there is nothing to show, rather than offering three empty tabs: no account on this phone, or offline with nothing downloaded.
+- A row of the car's Home that resumes a song carries how far through it already is, drawn as a bar under the title.
+
+### Changed
+
+- Settings > Navifind no longer links out to the proxy's own page.
+- Searching in the car reaches the whole library rather than only the browse tree the phone had pushed, so a record nobody has played lately is found by typing its name. The rows come back grouped under Songs, Albums and Artists, the kind that best answers what was typed first, and what is on the phone leads within each group. The phone's own hits are still shown at once and are what stands when the server is out of reach, when the app is not running, or when the search takes too long to be worth waiting for at the wheel.
+- The car, the home screen widget and another app's broadcast now start the app's JavaScript side themselves, with no screen and nothing brought to the front. A song tapped on the car's screen with the phone asleep in a pocket used to be handed to nobody: the browse tree came off the disk and there was nothing running behind it. Everything the app does on its way up left the React tree for that, so it happens whether or not an Activity ever asks for a screen.
+- Controlling the app from another app no longer needs "display over other apps" on Android 10 and up.
+- The update check looks at this fork's own releases.
+
+### Fixed
+
+- The system's media resumption, which binds the car service after every reboot to see what is there, no longer starts the whole app and reads the library on a phone nobody has touched.
+- The play button of the widget works again when the app is running with nothing playing, and a widget started by its own queue row is no longer blanked before it is filled in.
+- Retrying a failed download no longer puts the songs back among the failures once they have arrived.
+- The state an app is told over the intents API no longer carries a cover URL, which carried the account's own credentials to every app on the phone.
+- A server behind custom headers is reachable from the phone's own server: what it relays no longer follows a redirect, which would have carried those headers to another host.
+- Every one of the car's own icons was missing from a release build. They are named only as text from the JavaScript side, so the resource shrinker found no reference to any of them and took all fourteen out: Android Auto drew its tabs and rows blank, while the debug builds they were written against looked right.
+- The app now tells the system which screen its media session belongs to, so the notification it puts up opens Resonus.
+
 ## [0.8.0] - 2026-09-08
 
 ### Added
@@ -1942,4 +1977,5 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.8.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.1
 [0.2.1]: https://github.com/juananzzz/resonus/releases/tag/v0.2.1
