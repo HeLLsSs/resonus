@@ -1084,7 +1084,6 @@
   "Ask again": "Ask again",
   "Sign in to YouTube Music": "Sign in to YouTube Music",
   "Sign in as somebody else": "Sign in as somebody else",
-  "Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself.": "Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself.",
   "Paste a cookie instead": "Paste a cookie instead",
   "The way round when the sign-in page will not finish, or when the account is already signed in to a browser somewhere else.": "The way round when the sign-in page will not finish, or when the account is already signed in to a browser somewhere else.",
   "Open music.youtube.com in a browser signed in to the account Navifind should use, open the developer tools and reload the page. In the network list pick any request named youtubei, look at the headers it sent, and copy the whole Cookie line — all of it, about seventeen hundred characters.": "Open music.youtube.com in a browser signed in to the account Navifind should use, open the developer tools and reload the page. In the network list pick any request named youtubei, look at the headers it sent, and copy the whole Cookie line — all of it, about seventeen hundred characters.",
@@ -1135,5 +1134,5 @@
   "Navifind could not switch account, so nothing changed.": "Navifind could not switch account, so nothing changed.",
   "All of these are open with the session Navifind holds. Pick the one it reads.": "All of these are open with the session Navifind holds. Pick the one it reads.",
   "Add another account": "Add another account",
-  "Sign in to a second YouTube account and switch between them here.": "Sign in to a second YouTube account and switch between them here."
+  "Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself. A second account can be signed in beside the first before you finish, and you can then switch between them here.": "Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself. A second account can be signed in beside the first before you finish, and you can then switch between them here."
 }

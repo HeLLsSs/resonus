@@ -30,7 +30,7 @@ import { WebView, type WebViewNavigation } from 'react-native-webview';
 import { useT } from '@/i18n';
 import { clearWebCookies, readWebCookie } from '@/lib/webCookies';
 import { ADD_ACCOUNT_URL, MUSIC_ORIGIN, SIGN_IN_URL, signedIn } from '@/lib/youtube';
-import { colors, fontSize, spacing, themed } from '@/theme';
+import { colors, fontSize, radius, spacing, themed } from '@/theme';
 
 /**
  * What the WebView says it is.
@@ -48,23 +48,12 @@ const BROWSER_UA =
 export function YoutubeSignIn({
   onSignedIn,
   onCancel,
-  adding = false,
 }: {
   /** The whole `Cookie` header, once there is a session to hand over. Called
    *  once: the sign-in closes itself on the way out of it. */
   onSignedIn: (cookie: string) => void;
   /** Closed with nothing to show for it. */
   onCancel: () => void;
-  /**
-   * Adding a second account to the session rather than starting one.
-   *
-   * The difference is the whole point of it: a fresh sign-in empties the jar
-   * first, so what comes out carries exactly one account, and Navifind can
-   * then read only that one. Adding keeps what is there and lands on Google's
-   * own "choose an account" page, so the cookie that comes out carries both
-   * and switching between them is a number rather than a second sign-in.
-   */
-  adding?: boolean;
 }) {
   const t = useT();
   const insets = useSafeAreaInsets();
@@ -75,6 +64,9 @@ export function YoutubeSignIn({
   /** Whether there is a page behind this one, for the back gesture. */
   const canGoBack = useRef(false);
   const [loading, setLoading] = useState(true);
+  /** Whether the page has reached a signed-in YouTube Music. What it unlocks
+   *  is the footer: finishing, or signing a second account in beside this one. */
+  const [arrived, setArrived] = useState(false);
 
   useEffect(
     () => () => {
@@ -92,9 +84,17 @@ export function YoutubeSignIn({
    */
   function onNavigate(state: WebViewNavigation) {
     canGoBack.current = state.canGoBack;
+    const jar = readWebCookie(MUSIC_ORIGIN);
+    setArrived(!!jar && signedIn(state.url, jar));
+  }
+
+  /** Hands the session over and closes. The jar is read again here rather than
+   *  kept from the moment it was noticed: a second account may have joined it
+   *  since. */
+  function finish() {
     if (done.current) return;
     const jar = readWebCookie(MUSIC_ORIGIN);
-    if (!jar || !signedIn(state.url, jar)) return;
+    if (!jar) return;
     done.current = true;
     onSignedIn(jar);
   }
@@ -119,7 +119,7 @@ export function YoutubeSignIn({
             <Ionicons name="close" size={26} color={colors.text} />
           </Pressable>
           <Text style={styles.title} numberOfLines={1}>
-            {adding ? t('Add another account') : t('Sign in to YouTube Music')}
+            {t('Sign in to YouTube Music')}
           </Text>
           <View style={styles.close} />
         </View>
@@ -127,7 +127,7 @@ export function YoutubeSignIn({
         <View style={styles.body}>
           <WebView
             ref={webview}
-            source={{ uri: adding ? ADD_ACCOUNT_URL : SIGN_IN_URL }}
+            source={{ uri: SIGN_IN_URL }}
             userAgent={BROWSER_UA}
             // Google's sign-in opens some of its steps in a second window, and
             // a WebView that cannot make one simply drops them. They load here
@@ -143,6 +143,36 @@ export function YoutubeSignIn({
             </View>
           ) : null}
         </View>
+
+        {/* Only once there is a session to act on. Adding walks the same
+            WebView to Google's "add an account" page rather than opening a new
+            one: the jar is emptied when this screen closes, so a second visit
+            would start from nothing and the account added would replace the
+            first instead of joining it. */}
+        {arrived ? (
+          <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+            <Pressable
+              style={styles.secondary}
+              accessibilityRole="button"
+              onPress={() => {
+                setArrived(false);
+                webview.current?.injectJavaScript(
+                  `window.location.href = ${JSON.stringify(ADD_ACCOUNT_URL)}; true;`,
+                );
+              }}
+            >
+              <Ionicons name="person-add-outline" size={18} color={colors.text} />
+              <Text style={styles.secondaryText}>{t('Add another account')}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.primary, { backgroundColor: colors.accent }]}
+              accessibilityRole="button"
+              onPress={finish}
+            >
+              <Text style={styles.primaryText}>{t('Done')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -167,6 +197,31 @@ const styles = themed((colors) => ({
     textAlign: 'center',
   },
   body: { flex: 1 },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    backgroundColor: colors.background,
+  },
+  secondary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceHighlight,
+  },
+  secondaryText: { color: colors.text, fontSize: fontSize.sm, fontWeight: '600' },
+  primary: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+  },
+  primaryText: { color: '#000', fontSize: fontSize.sm, fontWeight: '700' },
   // Over the page rather than in place of it: the WebView paints its own
   // background before the page arrives, and a spinner on top of that is less of
   // a jump than a screen that swaps itself out.

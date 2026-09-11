@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1130 of them.
+Every string the app can show, under the screen it shows up on. 1129 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -1380,7 +1380,7 @@ you are actually typing into, which is easier than reading it here.
 | `Forgotten. Navifind has no YouTube account left.` |  |
 | `Forgotten. Navifind went back to the account the server was started with.` |  |
 | `Forgotten. What the server was started with is all that is left, and its session has expired too.` |  |
-| `Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself.` |  |
+| `Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself. A second account can be signed in beside the first before you finish, and you can then switch between them here.` |  |
 | `If that request also carries an X-Goog-AuthUser header, write its number below: it says which of the accounts signed in to that browser the cookie belongs to.` |  |
 | `Navifind can be signed in to YouTube Music as you, and then the YouTube tab shows what that account has: its home page, its playlists, the songs it liked.` |  |
 | `Navifind could not be asked about its YouTube account. Either it is older than this screen and has not got the routes for it, or the address under Navifind is wrong.` |  |
@@ -1400,7 +1400,6 @@ you are actually typing into, which is easier than reading it here.
 | `Send to Navifind` | Hands the pasted cookie to the proxy, which tries it against YouTube before keeping it |
 | `Sign in` | The button that signs in. A verb |
 | `Sign in as somebody else` |  |
-| `Sign in to a second YouTube account and switch between them here.` | The line under “Add another account”, explaining it |
 | `Sign in to YouTube Music` |  |
 | `Signed in as {name}.` |  |
 | `Signed in to YouTube` |  |

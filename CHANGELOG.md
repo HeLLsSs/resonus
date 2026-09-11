@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.8.6] - 2026-09-11
+
+### Fixed
+
+- Signing a second YouTube account in replaced the first instead of joining it. The sign-in screen empties the cookie jar when it closes, which is what makes each sign-in a session of its own, so opening it again to add an account started from nothing. It no longer closes on its own: once you are signed in it offers "Add another account" and "Done", and both accounts go to Navifind together in one pass.
+
 ## [0.8.5] - 2026-09-11
 
 ### Added
@@ -2005,6 +2011,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.8.6]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.6
 [0.8.5]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.5
 [0.8.4]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.4
 [0.8.3]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.3

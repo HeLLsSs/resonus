@@ -1082,7 +1082,6 @@
   "Ask again": "Redemander",
   "Sign in to YouTube Music": "Se connecter à YouTube Music",
   "Sign in as somebody else": "Se connecter avec un autre compte",
-  "Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself.": "La page de Google s'ouvre ici, connectée à personne. Le compte qui s'y connecte est celui que Navifind lit, et la session qu'elle laisse derrière elle part vers Navifind toute seule.",
   "Paste a cookie instead": "Coller un cookie à la place",
   "The way round when the sign-in page will not finish, or when the account is already signed in to a browser somewhere else.": "Le détour à prendre quand la page de connexion refuse d'aller au bout, ou quand le compte est déjà connecté dans un navigateur ailleurs.",
   "Open music.youtube.com in a browser signed in to the account Navifind should use, open the developer tools and reload the page. In the network list pick any request named youtubei, look at the headers it sent, and copy the whole Cookie line — all of it, about seventeen hundred characters.": "Ouvrez music.youtube.com dans un navigateur connecté au compte que Navifind doit utiliser, ouvrez les outils de développement et rechargez la page. Dans la liste réseau, prenez n'importe quelle requête nommée youtubei, regardez les en-têtes qu'elle a envoyés et copiez toute la ligne Cookie — en entier, environ mille sept cents caractères.",
@@ -1136,5 +1135,5 @@
   "Navifind could not switch account, so nothing changed.": "Navifind n'a pas pu changer de compte, rien n'a été modifié.",
   "All of these are open with the session Navifind holds. Pick the one it reads.": "La session que détient Navifind les ouvre tous. Choisis celui qu'il lit.",
   "Add another account": "Ajouter un autre compte",
-  "Sign in to a second YouTube account and switch between them here.": "Connecte-toi à un second compte YouTube et bascule entre les deux ici."
+  "Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself. A second account can be signed in beside the first before you finish, and you can then switch between them here.": "La page de Google s'ouvre ici, connectée à personne. Qui s'y connecte est le compte que Navifind lit, et la session qu'elle laisse lui parvient d'elle-même. Tu peux connecter un second compte à côté du premier avant de terminer, puis basculer de l'un à l'autre ici."
 }
