@@ -2,10 +2,10 @@
   "expo": {
     "name": "Resonuls",
     "slug": "resonuls",
-    "version": "0.8.2",
+    "version": "0.8.3",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
-    "scheme": "resonus",
+    "scheme": "resonuls",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.hellsss.resonuls",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.hellsss.resonuls",
-      "versionCode": 51,
+      "versionCode": 52,
       "adaptiveIcon": {
         "backgroundColor": "#1CD667",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

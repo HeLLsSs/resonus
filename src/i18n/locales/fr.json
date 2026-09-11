@@ -732,10 +732,7 @@
   "Repair the offline library": "Réparer la bibliothèque hors ligne",
   "If the server renumbers its ids, rewrite the downloads to match instead of losing them. Off until it has been tested against a server that has.": "Si le serveur renumérote ses identifiants, réécrit les téléchargements pour les faire correspondre au lieu de les perdre. Désactivé tant que ça n'a pas été testé sur un serveur qui l'a fait.",
   "Update available": "Mise à jour disponible",
-  "Resonus {new} is out. You have {old}.": "Resonus {new} est sorti. Tu as la {old}.",
-  "Resonus {new} is out. You have {old}. The download is about {mb} MB.": "Resonus {new} est sorti. Tu as la {old}. Le téléchargement fait environ {mb} Mo.",
   "Update": "Mettre à jour",
-  "Downloading Resonus {version}": "Téléchargement de Resonus {version}",
   "Check for updates": "Rechercher des mises à jour",
   "You're on the latest version": "Tu as la dernière version",
   "Check for updates automatically": "Rechercher les mises à jour automatiquement",
@@ -1124,12 +1121,15 @@
   "By the rules": "Selon les règles",
   "Recently bookmarked": "Marque-pages récents",
   "Sign in on your phone": "Connectez-vous depuis votre téléphone",
-  "Resonus has no account on this phone yet": "Resonus n'a encore aucun compte sur ce téléphone",
   "Nothing downloaded": "Aucun téléchargement",
   "Offline, only downloads can play": "Hors ligne, seuls les téléchargements peuvent être lus",
   "Not enough listening yet to build a mix": "Pas encore assez d'écoutes pour composer un mix",
   "Playing \"{name}\"": "Lecture de « {name} »",
   "Couldn't build a mix": "Impossible de composer un mix",
   "Built from what you play": "D'après ce que vous écoutez",
-  "For you · {date}": "Pour vous · {date}"
+  "For you · {date}": "Pour vous · {date}",
+  "Resonuls {new} is out. You have {old}. The download is about {mb} MB.": "Resonuls {new} est disponible. Tu as la {old}. Le téléchargement fait environ {mb} Mo.",
+  "Resonuls {new} is out. You have {old}.": "Resonuls {new} est disponible. Tu as la {old}.",
+  "Downloading Resonuls {version}": "Téléchargement de Resonuls {version}",
+  "Resonuls has no account on this phone yet": "Resonuls n'a encore aucun compte sur ce téléphone"
 }

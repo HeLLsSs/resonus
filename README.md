@@ -39,7 +39,18 @@ Everything Resonus does, plus:
 
 ### Navifind and YouTube Music
 
-- **Navifind support**: with that proxy in
+**What Navifind is.** A small companion server of mine that sits between the
+app and Navidrome. Everything it does not recognise it passes straight through,
+so to the app it is an ordinary Subsonic server; what it adds is answering a
+search with tracks that are not in the library yet, and keeping a YouTube Music
+session so the app can show what that account is given. It is a separate
+project, it is not published here, and I would rather be asked than post it: if
+it is of use to you, get in touch through this repository.
+
+The app works perfectly well without it. Every feature below simply does not
+appear when it is switched off.
+
+- **Navifind support**: with the proxy in
   front of Navidrome, a search also answers with tracks it can fetch from
   YouTube and SoundCloud. They are badged as such, play straight away, and the
   proxy files them into the library by itself after ten seconds of listening.

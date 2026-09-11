@@ -3,7 +3,7 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
-group = 'com.juananzzz.resonus'
+group = 'com.hellsss.resonuls'
 version = '0.0.1'
 
 android {

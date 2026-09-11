@@ -17,8 +17,8 @@ import java.lang.ref.WeakReference
  */
 object Commands {
   const val TAG = "IntentsApi"
-  const val ACTION_COMMAND = "com.juananzzz.resonus.COMMAND"
-  const val ACTION_STATE = "com.juananzzz.resonus.STATE"
+  const val ACTION_COMMAND = "com.hellsss.resonuls.COMMAND"
+  const val ACTION_STATE = "com.hellsss.resonuls.STATE"
   const val EXTRA_COMMAND = "command"
 
   /**

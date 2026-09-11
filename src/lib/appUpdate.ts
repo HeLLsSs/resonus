@@ -1,5 +1,5 @@
 /**
- * Updating Resonus from inside Resonus.
+ * Updating Resonuls from inside Resonuls.
  *
  * The app is not on a store: it is an APK on GitHub, and whoever does not use
  * Obtainium finds out about a new version by going to look. Which means they
@@ -201,7 +201,7 @@ export function canInstallApks(): boolean {
   return !!native;
 }
 
-/** Has the user granted "install unknown apps" to Resonus? */
+/** Has the user granted "install unknown apps" to Resonuls? */
 export function canInstallNow(): boolean {
   try {
     return native?.canInstall() ?? false;

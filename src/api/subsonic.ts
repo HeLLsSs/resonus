@@ -21,7 +21,7 @@ import { navifindActive } from '@/lib/navifind';
 // module holds the app's plain logic and takes nothing from here but types.
 import { readAccount, type YoutubeAccount } from '@/lib/youtube';
 
-export const CLIENT_NAME = 'Resonus';
+export const CLIENT_NAME = 'Resonuls';
 const API_VERSION = '1.16.1';
 
 export interface SubsonicAuth {
@@ -160,7 +160,7 @@ export interface Song {
   suffix?: string;
   /** Bitrate in kbps. */
   bitRate?: number;
-  /** Bitrate (kbps) at which Resonus transcoded on DOWNLOAD, if applicable.
+  /** Bitrate (kbps) at which Resonuls transcoded on DOWNLOAD, if applicable.
    *  Only set on downloaded transcoded tracks; powers the quality tag
    *  (the on-disk file doesn't carry this info readily). */
   dlBitRate?: number;
@@ -1527,7 +1527,7 @@ const NOW_PLAYING_MAX_MINUTES = 10;
  * The endpoint answers with every user's players. Kept: this user's, on
  * anything that is not this app, and announced recently. Other players named
  * `CLIENT_NAME` are left out with our own, since there is no telling this phone
- * from another one running Resonus, and the card is about picking up what a
+ * from another one running Resonuls, and the card is about picking up what a
  * different player was doing.
  */
 export async function getNowPlaying(auth: SubsonicAuth): Promise<NowPlayingEntry[]> {

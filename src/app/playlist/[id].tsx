@@ -89,7 +89,7 @@ export default function PlaylistScreen() {
     enabled: (!!auth || offline) && !!id,
   });
 
-  // Opened by `resonus://play/playlist/<id>` (see `+native-intent`): play it
+  // Opened by `resonuls://play/playlist/<id>` (see `+native-intent`): play it
   // in its own order as soon as the songs are here. The query waits for the
   // session by itself, so a cold start from an NFC tag lands here with the data
   // still on its way and this fires when it arrives. Once only: the param

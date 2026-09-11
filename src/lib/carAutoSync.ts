@@ -240,7 +240,7 @@ export function startCarAutoSync(): void {
   // Plugging into a car is the one moment the tree is certain to be needed,
   // and the wait was being counted from the launch: forty five seconds of
   // app in the foreground is a thing that never happens to somebody who
-  // opens Resonus, puts the phone in a pocket and drives off, so what the
+  // opens Resonuls, puts the phone in a pocket and drives off, so what the
   // car got were the lists with no songs inside them.
   //
   // After the profile, not before: the car opening the app can be what

@@ -81,7 +81,7 @@ export default function AboutSettings() {
             router.push('/settings/diagnostics');
           }}
         >
-          <Field label={t('Version')} value={`Resonus v${version ?? '?'}`} />
+          <Field label={t('Version')} value={`Resonuls v${version ?? '?'}`} />
         </Pressable>
         <SettingRow
           icon="sparkles-outline"

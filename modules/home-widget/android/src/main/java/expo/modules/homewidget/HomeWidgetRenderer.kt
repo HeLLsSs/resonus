@@ -27,7 +27,7 @@ import java.util.concurrent.Executors
  */
 internal object HomeWidgetRenderer {
   /** The deep link the cover opens. `resonus` is the app's scheme (app.json). */
-  private const val PLAYER_LINK = "resonus://player"
+  private const val PLAYER_LINK = "resonuls://player"
 
   /**
    * Opens the app on the player, which is a route it already has. With [play]

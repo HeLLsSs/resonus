@@ -176,7 +176,7 @@ export default function AlbumScreen() {
   if (fresh && fresh.songs.length > 0 && lastGood !== fresh) setLastGood(fresh);
   const data = vanished ? (lastGood ?? fresh) : fresh;
 
-  // Opened by `resonus://play/album/<id>` (see `+native-intent`): play it as
+  // Opened by `resonuls://play/album/<id>` (see `+native-intent`): play it as
   // soon as the songs are here. The query waits for the session by itself, so
   // a cold start from an NFC tag lands here with the data still on its way and
   // this fires when it arrives. Once only: the param stays in the route, and a

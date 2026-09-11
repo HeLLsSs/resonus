@@ -19,7 +19,7 @@ import { isManualOffline } from '@/api/netGate';
 
 const LRCLIB_CACHE_DIR = FileSystem.documentDirectory + 'lyrics-cache/';
 /** Who is asking, for LRCLIB. Sent as both headers: see `fetchLrclib`. */
-const CLIENT_UA = 'Resonus (https://github.com/juananzzz/resonus)';
+const CLIENT_UA = 'Resonuls (https://github.com/HeLLsSs/resonus)';
 const AUDIO_EXT_RE = /\.[a-z0-9]{1,5}$/i;
 
 /** URI of the sibling `.lrc` next to an audio file (works for `file://` and SAF). */

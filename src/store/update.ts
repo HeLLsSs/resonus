@@ -1,5 +1,5 @@
 /**
- * The state of "there is a newer Resonus than this one".
+ * The state of "there is a newer Resonuls than this one".
  *
  * A store rather than component state because two places drive it: the check
  * that runs by itself on startup, and the button in Settings › About. Both end

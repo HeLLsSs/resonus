@@ -60,7 +60,7 @@ you are actually typing into, which is easier than reading it here.
 | `Disc {n}` | Heading over the songs of one disc of a multi-disc album. `{n}` is its number |
 | `Don't remind me` | Its other button: never show this again |
 | `Download removed` | Toast: the file was deleted, the song stays in the library |
-| `Downloading Resonus {version}` |  |
+| `Downloading Resonuls {version}` |  |
 | `Duration` | Label of a field in the song information sheet: how long the song is. Also a sort order, by that same length |
 | `Explicit` | A value of `Content`: the recording carries a parental advisory (strong language). Also read out for the E badge next to a title |
 | `Export “{name}”?` | Confirms getting the files of an album or playlist out of the app |
@@ -81,8 +81,8 @@ you are actually typing into, which is easier than reading it here.
 | `Remove bookmark` |  |
 | `Remove from playlist` | Menu action: take this song out of the playlist it was opened from |
 | `Removed from playlist` | Toast, with an undo button next to it |
-| `Resonus {new} is out. You have {old}.` |  |
-| `Resonus {new} is out. You have {old}. The download is about {mb} MB.` |  |
+| `Resonuls {new} is out. You have {old}.` |  |
+| `Resonuls {new} is out. You have {old}. The download is about {mb} MB.` |  |
 | `Sample rate` | A property of the audio, in kHz |
 | `Save to a folder` | A value of `Export`: write the file somewhere on the phone |
 | `Saved as “{name}”` | Where the exported file ended up. `{name}` is the file's name |
@@ -391,7 +391,7 @@ you are actually typing into, which is easier than reading it here.
 | `Pinned` |  |
 | `Recently added` | A sort order, and a section: newest first (in Favorites, last favorited first) |
 | `Recents` | Library section and its sort order: recently opened items |
-| `Resonus has no account on this phone yet` |  |
+| `Resonuls has no account on this phone yet` |  |
 | `Shuffle everything` |  |
 | `Sign in on your phone` |  |
 | `Unknown title` | Fallback when the file and the server have no title |

@@ -1,5 +1,5 @@
 /**
- * Resonus visual theme.
+ * Resonuls visual theme.
  *
  * Two palettes — the dark one the app was built around, and a light one — plus
  * an accent that can be picked in Settings › Theme. Both are chosen at runtime,

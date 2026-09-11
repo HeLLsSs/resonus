@@ -1,5 +1,5 @@
 /**
- * Says that a newer Resonus is out, and installs it.
+ * Says that a newer Resonuls is out, and installs it.
  *
  * The throttle lives in `checkForUpdate`, so asking here is cheap and this
  * asks on every occasion somebody could have come back to a newer release:
@@ -137,12 +137,12 @@ export function UpdatePrompt() {
           // no way to do anything about it. Now the sentence decides, which is
           // where a decision about wording belongs.
           cellular && megabytes > 0
-            ? t('Resonus {new} is out. You have {old}. The download is about {mb} MB.', {
+            ? t('Resonuls {new} is out. You have {old}. The download is about {mb} MB.', {
                 new: version ?? '',
                 old: currentVersion(),
                 mb: megabytes,
               })
-            : t('Resonus {new} is out. You have {old}.', {
+            : t('Resonuls {new} is out. You have {old}.', {
                 new: version ?? '',
                 old: currentVersion(),
               })
@@ -175,7 +175,7 @@ export function UpdatePrompt() {
         <View style={styles.backdrop}>
           <View style={styles.card}>
             <Text style={styles.title}>
-              {t('Downloading Resonus {version}', { version: version ?? '' })}
+              {t('Downloading Resonuls {version}', { version: version ?? '' })}
             </Text>
             <View style={styles.track}>
               <View

@@ -713,7 +713,7 @@ function nothingToBrowse(): CarNode | null {
     return {
       id: 'notice:signed-out',
       title: tg('Sign in on your phone'),
-      subtitle: tg('Resonus has no account on this phone yet'),
+      subtitle: tg('Resonuls has no account on this phone yet'),
       playable: false,
     };
   }

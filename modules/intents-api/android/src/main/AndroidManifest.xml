@@ -9,7 +9,7 @@
       android:name="expo.modules.intentsapi.IntentsApiReceiver"
       android:exported="true">
       <intent-filter>
-        <action android:name="com.juananzzz.resonus.COMMAND" />
+        <action android:name="com.hellsss.resonuls.COMMAND" />
       </intent-filter>
     </receiver>
   </application>

@@ -7,7 +7,7 @@ the same tools can react to it. Android only.
 
 ## Commands
 
-Send a broadcast with the action `com.juananzzz.resonus.COMMAND` and a string
+Send a broadcast with the action `com.hellsss.resonuls.COMMAND` and a string
 extra `command`. Extras that carry a value are listed with each command; a
 number or a boolean is accepted either as its own type (`--ei`, `--ef`, `--ez`)
 or as text (`--es position 90`, `--es on true`).
@@ -33,7 +33,7 @@ or as text (`--es position 90`, `--es on true`).
 | `sleep_timer`   | `minutes` (0 cancels, at most 600)                 | Starts or cancels the sleep timer.                        |
 
 An unknown command is ignored (with a warning in the JS log). The ids are the
-server's: the same ones the app's share links and `resonus://play/album/<id>`
+server's: the same ones the app's share links and `resonuls://play/album/<id>`
 links carry, and what the Navidrome web interface shows in its URLs.
 
 ### From `adb shell`
@@ -43,8 +43,8 @@ declared in a manifest on Android 8 and later. `-n` with the receiver's class
 works as well.
 
 ```sh
-PKG=com.juananzzz.resonus
-A=com.juananzzz.resonus.COMMAND
+PKG=com.hellsss.resonuls
+A=com.hellsss.resonuls.COMMAND
 
 adb shell am broadcast -p $PKG -a $A --es command play
 adb shell am broadcast -p $PKG -a $A --es command pause
@@ -68,26 +68,26 @@ adb shell am broadcast -p $PKG -a $A --es command sleep_timer --ei minutes 0
 ```
 
 The full receiver name, for tools that want it: `-n
-com.juananzzz.resonus/expo.modules.intentsapi.IntentsApiReceiver`.
+com.hellsss.resonuls/expo.modules.intentsapi.IntentsApiReceiver`.
 
 ### From Tasker
 
 Action **System > Send Intent**:
 
-- Action: `com.juananzzz.resonus.COMMAND`
+- Action: `com.hellsss.resonuls.COMMAND`
 - Extra: `command:play_album`
 - Extra: `id:3f2b9c0e1a5d4e7f8b6c`
-- Package: `com.juananzzz.resonus`
+- Package: `com.hellsss.resonuls`
 - Target: **Broadcast Receiver**
 
 MacroDroid ("Send Intent") and Automate ("Send broadcast") take the same
 fields. An NFC app that can send intents (Tasker with an NFC trigger, or NFC
 Tools with a "Send intent" task) can do the same from a tag; the simpler
-alternative for a tag is a plain URL record `resonus://play/album/<id>`, which
+alternative for a tag is a plain URL record `resonuls://play/album/<id>`, which
 needs no automation app at all. The same links take `playlist/<id>` and
-`artist/<id>`, and three that need no id: `resonus://play/random` shuffles the
-whole library, `resonus://play/favorites` shuffles the starred songs and
-`resonus://play/resume` picks up the queue, or the last one saved when the
+`artist/<id>`, and three that need no id: `resonuls://play/random` shuffles the
+whole library, `resonuls://play/favorites` shuffles the starred songs and
+`resonuls://play/resume` picks up the queue, or the last one saved when the
 queue is empty. These three are also the app's launcher shortcuts.
 
 ## When the app is not running
@@ -109,18 +109,18 @@ does), at the cost of bringing the app to the front. The extras are the
 same:
 
 ```sh
-adb shell am start -n com.juananzzz.resonus/.MainActivity --es command play_album --es id 3f2b9c0e1a5d4e7f8b6c
+adb shell am start -n com.hellsss.resonuls/.MainActivity --es command play_album --es id 3f2b9c0e1a5d4e7f8b6c
 ```
 
 In Tasker that is the same Send Intent with **Target: Activity** and Class
-`com.juananzzz.resonus.MainActivity`. This route also works while the app is
+`com.hellsss.resonuls.MainActivity`. This route also works while the app is
 running; it just brings it to the front as well. Sending `play_album` and the
 like with the app already open is what the receiver is for.
 
 ## State broadcast
 
 After every change of track and every play/pause, Resonus sends the broadcast
-`com.juananzzz.resonus.STATE` with these extras:
+`com.hellsss.resonuls.STATE` with these extras:
 
 | Extra        | Type    |                                                       |
 | ------------ | ------- | ----------------------------------------------------- |
@@ -138,7 +138,7 @@ current at the moment of the event.
 
 The broadcast is implicit, so it reaches receivers registered at runtime,
 which is how Tasker's **Event > System > Intent Received** (action
-`com.juananzzz.resonus.STATE`) and MacroDroid's "Intent Received" trigger
+`com.hellsss.resonuls.STATE`) and MacroDroid's "Intent Received" trigger
 listen; a receiver declared in another app's manifest would not get it. In
 Tasker the extras arrive as local variables named after them (`%playing`,
 `%title`, `%artist`, ...).

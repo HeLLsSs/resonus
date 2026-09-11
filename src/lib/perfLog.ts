@@ -314,7 +314,7 @@ export function resetPerfLog(): void {
 /** The whole thing as text, to paste into an issue. */
 export function perfReport(): string {
   const mins = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
-  const lines: string[] = [`Resonus diagnostics, ${mins} min of use`, ''];
+  const lines: string[] = [`Resonuls diagnostics, ${mins} min of use`, ''];
   lines.push('JS thread blocks (worst first):');
   const bs = perfBlocks();
   if (bs.length === 0) lines.push('  none over 120 ms');

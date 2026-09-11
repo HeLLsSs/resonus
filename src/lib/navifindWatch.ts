@@ -44,7 +44,7 @@ const GRACE_MS = 90_000;
  */
 const MOUNT_DELAY_MS = 500;
 const CHANNEL_ID = 'navifind';
-const SCREEN_URL = 'resonus://settings/navifind';
+const SCREEN_URL = 'resonuls://settings/navifind';
 /** The search results that carry the online badges. */
 const SEARCH_KEYS = [['search'], ['searchSongs'], ['searchAlbums']] as const;
 

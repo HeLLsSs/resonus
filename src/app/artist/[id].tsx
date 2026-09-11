@@ -214,7 +214,7 @@ export default function ArtistScreen() {
   // Only for an artist the server credits as a composer (see the hook).
   const { data: composed } = useComposedAlbums(id, !!data?.artist.roles?.includes('composer'));
 
-  // Opened by `resonus://play/artist/<id>` (see `+native-intent`): what the
+  // Opened by `resonuls://play/artist/<id>` (see `+native-intent`): what the
   // header's play button does, without the tap. The popular tracks once they
   // have been asked for (a server that keeps no play counts answers with none,
   // and then it is the discography from the earliest album on, the way the

@@ -7,6 +7,14 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.8.3] - 2026-09-11
+
+### Changed
+
+- The links the app answers are `resonuls://` rather than `resonus://`, and the broadcast actions other apps send it are `com.hellsss.resonuls.COMMAND` and `.STATE`. Both had to move: while the old app is still installed the two of them claimed the same links, so Android asked which to open on every launcher shortcut, and both acted on the same broadcast. Launcher shortcuts and NFC tags written for the old app need rewriting with the new scheme, and so does anything automating it ([docs/INTENTS.md](./docs/INTENTS.md)).
+- The app calls itself Resonuls everywhere it says its own name: the profiles screen, Settings > About, the update prompt and the car's "no account" notice. The name it gives servers when it asks them for something is Resonuls too. "Support Resonus" keeps the old name on purpose: it leads to the upstream project's Ko-fi, and that project is Resonus.
+- The README says what Navifind is and how to ask for it.
+
 ## [0.8.2] - 2026-09-11
 
 ### Changed
@@ -1984,6 +1992,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.8.3]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.3
 [0.8.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.2
 [0.8.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.1
 [0.2.1]: https://github.com/juananzzz/resonus/releases/tag/v0.2.1

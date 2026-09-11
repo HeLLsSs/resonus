@@ -2,9 +2,9 @@
  * JS ↔ `IntentsApi` native module bridge (control from other apps, Android).
  *
  * Tasker, MacroDroid, Automate, an NFC app or `adb shell am broadcast` send
- * the app a `com.juananzzz.resonus.COMMAND` broadcast with a `command` extra,
+ * the app a `com.hellsss.resonuls.COMMAND` broadcast with a `command` extra,
  * and the app answers every change of track or of play/pause with a
- * `com.juananzzz.resonus.STATE` broadcast. Both are described, with examples,
+ * `com.hellsss.resonuls.STATE` broadcast. Both are described, with examples,
  * in docs/INTENTS.md.
  *
  * Commands reach JS as events while it runs. Sent to an app that is not
@@ -235,7 +235,7 @@ async function run(command: IntentCommand): Promise<void> {
 
 /**
  * Plays an album, a playlist or an artist by id, the way the
- * `resonus://play/<kind>/<id>` link does: through the screens' own queries,
+ * `resonuls://play/<kind>/<id>` link does: through the screens' own queries,
  * and for an artist the popular songs first, the discography from the
  * earliest album on when the server keeps no play counts.
  */

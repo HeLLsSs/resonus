@@ -6,13 +6,13 @@
  * binding the service). Those routes don't exist and would show "Unmatched
  * Route", so the notification tap is routed to the player.
  *
- * `resonus://play/album/<id>` (and `playlist`, `artist`) is the link for a
+ * `resonuls://play/album/<id>` (and `playlist`, `artist`) is the link for a
  * home-screen shortcut or an NFC tag on a record sleeve: open the app and play
  * that, no tap needed. There is no `/play` screen either; the link becomes the
  * ordinary screen with `?play=1`, and the screen starts playing once its songs
  * have loaded, which is the one place that knows when that is.
  *
- * `resonus://play/random`, `play/favorites` and `play/resume` are the launcher
+ * `resonuls://play/random`, `play/favorites` and `play/resume` are the launcher
  * shortcuts (plugins/withShortcuts.js). Those are actions with no screen of
  * their own: the link lands on the player, and the action runs once the
  * stores are back.
@@ -20,7 +20,7 @@
 import { type StoreApi } from 'zustand';
 
 // With or without the scheme in front: what arrives here for
-// `resonus://play/random` is the whole link, `play` being read as its host,
+// `resonuls://play/random` is the whole link, `play` being read as its host,
 // and a path alone comes from the router's own handling.
 const PLAY_LINK = /^(?:[a-z]+:\/\/)?\/?play\/(album|playlist|artist)\/([^/?#]+)/;
 const ACTION_LINK = /^(?:[a-z]+:\/\/)?\/?play\/(random|favorites|resume)(?:[/?#]|$)/;
