@@ -27,10 +27,12 @@
  * rather than a trip to the proxy's own web page. Either way the anonymous home
  * takes over below it, so the tab is still worth opening with no account at all.
  */
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -45,6 +47,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   getSong,
+  switchYoutubeAccount,
+  youtubeAccounts,
   youtubeHome,
   youtubeLibrary,
   youtubeLiked,
@@ -146,6 +150,15 @@ export default function YoutubeScreen() {
   const columns = columnsFor(width, TILE_IDEAL);
   const tile = (width - spacing.lg * 2 - spacing.md * (columns - 1)) / columns;
   const canAsk = navifind && !!auth && !offline;
+  const [switching, setSwitching] = useState(false);
+  // The same key the settings screen fills, so whichever of the two was opened
+  // first pays for it and the other reads it from the cache.
+  const accounts = useQuery({
+    queryKey: ['youtube', 'accounts'],
+    queryFn: () => youtubeAccounts(auth!),
+    enabled: canAsk,
+    staleTime: 5 * 60_000,
+  });
 
   /**
    * The account, asked about once and then never again by the other three:
@@ -192,6 +205,31 @@ export default function YoutubeScreen() {
   // session that runs out while the liked songs are on screen leaves nothing
   // to show there.
   const current = home.isSuccess ? section : 'foryou';
+
+  /**
+   * Moves to the next account the session opens, and reloads the tab under it.
+   *
+   * A step rather than a menu: the whole point is one tap, and with two
+   * accounts — which is what anybody who signs a second one in has — a step is
+   * the shortest thing that works. It wraps, so a third is still reachable.
+   */
+  async function nextAccount() {
+    const list = accounts.data ?? [];
+    if (switching || list.length < 2) return;
+    const at = list.findIndex((a) => a.active);
+    const target = list[(at + 1) % list.length];
+    setSwitching(true);
+    try {
+      await switchYoutubeAccount(auth!, target.index);
+      // Everything on this tab belongs to whoever was being read.
+      await queryClient.invalidateQueries({ queryKey: ['youtube'] });
+    } catch {
+      // Out of reach, or a session that has died since: the pill stays on the
+      // account it was on, which is still the one being read.
+    } finally {
+      setSwitching(false);
+    }
+  }
 
   /** A tile pressed: a list opens, a single track plays. Nothing else can be
    *  pressed, because nothing else is drawn (see `lib/youtube.ts`). */
@@ -282,7 +320,29 @@ export default function YoutubeScreen() {
     <View style={[styles.safe, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.heading}>YouTube</Text>
-        <OfflineIndicator />
+        <View style={styles.headerRight}>
+          {/* Only with somewhere to go: one account is a button that would do
+              nothing, and the settings screen is where the list belongs. */}
+          {(accounts.data?.length ?? 0) > 1 ? (
+            <Pressable
+              style={styles.account}
+              accessibilityRole="button"
+              accessibilityLabel={t('Switch account')}
+              disabled={switching}
+              onPress={() => void nextAccount()}
+            >
+              {switching ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <Ionicons name="swap-horizontal" size={16} color={colors.textSecondary} />
+              )}
+              <Text style={styles.accountName} numberOfLines={1}>
+                {accounts.data?.find((a) => a.active)?.name ?? ''}
+              </Text>
+            </Pressable>
+          ) : null}
+          <OfflineIndicator />
+        </View>
       </View>
 
       {/* Chips only once there is an account: the other three sections are
@@ -419,6 +479,19 @@ const styles = themed((colors) => ({
   // The heading Explore and "Your library" wear: this is a third tab of the
   // same kind, and a different size would read as a different kind of screen.
   heading: { color: colors.text, fontSize: fontSize.xxl, fontWeight: '600' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
+  account: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceHighlight,
+    flexShrink: 1,
+  },
+  // Capped so a long account name cannot push the offline badge off the edge.
+  accountName: { color: colors.textSecondary, fontSize: fontSize.xs, maxWidth: 120 },
   segments: { flexGrow: 0, paddingBottom: spacing.md },
   segmentsContent: { gap: spacing.sm, paddingHorizontal: spacing.lg },
   segment: {

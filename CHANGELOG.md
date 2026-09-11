@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.8.8] - 2026-09-11
+
+### Added
+
+- The YouTube tab carries the account it is reading, and one tap moves to the next one the session opens. It appears only where there is somewhere to go, and the tab reloads under whoever it lands on. The "For you" mix reads whichever account is active, not both: switching here changes what it builds from.
+
 ## [0.8.7] - 2026-09-11
 
 ### Changed
@@ -2017,6 +2023,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.8.8]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.8
 [0.8.7]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.7
 [0.8.6]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.6
 [0.8.5]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.5
