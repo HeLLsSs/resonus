@@ -2,4 +2,6 @@
 <resources>
   <string name="car_shuffle">Aleatorio</string>
   <string name="car_repeat">Repetir</string>
+  <string name="car_favorite">Añadir a favoritos</string>
+  <string name="car_unfavorite">Quitar de favoritos</string>
 </resources>

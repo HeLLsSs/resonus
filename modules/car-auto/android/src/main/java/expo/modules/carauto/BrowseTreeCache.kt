@@ -18,6 +18,9 @@ data class BrowseNode(
   val contentStyle: String?, // "list" | "grid" | null
   val mediaType: String?, // "album" | "artist" | "playlist" | null
   val group: String?, // heading this item is drawn under, if any
+  /** How far through this one already is, 0..1, for a row that resumes rather
+   *  than starts. Null for everything that has no such thing. */
+  val progress: Double?,
 )
 
 object BrowseTreeCache {
@@ -126,12 +129,12 @@ object BrowseTreeCache {
   }
 
   // ── Search ──────────────────────────────────────────────────────────────────
-  // Answered from this cache and nowhere else. The car asks with the screen off
-  // and the phone locked, which is when React Native stops running timers and
-  // its `fetch` stops resolving, so anything that had to go through JS to
-  // answer would answer nothing at all (#103). The price is honest: it finds
-  // what the tree holds, which is the shelves plus the songs of the albums that
-  // were prefetched, not the whole library.
+  // What this cache can answer on its own, which is the shelves plus the songs
+  // of the albums that were prefetched, and not the whole library. It is what
+  // the car gets at once, and what it keeps when nothing else comes: the car
+  // asks with the screen off and the phone locked, which is when React Native
+  // stops running timers and its `fetch` stops resolving (#103). The rest of
+  // the library is asked of JS and laid behind these (see `CarSearch`).
 
   /** Ceiling on what a query returns. The car pages through them anyway. */
   private const val MAX_RESULTS = 60
@@ -298,6 +301,7 @@ object BrowseTreeCache {
       contentStyle = null,
       mediaType = null,
       group = null,
+      progress = null,
     )
 
   /**
@@ -358,6 +362,34 @@ object BrowseTreeCache {
     null
   }
 
+  /**
+   * A list of nodes as JS writes them, and the way back.
+   *
+   * The tree travels one way only, but a search does not: the car's own hits
+   * are handed to JS so that it can lay the library's behind them, and what it
+   * makes of the two comes back the same way (`CarSearch`).
+   */
+  fun nodesToJson(nodes: List<BrowseNode>): String {
+    val arr = JSONArray()
+    for (n in nodes) {
+      arr.put(
+        JSONObject()
+          .put("id", n.id)
+          .put("title", n.title)
+          .put("subtitle", n.subtitle)
+          .put("artworkUrl", n.artworkUrl)
+          .put("playable", n.playable)
+          .put("contentStyle", n.contentStyle)
+          .put("mediaType", n.mediaType)
+          .put("group", n.group)
+          .put("progress", n.progress),
+      )
+    }
+    return arr.toString()
+  }
+
+  fun parseNodes(arr: JSONArray?): List<BrowseNode> = if (arr == null) emptyList() else parseList(arr)
+
   private fun parseList(arr: JSONArray): List<BrowseNode> {
     val out = ArrayList<BrowseNode>(arr.length())
     for (i in 0 until arr.length()) {
@@ -372,6 +404,7 @@ object BrowseTreeCache {
           contentStyle = o.optString("contentStyle").takeIf { it.isNotEmpty() },
           mediaType = o.optString("mediaType").takeIf { it.isNotEmpty() },
           group = o.optString("group").takeIf { it.isNotEmpty() },
+          progress = if (o.isNull("progress")) null else o.optDouble("progress").takeIf { !it.isNaN() },
         )
       )
     }

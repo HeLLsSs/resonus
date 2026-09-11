@@ -78,6 +78,28 @@ import {
   type CastQueueState,
 } from './googleCast';
 import { useDownloads } from './downloads';
+import {
+  haDisconnect,
+  haPause,
+  haPlay,
+  haSeek,
+  haSetVolume,
+  initHomeAssistant,
+  isHaConnected,
+  loadHaQueue,
+  syncHaQueue,
+} from './homeAssistant';
+import {
+  initMusicAssistant,
+  isMaConnected,
+  loadMaQueue,
+  maDisconnect,
+  maPause,
+  maPlay,
+  maSeek,
+  maSetVolume,
+  syncMaQueue,
+} from './musicAssistant';
 import { useEqualizer } from './equalizer';
 import {
   initJukebox,
@@ -772,31 +794,36 @@ function clearLockScreen() {
   lockOwner = null;
 }
 
-// ── Remote output (UPnP/DLNA renderer, server jukebox, Google Cast) ─────────
+// ── Remote output (UPnP/DLNA renderer, server jukebox, Google Cast, Home Assistant, Music Assistant) ──
 
 /** Active remote output, if any. */
-function remoteKind(): 'upnp' | 'jukebox' | 'cast' | null {
+function remoteKind(): 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | null {
   if (isUpnpConnected()) return 'upnp';
   if (isJukeboxActive()) return 'jukebox';
   if (isCastConnected()) return 'cast';
+  if (isHaConnected()) return 'ha';
+  if (isMaConnected()) return 'ma';
   return null;
 }
 
 /**
  * Whether the phone needs a media session of its own for what is playing: a
- * renderer or a Cast receiver plays with the local player mute, so the
- * notification and the volume keys have nothing to hold on to without one.
- * Jukebox plays on the server itself and needs no session here.
+ * renderer, a Cast receiver or a player of Home Assistant's or Music
+ * Assistant's plays with the local player mute, so the notification and the
+ * volume keys have nothing to hold on to without one. Jukebox plays on the
+ * server itself and needs no session here.
  */
 function usesCastMedia(): boolean {
   const kind = remoteKind();
-  return kind === 'upnp' || kind === 'cast';
+  return kind === 'upnp' || kind === 'cast' || kind === 'ha' || kind === 'ma';
 }
 
 function remotePlay() {
   const kind = remoteKind();
   if (kind === 'jukebox') void jukeboxPlay();
   else if (kind === 'cast') void castPlay();
+  else if (kind === 'ha') void haPlay();
+  else if (kind === 'ma') void maPlay();
   else void upnpPlay();
 }
 
@@ -804,6 +831,8 @@ function remotePause() {
   const kind = remoteKind();
   if (kind === 'jukebox') void jukeboxPause();
   else if (kind === 'cast') void castPause();
+  else if (kind === 'ha') void haPause();
+  else if (kind === 'ma') void maPause();
   else void upnpPause();
 }
 
@@ -811,6 +840,8 @@ function remoteSeek(sec: number) {
   const kind = remoteKind();
   if (kind === 'jukebox') void jukeboxSeek(sec);
   else if (kind === 'cast') void castSeek(sec);
+  else if (kind === 'ha') void haSeek(sec);
+  else if (kind === 'ma') void maSeek(sec);
   else void upnpSeek(sec);
 }
 
@@ -821,9 +852,12 @@ function remoteSetVolume(volume: number) {
     return;
   }
   if (kind === 'cast') castSetVolume(volume);
+  else if (kind === 'ha') haSetVolume(volume);
+  else if (kind === 'ma') maSetVolume(volume);
   else upnpSetVolume(volume);
-  // Reflect the exact value back in the system volume overlay (UPnP and Cast
-  // go through the CastMedia session; Jukebox plays on the server, no overlay).
+  // Reflect the exact value back in the system volume overlay (UPnP, Cast,
+  // Home Assistant and Music Assistant go through the CastMedia session;
+  // Jukebox plays on the server, no overlay).
   castSetVolumeLevel(volume);
 }
 
@@ -850,7 +884,7 @@ function syncCastMedia(): void {
   castSetVolumeLevel(st.volume);
 }
 
-/** What the Cast receiver is handed to build its queue from, at `index`. */
+/** What the Cast receiver, or a Home Assistant player, is handed to build its queue from, at `index`. */
 function castQueueState(index = usePlayerStore.getState().index): CastQueueState {
   const { queue, repeat, sleepAtSongEnd } = usePlayerStore.getState();
   return { queue, index, repeat, sleepAtSongEnd };
@@ -928,7 +962,11 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
       ? await jukeboxLoad(song, autoplay, startSec)
       : kind === 'cast'
         ? await loadCastQueue(castQueueState(index), autoplay, startSec)
-        : await loadUpnpRemoteTrack(
+        : kind === 'ha'
+          ? await loadHaQueue(castQueueState(index), autoplay, startSec)
+          : kind === 'ma'
+          ? await loadMaQueue(castQueueState(index), autoplay, startSec)
+          : await loadUpnpRemoteTrack(
             {
               queue: state.queue,
               index,
@@ -940,8 +978,9 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
             autoplay,
           );
   if (!ok) {
-    // Cast says why itself, when the receiver gave a reason.
-    if (kind !== 'cast') useToast.getState().show(tg("This song can't be cast"));
+    // Cast, Home Assistant and Music Assistant say why themselves, when the
+    // device gave a reason.
+    if (kind !== 'cast' && kind !== 'ha' && kind !== 'ma') useToast.getState().show(tg("This song can't be cast"));
     usePlayerStore.setState({ index, isPlaying: false, isBuffering: false });
     return;
   }
@@ -951,6 +990,7 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
     durationSec: song.duration ?? 0,
     isPlaying: autoplay,
     isBuffering: autoplay,
+    playbackError: null,
   });
   onTrackChanged(song);
 }
@@ -1058,6 +1098,8 @@ async function loadIndex(index: number, autoplay: boolean): Promise<boolean> {
     durationSec: song.duration ?? 0,
     isPlaying: autoplay,
     isBuffering: autoplay,
+    // Whatever went wrong last belonged to the song that was there before.
+    playbackError: null,
   });
   try {
     applyLoop(p);
@@ -2595,8 +2637,9 @@ function onPlaybackError(message: string, wasPlaying: boolean): void {
   if (errorAttempts >= MAX_ERROR_ATTEMPTS) {
     errorGaveUp = true;
     bump('player · gave up on the track');
-    usePlayerStore.setState({ isPlaying: false, isBuffering: false });
-    useToast.getState().show(tg("Couldn't play the song"));
+    const said = tg("Couldn't play the song");
+    usePlayerStore.setState({ isPlaying: false, isBuffering: false, playbackError: said });
+    useToast.getState().show(said);
     return;
   }
   errorAttempts++;
@@ -3134,6 +3177,10 @@ function syncQueueNow(force = false, syncRemote = true) {
     );
   } else if (syncRemote && remoteKind() === 'cast') {
     void syncCastQueue(castQueueState(), force);
+  } else if (syncRemote && remoteKind() === 'ha') {
+    void syncHaQueue(castQueueState());
+  } else if (syncRemote && remoteKind() === 'ma') {
+    void syncMaQueue(castQueueState());
   }
 }
 
@@ -3224,8 +3271,8 @@ function attachAppState() {
 let remoteEvents: RemoteEvents | null = null;
 
 /**
- * Attaches remote output events (UPnP/DLNA, Jukebox, Google Cast) to the
- * queue; see src/store/upnp.ts. Call once on startup.
+ * Attaches remote output events (UPnP/DLNA, Jukebox, Google Cast, Home
+ * Assistant) to the queue; see src/store/upnp.ts. Call once on startup.
  */
 export function initRemoteIntegration() {
   const events: RemoteEvents = {
@@ -3263,6 +3310,8 @@ export function initRemoteIntegration() {
       // be in the background, where the timers `onTrackChanged` starts do not
       // run: the tail is refilled now, from the event itself.
       if (remoteKind() === 'cast') void syncCastQueue(castQueueState(index));
+      else if (remoteKind() === 'ha') void syncHaQueue(castQueueState(index));
+      else if (remoteKind() === 'ma') void syncMaQueue(castQueueState(index));
     },
     onVolume: (volume) => {
       // Moved on the device's side: the slider follows, and nothing is sent
@@ -3343,10 +3392,13 @@ export function initRemoteIntegration() {
   remoteEvents = events;
   initUpnp(events);
   initJukebox(events);
-  initGoogleCast(events, () => {
+  const queueOf = () => {
     const { queue, index } = usePlayerStore.getState();
     return { queue, index };
-  });
+  };
+  initGoogleCast(events, queueOf);
+  initHomeAssistant(events, queueOf);
+  initMusicAssistant(events, queueOf);
   // Sync crossfade toggle to Sonos whenever the setting changes.
   let lastCrossfadeSec = useSettings.getState().crossfadeSec;
   useSettings.subscribe((s) => {
@@ -3400,6 +3452,13 @@ interface PlayerState {
   isPlaying: boolean;
   /** Audio is loading/buffering and not yet playing. */
   isBuffering: boolean;
+  /**
+   * What the player gave up on, in the words shown for it, or null while
+   * nothing is wrong. Kept in the store rather than only shown as a toast
+   * because the toast needs a screen: the car reads this instead, which is
+   * where a failure would otherwise pass in silence (see `carAutoSync`).
+   */
+  playbackError: string | null;
   positionSec: number;
   durationSec: number;
   volume: number;
@@ -3608,6 +3667,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   queuedCount: 0,
   isPlaying: false,
   isBuffering: false,
+  playbackError: null,
   positionSec: 0,
   durationSec: 0,
   volume: 1,
@@ -4173,7 +4233,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   toggleShuffle: () => {
     const { shuffle, queue, index, originalQueue, source, sourceHref } = get();
     const current = queue[index];
-    const upnpActive = remoteKind() === 'upnp';
+    const remoteHoldsQueue = remoteKind() === 'upnp' || remoteKind() === 'ha' || remoteKind() === 'ma';
     // Same reasoning as starting a list again (see `forgetHistoryOf`): the
     // order changes under the list being played, so where the back history had
     // you in it no longer means anything. Left in, ⏮️ restored one of those
@@ -4190,9 +4250,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // here. Left on, their songs would be scattered among the album's and the
       // header would have flipped on every track. `originalQueue` keeps the
       // marked copies, so turning shuffle off brings them back with them.
-      if (upnpActive && current) {
-        // While UPnP is active, keep the current track index stable and only
-        // shuffle upcoming tracks. This keeps Sonos and app queue indices aligned.
+      if (remoteHoldsQueue && current) {
+        // While the device holds a queue of its own (UPnP, a Home Assistant
+        // or Music Assistant player), keep the current track index stable and only
+        // shuffle upcoming tracks. This keeps its queue and the app's aligned.
         const preservedHead = queue.slice(0, index + 1);
         const shuffledTail = dealt(queue.slice(index + 1));
         set({
@@ -4448,6 +4509,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (remoteKind() === 'upnp') void upnpDisconnect(true);
     else if (remoteKind() === 'jukebox') void jukeboxDisconnect(true);
     else if (remoteKind() === 'cast') void castDisconnect(true);
+    else if (remoteKind() === 'ha') void haDisconnect(true);
+    else if (remoteKind() === 'ma') void maDisconnect(true);
     cutCrossfade();
     try {
       activePlayer()?.pause();

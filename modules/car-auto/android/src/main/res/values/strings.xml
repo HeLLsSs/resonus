@@ -2,9 +2,11 @@
 <!-- Labels for the car's own playback buttons. These live in Android resources
      rather than in the app's i18n files because the session is built before JS
      has pushed anything, and because what reads them is the car: its overflow
-     menu, its voice feedback and its screen reader. Kept to the three languages
+     menu, its voice feedback and its screen reader. Kept to the four languages
      the project maintains itself. -->
 <resources>
   <string name="car_shuffle">Shuffle</string>
   <string name="car_repeat">Repeat</string>
+  <string name="car_favorite">Add to favourites</string>
+  <string name="car_unfavorite">Remove from favourites</string>
 </resources>

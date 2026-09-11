@@ -1,6 +1,7 @@
 // Adapted from wavio (github.com/Joel-Mercier/wavio, MIT) for Resonus.
 package expo.modules.carauto
 
+import android.app.PendingIntent
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.annotation.OptIn
@@ -13,6 +14,8 @@ import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaConstants
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -23,8 +26,9 @@ import com.google.common.util.concurrent.ListenableFuture
  * the mini player and the car's "Now Playing" screen show what is really
  * playing. Tapping a browsable item goes through Media3's usual browse flow;
  * tapping a playable leaf hands the mediaId, along with the parent being
- * browsed at the time, to JS through `CarAutoModule.emitPlayEvent`, so that JS
- * can queue the whole collection and start on the track that was tapped.
+ * browsed at the time, to JS through `CarAutoModule.play`, so that JS can
+ * queue the whole collection and start on the track that was tapped. With no
+ * JS running, the same call keeps the tap and starts JS with no screen.
  */
 @OptIn(UnstableApi::class)
 class ResonusCarBrowserService : MediaLibraryService() {
@@ -35,13 +39,17 @@ class ResonusCarBrowserService : MediaLibraryService() {
     super.onCreate()
     CarArtwork.init(applicationContext)
     BrowseTreeCache.loadFromDiskIfNeeded(applicationContext)
-    val player = JsProxyPlayer().also {
+    val player = JsProxyPlayer(applicationContext).also {
       jsPlayer = it
       activePlayer = it
     }
     session = MediaLibrarySession.Builder(this, player, LibraryCallback())
       .setId("ResonusCarBrowserSession")
       .setMediaButtonPreferences(modeButtons(player))
+      // What to open when the notification this session puts up is tapped, or
+      // when the car offers to carry on where it left off on the phone.
+      // Without it the session has no screen to name and the tap does nothing.
+      .apply { appLaunchIntent()?.let { setSessionActivity(it) } }
       .build()
     // Each of those two buttons carries the state it will put the player in,
     // so its icon has to be rebuilt whenever the state changes: shuffle turned
@@ -51,6 +59,16 @@ class ResonusCarBrowserService : MediaLibraryService() {
       override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = refreshModeButtons()
       override fun onRepeatModeChanged(repeatMode: Int) = refreshModeButtons()
     })
+    // The heart is the third of those, and the only one no Player callback
+    // announces: what it draws is the song being a favourite or not, which is
+    // ours and reaches the player straight from JS.
+    player.onFavoriteChanged = { refreshModeButtons() }
+  }
+
+  /** The app's own launch screen, or nothing on a build that has none. */
+  private fun appLaunchIntent(): PendingIntent? {
+    val intent = packageManager.getLaunchIntentForPackage(packageName) ?: return null
+    return PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
   }
 
   private fun refreshModeButtons() {
@@ -74,7 +92,14 @@ class ResonusCarBrowserService : MediaLibraryService() {
       Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
       else -> Player.REPEAT_MODE_OFF
     }
-    return ImmutableList.of(
+    val buttons = ImmutableList.builder<CommandButton>()
+    // The heart takes the first of the two slots beside the transport keys,
+    // which puts shuffle in the overflow menu. Deliberate: a setting is chosen
+    // once a drive, whereas keeping a song you are hearing right now is worth
+    // a glance and one press. It is only offered with something playing, since
+    // there is nothing to keep otherwise.
+    favoriteButton(player)?.let { buttons.add(it) }
+    buttons.add(
       CommandButton.Builder(
         if (shuffleOn) CommandButton.ICON_SHUFFLE_ON else CommandButton.ICON_SHUFFLE_OFF,
       )
@@ -94,6 +119,29 @@ class ResonusCarBrowserService : MediaLibraryService() {
         .setSlots(CommandButton.SLOT_FORWARD_SECONDARY, CommandButton.SLOT_OVERFLOW)
         .build(),
     )
+    return buttons.build()
+  }
+
+  /**
+   * The heart, carrying the state it will move the song to.
+   *
+   * Like the two beside it this is a button that does one thing rather than a
+   * toggle the host reads back, so pressing it while the song is a favourite
+   * has to say "not a favourite" in so many words. What it says rides in the
+   * command's own extras and comes back untouched in `onCustomCommand`.
+   */
+  private fun favoriteButton(player: Player): CommandButton? {
+    val current = (player as? JsProxyPlayer) ?: return null
+    if (!current.hasTrack()) return null
+    val isFavorite = current.isFavorite()
+    val extras = Bundle().apply { putBoolean(FAVORITE_TARGET, !isFavorite) }
+    return CommandButton.Builder(
+      if (isFavorite) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED,
+    )
+      .setSessionCommand(SessionCommand(FAVORITE_ACTION, extras))
+      .setDisplayName(getString(if (isFavorite) R.string.car_unfavorite else R.string.car_favorite))
+      .setSlots(CommandButton.SLOT_BACK_SECONDARY, CommandButton.SLOT_OVERFLOW)
+      .build()
   }
 
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
@@ -107,14 +155,67 @@ class ResonusCarBrowserService : MediaLibraryService() {
   }
 
   private inner class LibraryCallback : MediaLibrarySession.Callback {
+    /**
+     * A command of ours has to be handed to whoever connects, or the button
+     * carrying it is drawn and does nothing when pressed. Everything media3
+     * would have allowed is kept; only the heart is added.
+     */
+    override fun onConnect(
+      session: MediaSession,
+      controller: MediaSession.ControllerInfo,
+    ): MediaSession.ConnectionResult {
+      val allowed = super.onConnect(session, controller)
+      return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+        .setAvailablePlayerCommands(allowed.availablePlayerCommands)
+        .setAvailableSessionCommands(
+          allowed.availableSessionCommands
+            .buildUpon()
+            .add(SessionCommand(FAVORITE_ACTION, Bundle.EMPTY))
+            .build(),
+        )
+        .build()
+    }
+
+    /**
+     * The heart, pressed. What it is asking for travels in the command's own
+     * extras rather than being worked out here: the car may well be showing a
+     * button built before the song changed, and acting on what was drawn is
+     * how the press matches what the driver saw.
+     */
+    override fun onCustomCommand(
+      session: MediaSession,
+      controller: MediaSession.ControllerInfo,
+      customCommand: SessionCommand,
+      args: Bundle,
+    ): ListenableFuture<SessionResult> {
+      if (customCommand.customAction != FAVORITE_ACTION) {
+        return super.onCustomCommand(session, controller, customCommand, args)
+      }
+      val target = customCommand.customExtras.getBoolean(FAVORITE_TARGET, true)
+      CarAutoModule.transport(applicationContext, "favorite", if (target) 1.0 else 0.0)
+      return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+    }
+
     override fun onGetLibraryRoot(
       session: MediaLibrarySession,
       browser: MediaSession.ControllerInfo,
       params: LibraryParams?,
     ): ListenableFuture<LibraryResult<MediaItem>> {
       // The car is opening the app: whatever songs the tree is missing, this
-      // is the moment to go and get them, and the phone is awake for it.
-      CarAutoModule.instance?.emitConnected()
+      // is the moment to go and get them, and the phone is awake for it. With
+      // no JS behind the service this is also what starts it, so the first
+      // tap does not have to.
+      //
+      // Except for a caller that is only looking: the system's own media
+      // resumption binds this service and asks for the root after every
+      // reboot, and answering that by starting JS and reading the whole
+      // library was dozens of requests on a phone nobody had touched. It is
+      // told what the tree already holds, and JS starts when something is
+      // actually asked to play.
+      val browsing = browser.packageName !in PASSIVE_BROWSERS
+      CarAutoLog.d("root asked for by ${browser.packageName}, JS up=${JsRuntime.isUp(applicationContext)}")
+      if (browsing) CarAutoModule.connected(applicationContext)
+      else CarAutoModule.connectedIfUp()
       val rootExtras = Bundle().apply {
         // Hints for Android Auto: the root's children are drawn as tabs
         // (category list items), and anything browsable below that as a list.
@@ -172,15 +273,14 @@ class ResonusCarBrowserService : MediaLibraryService() {
     }
 
     /**
-     * Answered from the cached tree, without asking JS: the car searches with
-     * the screen off, and that is exactly when React Native stops running
-     * timers and its requests stop coming back (#103). media3 announces to the
-     * car that search exists on its own, from the session commands, so this is
-     * the only thing that was missing.
+     * The tree's own hits at once, and the library's behind them.
      *
-     * The work happens here and the results are kept, because the count
-     * reported now and the items handed over in `onGetSearchResult` have to be
-     * the same list.
+     * The count is not reported here but whenever the answer is in hand: media3
+     * lets a search be announced late, and the browser only asks for the items
+     * once it has been told how many there are, which is what keeps this and
+     * `onGetSearchResult` showing the same list. `CarSearch` is where the wait
+     * is bounded; with nothing to wait for, this is as immediate as it ever
+     * was.
      */
     override fun onSearch(
       session: MediaLibrarySession,
@@ -188,9 +288,13 @@ class ResonusCarBrowserService : MediaLibraryService() {
       query: String,
       params: LibraryParams?,
     ): ListenableFuture<LibraryResult<Void>> {
-      val results = resultsFor(query)
-      CarAutoLog.d("search q=$query hits=${results.size}")
-      session.notifySearchResultChanged(browser, query, results.size, params)
+      searchFor(query) { results ->
+        CarAutoLog.d("search q=$query hits=${results.size}")
+        // The answer can arrive after the car has gone: this is the one call
+        // here that outlives the method it was asked in.
+        runCatching { session.notifySearchResultChanged(browser, query, results.size, params) }
+          .onFailure { CarAutoLog.w("nobody left to hand the results of $query to", it) }
+      }
       return Futures.immediateFuture(LibraryResult.ofVoid(params))
     }
 
@@ -349,14 +453,35 @@ class ResonusCarBrowserService : MediaLibraryService() {
     private fun emitPlay(mediaId: String) {
       val parentId = BrowseTreeCache.findParentOf(mediaId)
       CarAutoLog.d("emitPlay id=$mediaId parent=$parentId")
-      CarAutoModule.instance?.emitPlayEvent(mediaId, parentId)
+      CarAutoModule.play(applicationContext, mediaId, parentId)
     }
   }
+
+  /** Callers that bind this service to see what is there rather than to play
+   *  it. The system's media resumption asks every one of them after a reboot. */
+  private val PASSIVE_BROWSERS = setOf("com.android.systemui", "android")
 
   /** The last query answered, kept so the count reported to the car and the
    *  items it then asks for cannot disagree. */
   @Volatile private var lastSearch: Pair<String, List<BrowseNode>>? = null
 
+  /**
+   * The rows for a query, once there are any: what the tree holds, and what
+   * the library added to it if it answered in time.
+   *
+   * They are kept before the car is told anything, so that the items it comes
+   * back for are the ones it was given a count of.
+   */
+  private fun searchFor(query: String, onReady: (List<BrowseNode>) -> Unit) {
+    val local = BrowseTreeCache.search(query)
+    CarSearch.ask(applicationContext, query, local) { results ->
+      lastSearch = query to results
+      onReady(results)
+    }
+  }
+
+  /** What was answered for this query, or the tree alone for one that was
+   *  never announced. */
   private fun resultsFor(query: String): List<BrowseNode> {
     lastSearch?.let { (q, results) -> if (q == query) return results }
     val results = BrowseTreeCache.search(query)
@@ -365,6 +490,10 @@ class ResonusCarBrowserService : MediaLibraryService() {
   }
 
   private fun findNode(mediaId: String): BrowseNode? {
+    // A row of the last search first: what it found is not in the tree, and
+    // without this a song tapped there had no metadata to put on the car's
+    // screen while JS fetched it.
+    lastSearch?.second?.firstOrNull { it.id == mediaId }?.let { return it }
     BrowseTreeCache.getChildren(BrowseTreeCache.ROOT_ID).firstOrNull { it.id == mediaId }?.let { return it }
     val seen = HashSet<String>()
     val stack = ArrayDeque<String>()
@@ -390,6 +519,10 @@ class ResonusCarBrowserService : MediaLibraryService() {
      * the titles, the ids and the extras of every item ride in it too.
      */
     private const val ART_BUDGET_BYTES = 512 * 1024
+
+    /** The heart's command, and the state it carries. */
+    const val FAVORITE_ACTION = "expo.modules.carauto.FAVORITE"
+    const val FAVORITE_TARGET = "favorite"
   }
 }
 
@@ -409,6 +542,17 @@ private fun BrowseNode.toMediaItemWithArt(embed: Boolean): Pair<MediaItem, Int> 
     }
     extras.putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, styleValue)
     extras.putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE, styleValue)
+  }
+  // A row that resumes rather than starts carries how far through it already
+  // is, which the car draws as a bar under the title. Only worth saying when
+  // there is something to resume: without the status the car draws nothing,
+  // which is right for every other row.
+  if (progress != null) {
+    extras.putInt(
+      MediaConstants.EXTRAS_KEY_COMPLETION_STATUS,
+      MediaConstants.EXTRAS_VALUE_COMPLETION_STATUS_PARTIALLY_PLAYED,
+    )
+    extras.putDouble(MediaConstants.EXTRAS_KEY_COMPLETION_PERCENTAGE, progress.coerceIn(0.0, 1.0))
   }
   // Neighbours carrying the same heading are drawn as one group under it, so a
   // tab can hold several shelves without spending a screen on each of them.

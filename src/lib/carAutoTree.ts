@@ -27,10 +27,11 @@ import { songsLabel, tg } from '@/i18n';
 import { greetingHours } from '@/i18n/languages';
 import { bookmarksAvailable, loadBookmarks, useBookmarks } from '@/lib/bookmarks';
 import { formatDuration } from '@/lib/format';
+import { playForYou } from '@/lib/forYouMix';
 import { getPlaylists as getLocalPlaylists } from '@/lib/localQueries';
 import { queryClient } from '@/lib/query';
 import { profileScopeId, useAuthStore } from '@/store/auth';
-import { getDownloadShelf, useDownloads } from '@/store/downloads';
+import { anyDownloads, getDownloadShelf, useDownloads } from '@/store/downloads';
 import { useLastPlayed } from '@/store/lastPlayed';
 import { usePins } from '@/store/pins';
 import { usePlayerStore } from '@/store/player';
@@ -39,7 +40,7 @@ import { useQueueHistory, type PastQueue } from '@/store/queueHistory';
 import { useSettings } from '@/store/settings';
 import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { type CarNode, type CarTree } from './carAuto';
-import { drawerLayout, overflowsHome, tabLayout } from './carAutoLayout';
+import { drawerLayout, fold, overflowsHome, resumeFraction, searchRows, tabLayout } from './carAutoLayout';
 import { allMixes, topGenres, type Mix } from './mixes';
 import { resolveSmartPlaylist, type SmartPlaylist } from './smartPlaylists';
 
@@ -284,6 +285,9 @@ function bookmarkNode(into: Resolve, b: Bookmark): CarNode {
     subtitle: b.song.artist ? `${at} · ${b.song.artist}` : at,
     artworkUrl: art(b.song.coverArt ?? b.song.albumId),
     playable: true,
+    // The bar the car draws under the row, which says at a glance how much of
+    // a two-hour set is left.
+    progress: resumeFraction(b.position, b.song.duration),
   };
 }
 
@@ -329,6 +333,9 @@ function pastQueueNode(into: Resolve, q: PastQueue): CarNode {
 // ── Shuffle ──────────────────────────────────────────────────────────────────
 
 /** Plays songs picked at random, resolved only when it is tapped. */
+/** The mix built from what this account plays, which is the one row on the
+ *  car's Home worth pressing without reading anything first. */
+const FOR_YOU_ID = 'foryou:mix';
 const SHUFFLE_ID = 'shuffle:all';
 /** The favourites dealt once and played through, the way the button on the
  *  Favorites screen plays them. */
@@ -690,6 +697,35 @@ async function resolveCachedArt(tree: Record<string, CarNode[]>): Promise<void> 
  * the genres) is offered at all, since a row that opens onto a toast is worse
  * than no row.
  */
+/**
+ * The one row shown in place of a tree there is no way to fill, or null when
+ * there is a library to draw.
+ *
+ * Not playable and with nothing under it: it is a sentence, and the car has no
+ * other way of carrying one into the browser. What it cannot do is be acted
+ * on from the car, which is the point — signing in is a thing for the phone,
+ * standing still.
+ */
+function nothingToBrowse(): CarNode | null {
+  const { auth, offline } = useAuthStore.getState();
+  if (auth) return null;
+  if (!offline) {
+    return {
+      id: 'notice:signed-out',
+      title: tg('Sign in on your phone'),
+      subtitle: tg('Resonus has no account on this phone yet'),
+      playable: false,
+    };
+  }
+  if (anyDownloads(useDownloads.getState())) return null;
+  return {
+    id: 'notice:offline-empty',
+    title: tg('Nothing downloaded'),
+    subtitle: tg('Offline, only downloads can play'),
+    playable: false,
+  };
+}
+
 export async function buildBrowseTree(deep = true): Promise<CarTree> {
   const profile = profileScopeId();
   // Another account's is dropped at once, whatever the build: nothing here can
@@ -700,6 +736,12 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
     lastTree = null;
   }
   mapsProfile = profile;
+  // Nothing is reachable, and three empty tabs say so in the worst way: the
+  // car draws them, the driver opens each one and finds nothing, and no part
+  // of it explains that the app has no account or that the phone is offline
+  // with nothing on it. One row that says it is the whole tree instead.
+  const missing = nothingToBrowse();
+  if (missing) return { nodes: { [ROOT]: [missing] }, profile };
   const into = deep ? emptyResolve() : resolve;
   const tree: Record<string, CarNode[]> = {};
   const lang = useSettings.getState().language;
@@ -851,6 +893,15 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
     },
     {
       nodes: [
+        // First of the three: it is the one that needs no choice made about
+        // it, which is the only kind of row worth pressing while driving.
+        {
+          id: FOR_YOU_ID,
+          title: tg('For you'),
+          subtitle: tg('Built from what you play'),
+          artworkUrl: icon('ic_car_foryou'),
+          playable: true,
+        },
         { id: SHUFFLE_ID, title: tg('Shuffle everything'), artworkUrl: icon('ic_car_shuffle'), playable: true },
         {
           id: SHUFFLE_FAVORITES_ID,
@@ -974,6 +1025,80 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
   return { nodes: tree, profile };
 }
 
+// ── The car's search box ─────────────────────────────────────────────────────
+
+/**
+ * How many of each kind the library adds to a search. A driver reads the top
+ * of a list and taps; the rest is a scroll nobody makes at the wheel, and the
+ * rows all have to fit in one answer over the bridge.
+ */
+const FOUND_SONGS = 25;
+const FOUND_ALBUMS = 15;
+const FOUND_ARTISTS = 15;
+
+/** The parent a song found by the search box is queued from. A fixed id and
+ *  not the query: a track's mediaId is split on `|`, and what was typed can
+ *  hold anything. */
+const FOUND_ID = 'found';
+
+/** What the last search found, kept aside from `resolve` because a rebuild
+ *  swaps that whole set and a row on the car's screen has to still play. */
+let lastFound: { query: string; songs: Song[] } = { query: '', songs: [] };
+
+/**
+ * A found album or artist as a row that plays rather than one that opens: the
+ * tree holds none of its songs, so opening it would show an empty list, while
+ * a tap on it queues the whole thing (`handleBrowsePlay`). The tree's own hits
+ * are left as they are, since an album that is in it does open onto its songs.
+ */
+function playableLeaf(node: CarNode): CarNode {
+  const leaf: CarNode = { ...node, playable: true };
+  delete leaf.contentStyle;
+  return leaf;
+}
+
+/**
+ * What the car's search box shows for `query`: what the phone's tree already
+ * answers with (`local`, ranked by the native side) and what the library has
+ * behind it.
+ *
+ * The library is the point of it. The tree carries the shelves, the pinned
+ * playlists, the downloads and the songs of the albums that were prefetched,
+ * so a record nobody had played lately was not found however plainly it was
+ * typed. Here it is asked of the server, which is the same road a spoken
+ * request already takes (`playSpoken`).
+ *
+ * Nothing waits on this for long and nothing here decides that: the native
+ * side gives up after a few seconds and shows the tree's own hits, and what
+ * arrives late is kept for the next try. Offline the search runs over the
+ * songs on the phone, and one whose file is not there is left out, since a
+ * row that plays nothing is worse than a row less.
+ */
+export async function carSearch(query: string, local: CarNode[]): Promise<CarNode[]> {
+  const { auth, offline } = useAuthStore.getState();
+  if (!auth && !offline) return local;
+  const found = await data
+    .search(query)
+    .catch(() => ({ artists: [] as Artist[], albums: [] as Album[], songs: [] as Song[] }));
+  const songs = data.markUnplayableOffline(found.songs.slice(0, FOUND_SONGS)).filter((s) => !s.unavailable);
+  lastFound = { query, songs };
+  const nodes = [
+    ...songs.map((s) => songNode(resolve, s, FOUND_ID)),
+    ...found.albums.slice(0, FOUND_ALBUMS).map((a) => playableLeaf(albumNode(resolve, a))),
+    ...found.artists.slice(0, FOUND_ARTISTS).map((a) => playableLeaf(artistNode(resolve, a))),
+  ];
+  // Before the rows are laid out, which copies them: a cover the car host
+  // cannot fetch for itself is a file of the phone's or nothing at all, the
+  // same as everywhere else in the tree.
+  await resolveCachedArt({ [FOUND_ID]: nodes });
+  return searchRows(query, local, nodes, {
+    song: tg('Songs'),
+    album: tg('Albums'),
+    artist: tg('Artists'),
+    playlist: tg('Playlists'),
+  });
+}
+
 // ── Playback resolution on car tap ───────────────────────────────────────────
 
 function songIdFromTrackMediaId(mediaId: string): string {
@@ -1053,17 +1178,6 @@ async function playPastQueue(id: string): Promise<void> {
   await usePlayerStore.getState().playQueue(songs, at, q.title);
 }
 
-/** Lowercase, unaccented and single-spaced, the way the native search folds
- *  what was said: "bjork" is Björk in both places. */
-function fold(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/\p{M}+/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 /** Ceiling on what a spoken request queues from a search of songs. */
 const SPOKEN_SONGS = 50;
 
@@ -1141,6 +1255,15 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
   // would have to be fetched on every rebuild to sit there unplayed. No source
   // href goes with it, because there is no screen to go back to and a handful
   // of songs picked at random is not a thing to list among the recents.
+  // Gathered now rather than at every rebuild: it asks the server for several
+  // artists and genres and YouTube for its own picks, which is a great deal of
+  // traffic for a row that is usually not pressed. The playlist it leaves
+  // behind is written on its own behind the music (`forYouMix`).
+  if (mediaId === FOR_YOU_ID) {
+    await playForYou().catch(() => {});
+    return;
+  }
+
   if (mediaId === SHUFFLE_ID) {
     const songs = await data.getRandomSongs(SHUFFLE_SONGS).catch(() => [] as Song[]);
     if (songs.length > 0) await store.playQueue(songs, 0, tg('Shuffle'));
@@ -1168,6 +1291,16 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
     const parts = mediaId.split('|');
     const parent = parts[1] || parentId;
     const songId = parts.slice(2).join('|');
+    // A row of the car's search box: what was found is the queue, so the rest
+    // of the answer plays on behind the song that was tapped, under the words
+    // that found it.
+    if (parent === FOUND_ID) {
+      const at = lastFound.songs.findIndex((s) => s.id === songId);
+      if (at >= 0) {
+        await store.playQueue(lastFound.songs, at, lastFound.query);
+        return;
+      }
+    }
     const ids = parent ? resolve.parentTracks.get(parent) : undefined;
     if (ids && ids.length > 0) {
       const songs = ids

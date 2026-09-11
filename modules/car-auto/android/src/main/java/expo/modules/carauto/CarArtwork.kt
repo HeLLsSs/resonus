@@ -47,8 +47,38 @@ internal object CarArtwork {
    *  carries the build's applicationId suffix, which JS has no way to know. */
   @Volatile private var drawableBase: String? = null
 
+  /**
+   * Every icon the tree may name, against the drawable it stands for.
+   *
+   * Written out one by one, and this is the only reason the icons survive a
+   * release build. Nothing else refers to them: JS writes `res://ic_car_home`
+   * into the tree as a string, so with the name resolved at runtime the
+   * resource shrinker found no reference to any of them and took all fourteen
+   * out of the APK. The car then drew every tab and every shelf row blank,
+   * while the debug build the tree was written against looked right.
+   *
+   * Naming them here also means a row asking for an icon that does not exist
+   * stops the build rather than coming out empty in a car.
+   */
+  private val ICONS: Map<String, Int> = mapOf(
+    "ic_car_albums" to R.drawable.ic_car_albums,
+    "ic_car_artists" to R.drawable.ic_car_artists,
+    "ic_car_bookmark" to R.drawable.ic_car_bookmark,
+    "ic_car_downloaded" to R.drawable.ic_car_downloaded,
+    "ic_car_favorites" to R.drawable.ic_car_favorites,
+    "ic_car_foryou" to R.drawable.ic_car_foryou,
+    "ic_car_genres" to R.drawable.ic_car_genres,
+    "ic_car_home" to R.drawable.ic_car_home,
+    "ic_car_library" to R.drawable.ic_car_library,
+    "ic_car_playlists" to R.drawable.ic_car_playlists,
+    "ic_car_queue" to R.drawable.ic_car_queue,
+    "ic_car_recent" to R.drawable.ic_car_recent,
+    "ic_car_shuffle" to R.drawable.ic_car_shuffle,
+    "ic_car_smart_playlists" to R.drawable.ic_car_smart_playlists,
+  )
+
   fun init(context: Context) {
-    drawableBase = "android.resource://${context.packageName}/drawable/"
+    drawableBase = "android.resource://${context.packageName}/"
   }
 
   /**
@@ -67,7 +97,12 @@ internal object CarArtwork {
     // package, so it arrives as a drawable it can tint, and not as a bitmap.
     if (artworkUrl.startsWith(RES_SCHEME)) {
       val base = drawableBase ?: return 0
-      builder.setArtworkUri(Uri.parse(base + artworkUrl.removePrefix(RES_SCHEME)))
+      // By id rather than by name: the name is gone from a shrunk build (see
+      // ICONS), and an android.resource:// uri built out of one resolves to
+      // nothing there. The id is what survives, and the host reads that form
+      // of the uri just as happily.
+      val id = ICONS[artworkUrl.removePrefix(RES_SCHEME)] ?: return 0
+      builder.setArtworkUri(Uri.parse(base + id))
       return 0
     }
     val bytes = if (embed) localArtworkData(artworkUrl, maxDim) else null

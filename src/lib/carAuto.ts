@@ -8,6 +8,8 @@
  *    sync with actual playback.
  *  - `onPlay` fires when a playable leaf is tapped in the car.
  *  - `onTransport` fires with transport buttons (play/pause/next...).
+ *  - `onCarSearch` fires with something typed in the car's search box, and
+ *    `setSearchResults` is the answer to it.
  *
  * On platforms without the module (web, iOS) everything is a no-op.
  */
@@ -40,6 +42,12 @@ export interface CarNode {
    * spending a screen on each.
    */
   group?: string;
+  /**
+   * How far through this one already is, 0 to 1, which the car draws as a bar
+   * under the title. Only for a row that resumes rather than starts; left out
+   * everywhere else, where a bar would say something untrue.
+   */
+  progress?: number;
 }
 
 /** Tree: parentId → children map. Root is the "root" key. */
@@ -65,6 +73,9 @@ export interface CarTrack {
   album?: string;
   artworkUrl?: string;
   durationMs?: number;
+  /** One of the account's favourites, which is the heart the car draws on its
+   *  playback screen and what pressing it will undo. */
+  favorite?: boolean;
 }
 
 export type TransportEvent =
@@ -72,11 +83,20 @@ export type TransportEvent =
   | { action: 'seek'; value: number } // ms
   | { action: 'seekToIndex'; value: number }
   | { action: 'shuffle'; value: number } // 1/0
+  | { action: 'favorite'; value: number } // 1 = make it one, 0 = stop
   | { action: 'repeat'; value: 'off' | 'all' | 'one' };
 
 export interface PlayEvent {
   mediaId: string;
   parentId?: string;
+}
+
+/** Something typed in the car's search box. */
+export interface CarSearchEvent {
+  query: string;
+  /** What the browse tree on the phone answers it with, best match first. The
+   *  library's own hits are laid behind these. */
+  local: CarNode[];
 }
 
 export function setNodes(tree: CarTree): void {
@@ -96,6 +116,9 @@ export function setPlaybackState(state: {
   positionMs: number;
   shuffle: boolean;
   repeatMode: 'off' | 'all' | 'one';
+  /** What the player gave up on, for the car to put on its screen. A phone in
+   *  a pocket shows its toast to nobody. */
+  error?: string | null;
 }): void {
   native?.setPlaybackState(JSON.stringify(state));
 }
@@ -111,4 +134,30 @@ export function onTransport(cb: (e: TransportEvent) => void): { remove: () => vo
 /** A car asked for the browse tree's root, which is Android Auto opening. */
 export function onCarConnected(cb: () => void): { remove: () => void } | undefined {
   return native?.addListener('connect', cb);
+}
+
+/**
+ * Something typed in the car's search box. The nodes the native side already
+ * has for it travel as JSON, the way the tree does: an event payload is a map
+ * of plain values.
+ */
+export function onCarSearch(cb: (e: CarSearchEvent) => void): { remove: () => void } | undefined {
+  return native?.addListener('search', (e: { query: string; local?: string }) => {
+    let local: CarNode[] = [];
+    try {
+      local = e.local ? (JSON.parse(e.local) as CarNode[]) : [];
+    } catch {
+      local = [];
+    }
+    cb({ query: e.query, local });
+  });
+}
+
+/**
+ * The answer to a search. The car has usually stopped waiting by the time a
+ * slow one arrives, and the native side keeps it for the next try rather than
+ * dropping it (`CarSearch.kt`), so this is worth sending whenever it is ready.
+ */
+export function setSearchResults(query: string, nodes: CarNode[]): void {
+  native?.setSearchResults(JSON.stringify({ query, nodes }));
 }

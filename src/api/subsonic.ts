@@ -17,6 +17,9 @@ import { canonicalId, idWouldChange } from '@/lib/navidromeIds';
 import { timed } from '@/lib/perfLog';
 import { assertCanRequest } from './netGate';
 import { navifindActive } from '@/lib/navifind';
+// Only the reading of what the proxy says about its YouTube account: that
+// module holds the app's plain logic and takes nothing from here but types.
+import { readAccount, type YoutubeAccount } from '@/lib/youtube';
 
 export const CLIENT_NAME = 'Resonus';
 const API_VERSION = '1.16.1';
@@ -1619,6 +1622,234 @@ export interface NavifindStatus {
 export async function navifindStatus(auth: SubsonicAuth): Promise<NavifindStatus> {
   const res = await request<{ navifind?: Partial<NavifindStatus> }>(auth, 'navifind/status.view');
   return { done: res.navifind?.done ?? [], inProgress: res.navifind?.inProgress ?? 0 };
+}
+
+// ── navifind · YouTube ───────────────────────────────────────────────────────
+// The proxy can also be signed in to YouTube Music on the account holder's
+// behalf, and then it will answer for what that account has: the home page it
+// is shown, its playlists, what it liked, what it keeps. Everything here comes
+// back under `navifind`, the tracks in the ordinary song shape and each with a
+// `yt_` id — which is to say a track the rest of the app already knows how to
+// play, and which the proxy copies into the library once it has been listened
+// to for a while. There is nothing to download here and nothing to sync.
+
+// Two of the refusals mean something on their own — no account at all, and a
+// session that has run out — and what they mean is read off the code by
+// `lib/youtube.ts`, where the screens ask.
+
+/** One tile on a YouTube shelf. What is behind it depends on `type`, and only
+ *  some of them lead anywhere (see `lib/youtube.ts`). */
+export interface YoutubeCard {
+  title: string;
+  subtitle?: string;
+  /** playlist, album, artist, channel or video. */
+  type?: string;
+  browseId?: string | null;
+  playlistId?: string | null;
+  videoId?: string | null;
+  /** A picture on YouTube's own hosts, not a cover of the server's. */
+  thumbnail?: string | null;
+}
+
+/** A row of the YouTube home page: tiles, or tracks, never both. */
+export interface YoutubeShelf {
+  title: string;
+  items: YoutubeCard[];
+  songs: Song[];
+}
+
+interface RawShelf {
+  title?: string;
+  item?: YoutubeCard[];
+  entry?: Song[];
+}
+
+function toShelves(raw: RawShelf[] | undefined): YoutubeShelf[] {
+  return (raw ?? []).map((shelf) => ({
+    title: shelf.title ?? '',
+    items: shelf.item ?? [],
+    songs: (shelf.entry ?? []).map(withoutSourceSuffix),
+  }));
+}
+
+/**
+ * The YouTube home page, either the account's own or the one a stranger gets.
+ *
+ * The anonymous one is what the tab falls back to when there is no account to
+ * read: it is somebody else's taste rather than nobody's, which is still worth
+ * more than an empty screen.
+ */
+export async function youtubeHome(
+  auth: SubsonicAuth,
+  personal: boolean,
+): Promise<YoutubeShelf[]> {
+  const res = await request<{ navifind?: { home?: { shelf?: RawShelf[] } } }>(
+    auth,
+    personal ? 'navifind/youtube/me/home.view' : 'navifind/youtube/home.view',
+  );
+  return toShelves(res.navifind?.home?.shelf);
+}
+
+/** The playlists the account has, as tiles. */
+export async function youtubeMyPlaylists(
+  auth: SubsonicAuth,
+  count: number,
+): Promise<YoutubeCard[]> {
+  const res = await request<{ navifind?: { playlists?: { playlist?: YoutubeCard[] } } }>(
+    auth,
+    'navifind/youtube/me/playlists.view',
+    { count },
+  );
+  return res.navifind?.playlists?.playlist ?? [];
+}
+
+/** The tracks it gave a thumb up to. */
+export async function youtubeLiked(auth: SubsonicAuth, count: number): Promise<Song[]> {
+  const res = await request<{ navifind?: { liked?: { entry?: Song[] } } }>(
+    auth,
+    'navifind/youtube/me/liked.view',
+    { count },
+  );
+  return (res.navifind?.liked?.entry ?? []).map(withoutSourceSuffix);
+}
+
+/** What it keeps: the records and artists added to its library, as tiles. */
+export async function youtubeLibrary(
+  auth: SubsonicAuth,
+  count: number,
+): Promise<YoutubeCard[]> {
+  const res = await request<{ navifind?: { library?: { item?: YoutubeCard[] } } }>(
+    auth,
+    'navifind/youtube/me/library.view',
+    { count },
+  );
+  return res.navifind?.library?.item ?? [];
+}
+
+export interface YoutubePlaylist {
+  id: string;
+  name: string;
+  owner?: string;
+  thumbnail?: string;
+  songCount?: number;
+  songs: Song[];
+}
+
+/** One playlist and its tracks. Public ones for anybody, the account's own
+ *  private ones once the proxy is signed in. */
+export async function youtubePlaylist(
+  auth: SubsonicAuth,
+  id: string,
+  count: number,
+): Promise<YoutubePlaylist> {
+  type Node = Omit<YoutubePlaylist, 'songs'> & { entry?: Song[] };
+  const res = await request<{ navifind?: { playlist?: Node } }>(
+    auth,
+    'navifind/youtube/playlist.view',
+    { id, count },
+  );
+  const node = res.navifind?.playlist;
+  return {
+    id: node?.id ?? id,
+    name: node?.name ?? '',
+    owner: node?.owner,
+    thumbnail: node?.thumbnail,
+    songCount: node?.songCount,
+    songs: (node?.entry ?? []).map(withoutSourceSuffix),
+  };
+}
+
+// ── navifind · the YouTube account itself ────────────────────────────────────
+// Which account the proxy is signed in with, and the one thing the app can do
+// about it: hand it a fresh cookie, or tell it to forget the one it has. The
+// cookie is the whole `Cookie` header a browser sends to YouTube Music, so it
+// is both long and a credential, and it never goes anywhere near a URL.
+
+/**
+ * A request whose parameters go in the body rather than in the address.
+ *
+ * A URL is the one part of a request that is written down everywhere — a
+ * server's access log, a proxy's, the crash report of whatever fails next —
+ * and a session cookie in one of those is the account given away. The
+ * credentials of the request itself go the same way, since they are in the
+ * same set of parameters.
+ *
+ * Its own timeout, longer than the ordinary one: saving makes the proxy sign a
+ * real request to YouTube with the candidate cookie and wait for the answer
+ * before it stores anything, which is the whole point of the route.
+ */
+const PROXY_POST_TIMEOUT_MS = 30_000;
+
+async function postToProxy<T>(
+  auth: SubsonicAuth,
+  endpoint: string,
+  body: Record<string, string> = {},
+): Promise<T> {
+  assertCanRequest();
+  const params = authParams(auth);
+  for (const [key, value] of Object.entries(body)) params.set(key, value);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROXY_POST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${auth.serverUrl}/rest/${endpoint}`, {
+      method: 'POST',
+      headers: { ...authHeaders(auth), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+      signal: controller.signal,
+    });
+  } catch {
+    if (controller.signal.aborted) {
+      throw new SubsonicRequestError('Server took too long to respond', true);
+    }
+    throw new SubsonicRequestError('Could not connect to the server', true);
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw new SubsonicRequestError(`Network error (${res.status})`, false);
+  const sub = (await res.json())['subsonic-response'];
+  if (!sub) throw new SubsonicRequestError('Unexpected server response', false);
+  if (sub.status === 'failed') {
+    const code = typeof sub.error?.code === 'number' ? sub.error.code : undefined;
+    throw new SubsonicRequestError(sub.error?.message ?? 'Subsonic error', false, code);
+  }
+  return sub as T;
+}
+
+interface AccountAnswer {
+  navifind?: { youtubeAccount?: unknown };
+}
+
+/** What the proxy makes of the account it holds. Always a plain answer, even
+ *  when the session in it is dead: see `lib/youtube.ts`. */
+export async function youtubeAccount(auth: SubsonicAuth): Promise<YoutubeAccount> {
+  const res = await request<AccountAnswer>(auth, 'navifind/youtube/account.view');
+  return readAccount(res.navifind?.youtubeAccount);
+}
+
+/**
+ * Hands the proxy a cookie to be signed in with, and answers with what it made
+ * of it. It tries the cookie against YouTube before storing anything, so an
+ * answer here means the session works and a failure means nothing changed;
+ * which of the failures it was is read off the code (`saveFailure`).
+ */
+export async function saveYoutubeCookie(
+  auth: SubsonicAuth,
+  cookie: string,
+  authUser: string,
+): Promise<YoutubeAccount> {
+  const res = await postToProxy<AccountAnswer>(auth, 'navifind/youtube/account/save.view', {
+    cookie,
+    authUser,
+  });
+  return readAccount(res.navifind?.youtubeAccount);
+}
+
+/** Drops the pasted cookie. The proxy falls back to the value it was started
+ *  with if it has one, so the answer says where that left it. */
+export async function forgetYoutubeAccount(auth: SubsonicAuth): Promise<YoutubeAccount> {
+  const res = await postToProxy<AccountAnswer>(auth, 'navifind/youtube/account/forget.view');
+  return readAccount(res.navifind?.youtubeAccount);
 }
 
 /** Notifies the server that a song has been played (scrobble). */
