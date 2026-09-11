@@ -36,7 +36,13 @@ import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { forgetYoutubeAccount, saveYoutubeCookie, youtubeAccount } from '@/api/subsonic';
+import {
+  forgetYoutubeAccount,
+  saveYoutubeCookie,
+  switchYoutubeAccount,
+  youtubeAccount,
+  youtubeAccounts,
+} from '@/api/subsonic';
 import { SettingRow, SettingsPage, settingsStyles, TextRow } from '@/components/SettingsUI';
 import { YoutubeSignIn } from '@/components/YoutubeSignIn';
 import { useT } from '@/i18n';
@@ -88,8 +94,8 @@ export default function YoutubeSettings() {
    * sign-in answered two sections further down would not be read as an answer
    * at all.
    */
-  const [result, setResult] = useState<{ from: 'sign-in' | 'paste'; text: string } | null>(null);
-  const said = (from: 'sign-in' | 'paste', text: string) => setResult({ from, text });
+  const [result, setResult] = useState<{ from: 'sign-in' | 'paste' | 'switch'; text: string } | null>(null);
+  const said = (from: 'sign-in' | 'paste' | 'switch', text: string) => setResult({ from, text });
 
   const account = useQuery({
     queryKey: ['youtube', 'account'],
@@ -100,6 +106,37 @@ export default function YoutubeSettings() {
   // A proxy that did not answer is its own state, told apart from the three it
   // answers with: see `lib/youtube.ts`.
   const state = account.isError ? 'unreachable' : account.data?.state;
+  // Asked only once the session is known to work: on a proxy with no account,
+  // or one whose session has died, this would be several signed requests for a
+  // list that cannot exist. It costs one request per account index tried, so
+  // it is not something to ask on every render either.
+  const accounts = useQuery({
+    queryKey: ['youtube', 'accounts'],
+    queryFn: () => youtubeAccounts(auth!),
+    enabled: !!auth && !offline && state === 'ok',
+    staleTime: 5 * 60_000,
+  });
+
+  /**
+   * Reads the other account instead. The cookie stays where it is: it opens
+   * them all, and only the number Navifind reads with changes.
+   */
+  const switchTo = async (index: number) => {
+    if (busy) return;
+    setBusy('save');
+    setResult(null);
+    try {
+      const now = await switchYoutubeAccount(auth!, index);
+      said('switch', t('Navifind now reads {name}.', { name: now.name ?? '' }));
+      await Promise.all([account.refetch(), accounts.refetch()]);
+      // The tab reads the same account under keys of its own.
+      await queryClient.invalidateQueries({ queryKey: ['youtube'] });
+    } catch {
+      said('switch', t('Navifind could not switch account, so nothing changed.'));
+    } finally {
+      setBusy(null);
+    }
+  };
   const pasted = cleanCookie(cookie);
   const held = pasted.length >= A_PASTE;
 
@@ -135,7 +172,7 @@ export default function YoutubeSettings() {
   const send = async (
     whole: string,
     account: string,
-    from: 'sign-in' | 'paste',
+    from: 'sign-in' | 'paste' | 'switch',
   ): Promise<boolean> => {
     if (!auth) return false;
     setBusy('save');
@@ -377,6 +414,31 @@ export default function YoutubeSettings() {
         ) : null}
         {result?.from === 'paste' ? (
           <Text style={settingsStyles.sectionDescription}>{result.text}</Text>
+        ) : null}
+
+        {/* The other accounts the same cookie opens. A Google session carries
+            every account the browser was signed in to, numbered, and switching
+            between them is a choice rather than a second sign-in. Only shown
+            where there is more than one: a list of one asks to be read for
+            nothing. */}
+        {state === 'ok' && accounts.data && accounts.data.length > 1 ? (
+          <>
+            <Text style={settingsStyles.sectionTitle}>{t('Accounts')}</Text>
+            <Text style={settingsStyles.sectionDescription}>
+              {t('All of these are open with the session Navifind holds. Pick the one it reads.')}
+            </Text>
+            {accounts.data.map((choice) => (
+              <SettingRow
+                key={choice.index}
+                icon={choice.active ? 'radio-button-on-outline' : 'radio-button-off-outline'}
+                label={choice.name}
+                onPress={busy || choice.active ? undefined : () => void switchTo(choice.index)}
+              />
+            ))}
+            {result?.from === 'switch' ? (
+              <Text style={settingsStyles.sectionDescription}>{result.text}</Text>
+            ) : null}
+          </>
         ) : null}
 
         {/* Only a pasted cookie is this screen's to drop. What the server was

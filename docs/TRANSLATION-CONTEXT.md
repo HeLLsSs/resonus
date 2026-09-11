@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1125 of them.
+Every string the app can show, under the screen it shows up on. 1128 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -1367,6 +1367,8 @@ you are actually typing into, which is easier than reading it here.
 | `{n} characters, kept out of sight. Clear it to paste another.` | The line under “A cookie is ready to send”, explaining it |
 | `A cookie is ready to send` | Stands in place of the pasted cookie, which is a credential and is never drawn on screen |
 | `Account number` | Which of the accounts signed in to the same browser the cookie belongs to: the value of YouTube's `X-Goog-AuthUser` header, usually 0. Not an account number on the server |
+| `Accounts` |  |
+| `All of these are open with the session Navifind holds. Pick the one it reads.` |  |
 | `Ask again` | Asks the proxy once more what it makes of its YouTube account, after it did not answer |
 | `Asking Navifind…` |  |
 | `Checking with YouTube…` |  |
@@ -1382,11 +1384,13 @@ you are actually typing into, which is easier than reading it here.
 | `Navifind can be signed in to YouTube Music as you, and then the YouTube tab shows what that account has: its home page, its playlists, the songs it liked.` |  |
 | `Navifind could not be asked about its YouTube account. Either it is older than this screen and has not got the routes for it, or the address under Navifind is wrong.` |  |
 | `Navifind could not reach YouTube, so nothing was changed. Nothing is wrong with the cookie; try again in a moment.` |  |
+| `Navifind could not switch account, so nothing changed.` |  |
 | `Navifind did not answer` |  |
 | `Navifind did not answer, so nothing was forgotten.` |  |
 | `Navifind did not take the cookie. It may be older than this screen, which needs the routes that let one be pasted.` |  |
 | `Navifind goes back to the value the server was started with, if it has one.` |  |
 | `Navifind has no YouTube cookie at all, so the tab shows what YouTube gives a stranger.` |  |
+| `Navifind now reads {name}.` |  |
 | `Navifind tries it against YouTube and only keeps it if it works.` | The line under “Account number”, explaining it |
 | `No account yet` |  |
 | `Offline: nothing to ask.` |  |

@@ -1131,5 +1131,8 @@
   "Resonuls {new} is out. You have {old}. The download is about {mb} MB.": "Resonuls {new} est disponible. Tu as la {old}. Le téléchargement fait environ {mb} Mo.",
   "Resonuls {new} is out. You have {old}.": "Resonuls {new} est disponible. Tu as la {old}.",
   "Downloading Resonuls {version}": "Téléchargement de Resonuls {version}",
-  "Resonuls has no account on this phone yet": "Resonuls n'a encore aucun compte sur ce téléphone"
+  "Resonuls has no account on this phone yet": "Resonuls n'a encore aucun compte sur ce téléphone",
+  "Navifind now reads {name}.": "Navifind lit maintenant {name}.",
+  "Navifind could not switch account, so nothing changed.": "Navifind n'a pas pu changer de compte, rien n'a été modifié.",
+  "All of these are open with the session Navifind holds. Pick the one it reads.": "La session que détient Navifind les ouvre tous. Choisis celui qu'il lit."
 }

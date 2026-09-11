@@ -1130,5 +1130,8 @@
   "Playing \"{name}\"": "Playing \"{name}\"",
   "Couldn't build a mix": "Couldn't build a mix",
   "Built from what you play": "Built from what you play",
-  "For you · {date}": "For you · {date}"
+  "For you · {date}": "For you · {date}",
+  "Navifind now reads {name}.": "Navifind now reads {name}.",
+  "Navifind could not switch account, so nothing changed.": "Navifind could not switch account, so nothing changed.",
+  "All of these are open with the session Navifind holds. Pick the one it reads.": "All of these are open with the session Navifind holds. Pick the one it reads."
 }

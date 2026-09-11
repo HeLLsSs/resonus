@@ -1845,6 +1845,44 @@ export async function saveYoutubeCookie(
   return readAccount(res.navifind?.youtubeAccount);
 }
 
+/** One of the accounts the stored cookie opens. */
+export interface YoutubeAccountChoice {
+  /** The `X-Goog-AuthUser` index that reaches it. */
+  index: number;
+  name: string;
+  /** Whether it is the one the proxy currently reads. */
+  active: boolean;
+}
+
+/**
+ * Every account the stored session opens, with the index that reaches it.
+ *
+ * A Google cookie carries all the accounts the browser was signed in to, so
+ * this is what makes switching between them a choice rather than a second
+ * sign-in. Empty where the proxy could not work them out.
+ */
+export async function youtubeAccounts(auth: SubsonicAuth): Promise<YoutubeAccountChoice[]> {
+  const res = await request<{ navifind?: { youtubeAccounts?: { account?: YoutubeAccountChoice[] } } }>(
+    auth,
+    'navifind/youtube/accounts.view',
+  );
+  return res.navifind?.youtubeAccounts?.account ?? [];
+}
+
+/**
+ * Switches which of them the proxy reads, keeping the session it holds. The
+ * cookie is not sent again: the proxy already has the one that opens them all.
+ */
+export async function switchYoutubeAccount(
+  auth: SubsonicAuth,
+  index: number,
+): Promise<YoutubeAccount> {
+  const res = await postToProxy<AccountAnswer>(auth, 'navifind/youtube/account/save.view', {
+    authUser: String(index),
+  });
+  return readAccount(res.navifind?.youtubeAccount);
+}
+
 /** Drops the pasted cookie. The proxy falls back to the value it was started
  *  with if it has one, so the answer says where that left it. */
 export async function forgetYoutubeAccount(auth: SubsonicAuth): Promise<YoutubeAccount> {
