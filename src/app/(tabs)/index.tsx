@@ -53,12 +53,14 @@ import {
   type HomeSectionKey,
 } from '@/store/settings';
 import { useSongMenu } from '@/store/songMenu';
+import { useToast } from '@/store/toast';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
 import { useScreenBottomPadding } from '@/hooks/useScreenBottomPadding';
 import { columnsFor, useScreenSize } from '@/hooks/useScreenSize';
 import { listPerf } from '@/lib/listPerf';
 import { haptic } from '@/lib/haptics';
 import { bump } from '@/lib/perfLog';
+import { playForYou } from '@/lib/forYouMix';
 import { playShuffle } from '@/lib/playShuffle';
 
 /**
@@ -702,6 +704,49 @@ const HOME_ALBUM_CONFIG: Record<
  */
 function HomeHeaderButton({ which }: { which: HomeButtonKey }) {
   const t = useT();
+  // Gathering takes a server round trip or three, and one of them is YouTube's
+  // home page: without something moving, the press reads as having missed.
+  const [gathering, setGathering] = useState(false);
+
+  async function onForYou() {
+    if (gathering) return;
+    setGathering(true);
+    try {
+      const { songs, playlistName } = await playForYou();
+      if (songs.length === 0) {
+        useToast.getState().show(t('Not enough listening yet to build a mix'));
+        return;
+      }
+      // Named rather than counted: the playlist is what is left behind once
+      // the music stops, and its name is how it will be found again. The
+      // YouTube half of it arrives over the following minutes, which the
+      // Navifind watcher says out loud on its own.
+      useToast.getState().show(t('Playing "{name}"', { name: playlistName }));
+    } catch {
+      useToast.getState().show(t("Couldn't build a mix"));
+    } finally {
+      setGathering(false);
+    }
+  }
+
+  if (which === 'forYou') {
+    return (
+      <Pressable
+        hitSlop={10}
+        accessibilityLabel={t('For you')}
+        disabled={gathering}
+        onPress={() => {
+          void onForYou();
+        }}
+      >
+        {gathering ? (
+          <ActivityIndicator size="small" color={colors.textSecondary} />
+        ) : (
+          <Ionicons name="sparkles-outline" size={24} color={colors.textSecondary} />
+        )}
+      </Pressable>
+    );
+  }
   if (which === 'search') {
     // Search from here, with the cursor already in the box: the tab is one tap
     // either way, and this saves the tap on the box that came after it. It is

@@ -485,21 +485,26 @@ export interface BottomTab {
   enabled: boolean;
 }
 
-const BOTTOM_TAB_KEYS: TabSegment[] = ['index', 'search', 'library', 'explore'];
+const BOTTOM_TAB_KEYS: TabSegment[] = ['index', 'search', 'library', 'explore', 'youtube'];
 
 /**
- * The order they start in, all of them on.
+ * The order they start in, all of them on but the last.
  *
- * "Your library" goes last, behind Explore. It used to sit third, from when it
- * was the only way to a playlist; Explore now holds those as well as the rest
- * of the catalogue, so it is the one being reached for, and what is left over
- * there is the smaller, more personal half.
+ * "Your library" goes last of the four, behind Explore. It used to sit third,
+ * from when it was the only way to a playlist; Explore now holds those as well
+ * as the rest of the catalogue, so it is the one being reached for, and what is
+ * left over there is the smaller, more personal half.
+ *
+ * YouTube starts off, and only a profile with the Navifind proxy is even
+ * offered it (see `lib/bottomTabs.ts`): it is somebody else's account on
+ * somebody else's service, which is not a thing to turn up unasked.
  */
 export const DEFAULT_BOTTOM_TABS: BottomTab[] = [
   { key: 'index', enabled: true },
   { key: 'search', enabled: true },
   { key: 'explore', enabled: true },
   { key: 'library', enabled: true },
+  { key: 'youtube', enabled: false },
 ];
 
 /** The same sanitising the chips get, plus Home's exemption. */
@@ -517,8 +522,9 @@ function normalizeBottomTabs(raw: unknown): BottomTab[] {
       });
     }
   }
-  // A tab added by a later version arrives on, at the end, rather than the
-  // update quietly hiding something new.
+  // A tab added by a later version arrives at the end, in the state it ships
+  // in: on, rather than the update quietly hiding something new, unless its
+  // default says otherwise because there may be nothing behind it.
   for (const def of DEFAULT_BOTTOM_TABS) {
     if (!seen.has(def.key)) out.push({ ...def });
   }
@@ -533,14 +539,14 @@ function normalizeBottomTabs(raw: unknown): BottomTab[] {
  * is only reachable from there, so hiding it would leave no way back to this
  * very screen.
  */
-export type HomeButtonKey = 'search' | 'history' | 'settings';
+export type HomeButtonKey = 'forYou' | 'search' | 'history' | 'settings';
 
 export interface HomeButton {
   key: HomeButtonKey;
   enabled: boolean;
 }
 
-const HOME_BUTTON_KEYS: HomeButtonKey[] = ['search', 'history', 'settings'];
+const HOME_BUTTON_KEYS: HomeButtonKey[] = ['forYou', 'search', 'history', 'settings'];
 
 /**
  * Left to right as they shipped.
@@ -550,6 +556,7 @@ const HOME_BUTTON_KEYS: HomeButtonKey[] = ['search', 'history', 'settings'];
  * there for whoever takes that tab off the bar, or just prefers it up here.
  */
 export const DEFAULT_HOME_BUTTONS: HomeButton[] = [
+  { key: 'forYou', enabled: true },
   { key: 'search', enabled: false },
   { key: 'history', enabled: true },
   { key: 'settings', enabled: true },
