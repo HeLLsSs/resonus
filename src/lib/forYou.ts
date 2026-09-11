@@ -78,37 +78,63 @@ function shuffled<T>(items: T[], rng: () => number): T[] {
 }
 
 /**
- * The artists played most, best first.
+ * How much a play made at this time of day is worth against one made at any
+ * other.
+ *
+ * Nobody listens to the same thing at eight in the morning and at eleven at
+ * night, and a mix built from a flat count of the whole history is a mix for
+ * the average hour, which is no hour at all. Two rather than ten: the point is
+ * to tilt the list, not to hide everything somebody plays at another time —
+ * a taste is still a taste outside its usual hour.
+ */
+const THIS_HOUR = 2;
+
+/** Whether a play was made in the stretch of day we are in now. Handed in, so
+ *  this file knows nothing of clocks or of how a day is cut up. */
+export type AtThisHour = (playedAt: number) => boolean;
+
+/** Counts each name, the plays of this hour counting double, and keeps how
+ *  many plays there really were beside it. */
+function tally(
+  history: HistoryEntry[],
+  nameOf: (entry: HistoryEntry) => string | undefined,
+  atThisHour?: AtThisHour,
+): Map<string, { weight: number; plays: number }> {
+  const counts = new Map<string, { weight: number; plays: number }>();
+  for (const entry of history) {
+    const name = nameOf(entry)?.trim();
+    if (!name) continue;
+    const now = counts.get(name) ?? { weight: 0, plays: 0 };
+    now.weight += atThisHour?.(entry.playedAt) ? THIS_HOUR : 1;
+    now.plays += 1;
+    counts.set(name, now);
+  }
+  return counts;
+}
+
+/**
+ * The artists played most, best first, with what is played at this hour of the
+ * day counting for more.
  *
  * Counted over the history rather than over the server's own play counts:
  * this is what this phone has actually played, which is the taste the button
- * is named after. An artist heard once does not count as one.
+ * is named after. An artist heard once does not count as one, and that is the
+ * true count rather than the weighted one — a single play should not qualify
+ * for having happened at the right hour.
  */
-export function topArtists(history: HistoryEntry[], max = 8): string[] {
-  const counts = new Map<string, number>();
-  for (const { song } of history) {
-    const artist = song.artist?.trim();
-    if (!artist) continue;
-    counts.set(artist, (counts.get(artist) ?? 0) + 1);
-  }
-  return Array.from(counts.entries())
-    .filter(([, n]) => n > 1)
-    .sort((a, b) => b[1] - a[1])
+export function topArtists(history: HistoryEntry[], max = 8, atThisHour?: AtThisHour): string[] {
+  return Array.from(tally(history, (e) => e.song.artist, atThisHour).entries())
+    .filter(([, n]) => n.plays > 1)
+    .sort((a, b) => b[1].weight - a[1].weight)
     .slice(0, max)
     .map(([artist]) => artist);
 }
 
-/** The genres played most, best first. Counted over every play, since a genre
- *  heard once is still a genre, unlike an artist heard once. */
-export function topGenres(history: HistoryEntry[], max = 4): string[] {
-  const counts = new Map<string, number>();
-  for (const { song } of history) {
-    const genre = song.genre?.trim();
-    if (!genre) continue;
-    counts.set(genre, (counts.get(genre) ?? 0) + 1);
-  }
-  return Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1])
+/** The genres played most, best first, on the same weighting. Counted over
+ *  every play, since a genre heard once is still a genre. */
+export function topGenres(history: HistoryEntry[], max = 4, atThisHour?: AtThisHour): string[] {
+  return Array.from(tally(history, (e) => e.song.genre, atThisHour).entries())
+    .sort((a, b) => b[1].weight - a[1].weight)
     .slice(0, max)
     .map(([genre]) => genre);
 }

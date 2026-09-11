@@ -7,6 +7,15 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.9.0] - 2026-09-12
+
+### Added
+
+- A YouTube tab in the car, the fourth and last Android Auto will draw: the liked songs and the account's playlists, with the first few opened ahead of time so a row is never one that does nothing at the wheel. It appears only where the proxy has a working account, and only on a full rebuild, since it is several requests passed on to YouTube.
+- A "For you" shortcut on the app icon, beside Shuffle, Favorites and Resume: a long press and the mix starts, without opening the app.
+- The mix knows what time it is. The artists and genres played at this hour of the day count double against those played at any other, so an evening press and a morning one no longer build the same thing from a flat count of the whole history.
+- The toast that announces a mix offers to download the playlist it left behind, which is what you want before a drive and not something anybody would go looking for in a setting.
+
 ## [0.8.8] - 2026-09-11
 
 ### Added
@@ -2023,6 +2032,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.9.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.0
 [0.8.8]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.8
 [0.8.7]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.7
 [0.8.6]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.6

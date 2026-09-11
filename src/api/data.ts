@@ -31,7 +31,9 @@ import { useSettings, type LyricsSource } from '@/store/settings';
 import * as Navidrome from './navidrome';
 import * as Subsonic from './backend';
 import * as Local from '@/lib/localQueries';
+import { cardTarget } from '@/lib/youtube';
 import { getSong, type Song } from './subsonic';
+import * as YoutubeApi from './subsonic';
 
 function isOffline() { return useAuthStore.getState().offline; }
 function auth() { return useAuthStore.getState().auth!; }
@@ -1378,6 +1380,38 @@ function pushLove(a: Subsonic.SubsonicAuth, id: string, loved: boolean): void {
       );
     })
     .catch(() => bump('listenbrainz · love failed'));
+}
+
+/**
+ * The account's YouTube things, for whoever is not holding a screen: the car's
+ * browse tree builds itself outside React and has no `auth` of its own.
+ *
+ * Each hands back the plain song shape, so what comes out plays like anything
+ * else. Only ever with a server behind them: offline there is no proxy to ask.
+ */
+export function youtubeLikedSongs(count: number): Promise<Song[]> {
+  return YoutubeApi.youtubeLiked(auth(), count);
+}
+
+/** The account's playlists, reduced to what a row needs. Cards with no
+ *  playlist behind them (the "new playlist" button) are dropped. */
+export async function youtubePlaylistCards(): Promise<
+  { id: string; name: string; thumbnail?: string }[]
+> {
+  const cards = await YoutubeApi.youtubeMyPlaylists(auth(), 50);
+  return cards.flatMap((card) => {
+    const target = cardTarget(card);
+    if (!target || target.kind !== 'playlist') return [];
+    // `LM` is YouTube's own "Liked music", which is the same list as the liked
+    // songs and would be the same rows twice under two names.
+    if (target.id === 'LM') return [];
+    return [{ id: target.id, name: card.title, thumbnail: card.thumbnail ?? undefined }];
+  });
+}
+
+export async function youtubePlaylistSongs(id: string, count: number): Promise<Song[]> {
+  const { songs } = await YoutubeApi.youtubePlaylist(auth(), id, count);
+  return songs;
 }
 
 export function star(id: string, type?: Subsonic.StarType, origin?: StarOrigin): Promise<void> {

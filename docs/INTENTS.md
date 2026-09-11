@@ -85,7 +85,8 @@ fields. An NFC app that can send intents (Tasker with an NFC trigger, or NFC
 Tools with a "Send intent" task) can do the same from a tag; the simpler
 alternative for a tag is a plain URL record `resonuls://play/album/<id>`, which
 needs no automation app at all. The same links take `playlist/<id>` and
-`artist/<id>`, and three that need no id: `resonuls://play/random` shuffles the
+`artist/<id>`, and three that need no id: `resonuls://play/foryou` starts a mix built from what this phone plays,
+`resonuls://play/random` shuffles the
 whole library, `resonuls://play/favorites` shuffles the starred songs and
 `resonuls://play/resume` picks up the queue, or the last one saved when the
 queue is empty. These three are also the app's launcher shortcuts.

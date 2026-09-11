@@ -29,6 +29,7 @@ import { bookmarksAvailable, loadBookmarks, useBookmarks } from '@/lib/bookmarks
 import { formatDuration } from '@/lib/format';
 import { playForYou } from '@/lib/forYouMix';
 import { getPlaylists as getLocalPlaylists } from '@/lib/localQueries';
+import { navifindActive } from '@/lib/navifind';
 import { queryClient } from '@/lib/query';
 import { profileScopeId, useAuthStore } from '@/store/auth';
 import { anyDownloads, getDownloadShelf, useDownloads } from '@/store/downloads';
@@ -706,6 +707,78 @@ async function resolveCachedArt(tree: Record<string, CarNode[]>): Promise<void> 
  * on from the car, which is the point — signing in is a thing for the phone,
  * standing still.
  */
+/** How many of the account's YouTube playlists get their tracks fetched ahead
+ *  of a drive. Each is a request the proxy passes on to YouTube. */
+const MAX_YOUTUBE_PLAYLISTS = 4;
+/** How much of each list is carried. A car screen shows a dozen rows. */
+const YOUTUBE_TRACKS = 50;
+
+/**
+ * The YouTube tab: what the account signed in to the proxy has, in the car.
+ *
+ * Its own tab rather than rows on Home, because it is a library of its own and
+ * because Android Auto draws four tabs at most and there was room for exactly
+ * one more. Null where it would be empty — no proxy, no account, offline, or a
+ * session that has run out — which is what keeps the tab from appearing at all
+ * rather than appearing and opening onto nothing.
+ *
+ * Everything here is an ordinary song with a `yt_` id, so playing one is the
+ * same path as playing anything else: the proxy streams it and files it into
+ * the library on its own.
+ */
+async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promise<CarNode[] | null> {
+  const { auth, offline } = useAuthStore.getState();
+  if (!auth || offline || !navifindActive()) return null;
+
+  const [liked, playlists] = await Promise.all([
+    data.youtubeLikedSongs(YOUTUBE_TRACKS).catch(() => [] as Song[]),
+    data.youtubePlaylistCards().catch(() => [] as { id: string; name: string; thumbnail?: string }[]),
+  ]);
+  if (liked.length === 0 && playlists.length === 0) return null;
+
+  const rows: CarNode[] = [];
+  if (liked.length > 0) {
+    tree['yt:liked'] = liked.map((song) => songNode(into, song, 'yt:liked'));
+    into.parentTracks.set('yt:liked', tree['yt:liked'].map((n) => n.id));
+    rows.push({
+      id: 'yt:liked',
+      title: tg('Liked songs'),
+      subtitle: songsLabel(liked.length, useSettings.getState().language),
+      artworkUrl: icon('ic_car_favorites'),
+      playable: false,
+      contentStyle: 'list',
+      mediaType: 'playlist',
+    });
+  }
+
+  for (const list of playlists) {
+    into.nodeTitles.set(`yt:pl:${list.id}`, list.name);
+    rows.push({
+      id: `yt:pl:${list.id}`,
+      title: list.name,
+      artworkUrl: list.thumbnail,
+      playable: false,
+      contentStyle: 'list',
+      mediaType: 'playlist',
+    });
+  }
+
+  // The first few opened ahead of time: a list with nothing in it is a row
+  // that does nothing at the wheel, and the rest fill in when asked.
+  await mapConcurrent(playlists.slice(0, MAX_YOUTUBE_PLAYLISTS), CONCURRENCY, async (list) => {
+    const parent = `yt:pl:${list.id}`;
+    try {
+      const songs = await data.youtubePlaylistSongs(list.id, YOUTUBE_TRACKS);
+      tree[parent] = songs.map((song) => songNode(into, song, parent));
+      into.parentTracks.set(parent, tree[parent].map((n) => n.id));
+    } catch {
+      tree[parent] = [];
+    }
+  });
+
+  return rows;
+}
+
 function nothingToBrowse(): CarNode | null {
   const { auth, offline } = useAuthStore.getState();
   if (auth) return null;
@@ -767,6 +840,38 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
     { id: 'tab:recents', title: tg('Recents'), playable: false, contentStyle: 'grid', artworkUrl: icon('ic_car_recent') },
     { id: 'tab:library', title: tg('Library'), playable: false, contentStyle: 'list', artworkUrl: icon('ic_car_library') },
   ];
+  // The fourth and last tab Android Auto will draw, and only on a full build:
+  // it is several requests the proxy passes on to YouTube, which is not
+  // something to spend on a rebuild that is only re-laying the lists. A
+  // partial build keeps whatever the last full one found.
+  if (deep) {
+    const youtube = await youtubeTab(into, tree);
+    if (youtube) {
+      tree[ROOT].push({
+        id: 'tab:youtube',
+        title: 'YouTube',
+        playable: false,
+        contentStyle: 'list',
+        artworkUrl: icon('ic_car_youtube'),
+      });
+      tree['tab:youtube'] = youtube;
+    }
+  } else {
+    // Its lists as well as the tab: keeping the tab alone would leave every
+    // playlist under it opening onto nothing until the next full build.
+    for (const parent of Object.keys(lastTree ?? {})) {
+      if (parent === 'tab:youtube' || parent.startsWith('yt:')) keep(parent);
+    }
+    if ((lastTree?.[ROOT] ?? []).some((n) => n.id === 'tab:youtube')) {
+      tree[ROOT].push({
+        id: 'tab:youtube',
+        title: 'YouTube',
+        playable: false,
+        contentStyle: 'list',
+        artworkUrl: icon('ic_car_youtube'),
+      });
+    }
+  }
   tree['tab:recents'] = recentNodes(into);
 
   // Which albums get their songs fetched, in the order they deserve them. The
@@ -1126,6 +1231,15 @@ function sourceOf(collectionId: string | undefined): [string, string] | [] {
   if (prefix === 'smart') {
     const list = useSmartPlaylists.getState().lists.find((l) => l.id === id);
     return [list?.name ?? '', `/smart-playlist/${id}`];
+  }
+  // The YouTube tab's own lists. Their names are the account's, so they come
+  // from what the tree wrote down; the liked songs have no screen of their own
+  // and lead back to the tab.
+  if (prefix === 'yt') {
+    if (id === 'liked') return [tg('Liked songs'), '/youtube'];
+    const listId = id.startsWith('pl:') ? id.slice(3) : '';
+    if (!listId) return [];
+    return [resolve.nodeTitles.get(collectionId) ?? '', `/youtube/${listId}`];
   }
   if (prefix !== 'album' && prefix !== 'playlist' && prefix !== 'artist') return [];
   return [resolve.nodeTitles.get(collectionId) ?? '', `/${prefix}/${id}`];

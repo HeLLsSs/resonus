@@ -52,6 +52,7 @@ import {
   type HomeButtonKey,
   type HomeSectionKey,
 } from '@/store/settings';
+import { useDownloads } from '@/store/downloads';
 import { useSongMenu } from '@/store/songMenu';
 import { useToast } from '@/store/toast';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
@@ -712,7 +713,7 @@ function HomeHeaderButton({ which }: { which: HomeButtonKey }) {
     if (gathering) return;
     setGathering(true);
     try {
-      const { songs, playlistName } = await playForYou();
+      const { songs, playlistId, playlistName } = await playForYou();
       if (songs.length === 0) {
         useToast.getState().show(t('Not enough listening yet to build a mix'));
         return;
@@ -721,7 +722,24 @@ function HomeHeaderButton({ which }: { which: HomeButtonKey }) {
       // the music stops, and its name is how it will be found again. The
       // YouTube half of it arrives over the following minutes, which the
       // Navifind watcher says out loud on its own.
-      useToast.getState().show(t('Playing "{name}"', { name: playlistName }));
+      //
+      // The offer to take it with you rides on the same toast rather than on a
+      // setting: before a drive is exactly when somebody wants it, and exactly
+      // when they are not going to go looking for a switch. Only the songs it
+      // has now, since the fetched ones are not on the server yet.
+      useToast.getState().show(
+        t('Playing "{name}"', { name: playlistName }),
+        playlistId
+          ? {
+              label: t('Download'),
+              run: () => {
+                void useDownloads
+                  .getState()
+                  .downloadPlaylist({ id: playlistId, name: playlistName }, songs);
+              },
+            }
+          : undefined,
+      );
     } catch {
       useToast.getState().show(t("Couldn't build a mix"));
     } finally {

@@ -32,13 +32,16 @@ import {
   youtubeLiked,
 } from '@/api/subsonic';
 import { tg } from '@/i18n';
+import { greetingHours } from '@/i18n/languages';
 import { MIX_SIZE, pickForYou, topArtists, topGenres } from '@/lib/forYou';
+import { daySlot } from '@/lib/mixes';
 import { navifindActive } from '@/lib/navifind';
 import { bump } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
 import { useAuthStore } from '@/store/auth';
 import { usePlayerStore } from '@/store/player';
 import { usePlayHistory } from '@/store/playHistory';
+import { useSettings } from '@/store/settings';
 
 /** How many songs are asked of each artist and each genre. Small: the point is
  *  breadth across what is played, not depth into one name. */
@@ -136,8 +139,14 @@ export interface ForYouResult {
  */
 export async function playForYou(): Promise<ForYouResult> {
   const history = usePlayHistory.getState().entries;
-  const artists = topArtists(history);
-  const genres = topGenres(history);
+  // What counts for more: the artists and genres this phone plays at this hour
+  // of the day. The stretches themselves come from the language, since when
+  // "evening" starts is not the same everywhere (`greetingHours`).
+  const hours = greetingHours(useSettings.getState().language);
+  const now = daySlot(new Date().getHours(), hours);
+  const atThisHour = (playedAt: number) => daySlot(new Date(playedAt).getHours(), hours) === now;
+  const artists = topArtists(history, undefined, atThisHour);
+  const genres = topGenres(history, undefined, atThisHour);
 
   const [starred, library, youtube] = await Promise.all([
     getStarred().catch(() => null),

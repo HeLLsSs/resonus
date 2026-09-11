@@ -57,6 +57,37 @@ describe('topArtists', () => {
   });
 });
 
+describe('topArtists, weighted by the hour', () => {
+  /** Plays made "now", against plays made at some other time. */
+  const nowish = (playedAt: number) => playedAt >= NOW - 3600_000;
+
+  it('puts the artist of this hour ahead of one played as often at another', () => {
+    const history = [
+      // Two plays each, but only one of them at this hour of the day.
+      play(song('a', { artist: 'Night' }), 2),
+      play(song('b', { artist: 'Night' }), 3),
+      play(song('c', { artist: 'Morning' }), 40 * 3600_000),
+      play(song('d', { artist: 'Morning' }), 41 * 3600_000),
+    ];
+    assert.deepEqual(topArtists(history, 8, nowish), ['Night', 'Morning']);
+  });
+
+  it('still leaves out an artist heard once, whatever the hour', () => {
+    const history = [play(song('a', { artist: 'Once' }), 1)];
+    assert.deepEqual(topArtists(history, 8, nowish), []);
+  });
+
+  it('ranks as before when no hour is given', () => {
+    const history = [
+      play(song('a', { artist: 'Air' }), 40 * 3600_000),
+      play(song('b', { artist: 'Air' }), 41 * 3600_000),
+      play(song('c', { artist: 'Tool' }), 1),
+      play(song('d', { artist: 'Tool' }), 2),
+    ];
+    assert.deepEqual(topArtists(history).sort(), ['Air', 'Tool']);
+  });
+});
+
 describe('topGenres', () => {
   it('keeps a genre heard once, unlike an artist', () => {
     assert.deepEqual(topGenres([play(song('a', { genre: 'Dub' }), 1)]), ['Dub']);

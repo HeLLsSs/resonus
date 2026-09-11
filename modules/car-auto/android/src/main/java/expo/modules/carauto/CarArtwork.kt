@@ -75,6 +75,7 @@ internal object CarArtwork {
     "ic_car_recent" to R.drawable.ic_car_recent,
     "ic_car_shuffle" to R.drawable.ic_car_shuffle,
     "ic_car_smart_playlists" to R.drawable.ic_car_smart_playlists,
+    "ic_car_youtube" to R.drawable.ic_car_youtube,
   )
 
   fun init(context: Context) {
