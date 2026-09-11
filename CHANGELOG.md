@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.8.4] - 2026-09-11
+
+### Changed
+
+- The icon is the other way round: a black tile with the waveform in green, rather than green with the waveform in black. The notification icon keeps its green tint, since a black one would be invisible against the status bar.
+
 ## [0.8.3] - 2026-09-11
 
 ### Changed
@@ -1992,6 +1998,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.8.4]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.4
 [0.8.3]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.3
 [0.8.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.2
 [0.8.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.1
