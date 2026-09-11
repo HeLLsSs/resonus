@@ -1060,7 +1060,7 @@ you are actually typing into, which is easier than reading it here.
 | `The server did not answer as Navifind would. Check the address, or turn this off.` |  |
 | `Tracks the proxy has fetched so far. Navidrome picks them up on its next scan.` | The line under “In the library”, explaining it |
 | `Use Navifind` |  |
-| `Which account Navifind reads, and where to paste a fresh cookie.` | The line under “YouTube account”, explaining it |
+| `Which account Navifind reads, and where to sign in to another.` | The line under “YouTube account”, explaining it |
 | `YouTube account` |  |
 
 ## Settings › Navigation bar

@@ -108,7 +108,7 @@ export default function NavifindSettings() {
             <SettingRow
               icon="logo-youtube"
               label={t('YouTube account')}
-              description={t('Which account Navifind reads, and where to paste a fresh cookie.')}
+              description={t('Which account Navifind reads, and where to sign in to another.')}
               chevron
               onPress={() => router.push('/settings/youtube')}
             />
