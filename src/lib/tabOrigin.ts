@@ -11,7 +11,7 @@
  * only ever written while the tabs themselves are on screen, which is the one
  * moment the answer is known for certain.
  */
-export type TabSegment = 'index' | 'search' | 'library' | 'explore';
+export type TabSegment = 'index' | 'search' | 'library' | 'explore' | 'youtube';
 
 /** Route of each tab, and the label to call it by (translated where used). */
 export const TABS: { segment: TabSegment; href: string; label: string }[] = [
@@ -19,6 +19,9 @@ export const TABS: { segment: TabSegment; href: string; label: string }[] = [
   { segment: 'search', href: '/search', label: 'Search' },
   { segment: 'library', href: '/library', label: 'Your library' },
   { segment: 'explore', href: '/explore', label: 'Explore' },
+  // Only a profile whose server is the Navifind proxy has anything behind this
+  // one; the route exists either way (see `lib/bottomTabs.ts`).
+  { segment: 'youtube', href: '/youtube', label: 'YouTube' },
 ];
 
 let origin: TabSegment = 'index';

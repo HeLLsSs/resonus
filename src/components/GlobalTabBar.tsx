@@ -32,15 +32,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabBarShown } from '@/hooks/useTabBar';
 import { motion } from '@/theme/motion';
 import { useT } from '@/i18n';
-import { rememberTab, reselectTab, tabOrigin, TABS } from '@/lib/tabOrigin';
+import { shownTabs } from '@/lib/bottomTabs';
+import { rememberTab, reselectTab, tabOrigin, TABS, type TabSegment } from '@/lib/tabOrigin';
 import { useSettings } from '@/store/settings';
 import { colors, TAB_BAR_HEIGHT, themed } from '@/theme';
 
-const ICONS: Record<string, 'home' | 'search' | 'library' | 'albums'> = {
-  index: 'home',
-  search: 'search',
-  library: 'library',
-  explore: 'albums',
+/** Both drawings of each tab spelled out rather than an "-outline" added to
+ *  the name: YouTube's logo has no outline twin, and there the colour alone
+ *  says which tab you are on. */
+const ICONS: Record<
+  TabSegment,
+  { on: keyof typeof Ionicons.glyphMap; off: keyof typeof Ionicons.glyphMap }
+> = {
+  index: { on: 'home', off: 'home-outline' },
+  search: { on: 'search', off: 'search-outline' },
+  library: { on: 'library', off: 'library-outline' },
+  explore: { on: 'albums', off: 'albums-outline' },
+  youtube: { on: 'logo-youtube', off: 'logo-youtube' },
 };
 
 export function GlobalTabBar() {
@@ -53,6 +61,9 @@ export function GlobalTabBar() {
   // all: off is the app exactly as it was, down to the last pixel.
   const always = useSettings((s) => s.alwaysShowTabs);
   const bottomTabs = useSettings((s) => s.bottomTabs);
+  // The YouTube tab is the proxy's, and a profile without it has no such tab
+  // to draw (see `lib/bottomTabs.ts`).
+  const navifind = useSettings((s) => s.navifind);
   const root = segments[0];
   const inTabs = root === '(tabs)' || root === undefined;
   // Where a stack opened from here would belong; the back arrow reads the same
@@ -110,8 +121,7 @@ export function GlobalTabBar() {
       {/* The user's order, and only the ones they kept (Settings › Appearance
           › Navigation bar). `TABS` stays the catalogue: it is what says where
           each one goes and what it is called. */}
-      {bottomTabs
-        .filter((t) => t.enabled)
+      {shownTabs(bottomTabs, navifind)
         .map(({ key }) => TABS.find((x) => x.segment === key))
         .filter((tab): tab is (typeof TABS)[number] => !!tab)
         .map((tab) => {
@@ -138,7 +148,7 @@ export function GlobalTabBar() {
           >
             <View style={styles.iconBox}>
               <Ionicons
-                name={here || from ? ICONS[tab.segment] : `${ICONS[tab.segment]}-outline`}
+                name={here || from ? ICONS[tab.segment].on : ICONS[tab.segment].off}
                 size={25}
                 color={color}
               />

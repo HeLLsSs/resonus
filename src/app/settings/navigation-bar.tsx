@@ -9,6 +9,10 @@
  * A tab that is off is still a route — anything already pointing at it still
  * opens it, and the back arrow still knows where it came from. What goes is
  * the way in from the bar.
+ *
+ * Not every profile is offered the same list: the YouTube tab is the Navifind
+ * proxy answering for a YouTube account, and a profile without the proxy has
+ * no such row here at all.
  */
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, Switch, Text, View } from 'react-native';
@@ -22,6 +26,7 @@ import { useAccent } from '@/hooks/useAccent';
 import { useScreenBottomPadding } from '@/hooks/useScreenBottomPadding';
 import { centredPadding, useScreenSize } from '@/hooks/useScreenSize';
 import { useT } from '@/i18n';
+import { reorderUsable, usableTabs } from '@/lib/bottomTabs';
 import { haptic } from '@/lib/haptics';
 import { TABS } from '@/lib/tabOrigin';
 import { useSettings, type BottomTab } from '@/store/settings';
@@ -81,20 +86,22 @@ export default function NavigationBarSettings() {
   const t = useT();
   const bottomTabs = useSettings((s) => s.bottomTabs);
   const setBottomTabs = useSettings((s) => s.setBottomTabs);
+  // A tab this profile has nothing behind is not a choice to offer: the
+  // YouTube one belongs to the Navifind proxy, and without it a switch here
+  // would turn on a tab that could not be opened (see `lib/bottomTabs.ts`).
+  const navifind = useSettings((s) => s.navifind);
+  const rows = usableTabs(bottomTabs, navifind);
   return (
     <SettingsSafeArea>
       <ScreenHeader title={t('Navigation bar')} />
       <Text style={styles.hint}>{t('Drag to reorder, toggle to show or hide.')}</Text>
       <ReorderableList
-        data={bottomTabs}
+        data={rows}
         keyExtractor={(item) => item.key}
         renderItem={({ item }) => <TabRow tab={item} />}
-        onReorder={({ from, to }: ReorderableListReorderEvent) => {
-          const next = bottomTabs.slice();
-          const [moved] = next.splice(from, 1);
-          next.splice(to, 0, moved);
-          setBottomTabs(next);
-        }}
+        onReorder={({ from, to }: ReorderableListReorderEvent) =>
+          setBottomTabs(reorderUsable(bottomTabs, navifind, from, to))
+        }
         contentContainerStyle={[
           styles.list,
           // Centred once the screen is wider than a list wants to be, like

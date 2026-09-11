@@ -1,0 +1,7 @@
+{
+  "name": "web-cookies",
+  "version": "0.0.1",
+  "description": "Reads and clears the WebView cookie jar, HttpOnly included (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

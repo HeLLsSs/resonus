@@ -6,11 +6,13 @@
  * Off by default and off is the whole of it: no badge, no menu entry, no
  * page here beyond the switch (see `lib/navifind.ts`). On, the proxy's own
  * import goes here as well, so a link pasted from a phone ends up as a
- * playlist on the server without the proxy's web page ever being opened.
+ * playlist on the server without the proxy's web page ever being opened, and
+ * the YouTube account it reads is one screen further in.
  */
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Linking, ScrollView, Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 
 import { importIntoLibrary, navifindStatus } from '@/api/subsonic';
 import { SettingRow, SettingsPage, settingsStyles, SwitchList, TextRow } from '@/components/SettingsUI';
@@ -21,7 +23,6 @@ import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
 import { useTheme } from '@/theme';
 
-const NAVIFIND_URL = 'https://gitlab.g-hells.fr/gnouet/navifind';
 /** A pasted link, with room for the long ones Spotify and YouTube make. */
 const URL_MAX = 300;
 /**
@@ -36,6 +37,7 @@ export default function NavifindSettings() {
   // mounted while you are on another one, out of reach of anything else.
   useTheme();
   const t = useT();
+  const router = useRouter();
   const toast = useToast((s) => s.show);
   const auth = useAuthStore((s) => s.auth);
   const offline = useAuthStore((s) => s.offline);
@@ -98,15 +100,19 @@ export default function NavifindSettings() {
             },
           ]}
         />
-        <SettingRow
-          icon="open-outline"
-          label={t('About Navifind')}
-          chevron
-          onPress={() => void Linking.openURL(NAVIFIND_URL)}
-        />
-
         {navifind ? (
           <>
+            {/* A screen of its own because what is behind it is a credential
+                and a page of prose about where to find it, neither of which
+                belongs between two rows here. */}
+            <SettingRow
+              icon="logo-youtube"
+              label={t('YouTube account')}
+              description={t('Which account Navifind reads, and where to paste a fresh cookie.')}
+              chevron
+              onPress={() => router.push('/settings/youtube')}
+            />
+
             <Text style={settingsStyles.sectionTitle}>{t('Import into the library')}</Text>
             <Text style={settingsStyles.sectionDescription}>
               {t(

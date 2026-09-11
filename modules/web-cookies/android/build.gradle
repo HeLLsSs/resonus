@@ -1,0 +1,21 @@
+// See the note in modules/audio-eq/android/build.gradle: the plugin is what
+// brings the compiler plugin the module DSL needs from SDK 56 on.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.webcookies'
+version = '0.0.1'
+
+android {
+  namespace "expo.modules.webcookies"
+  defaultConfig {
+    versionCode 1
+    versionName "0.0.1"
+  }
+}
+
+dependencies {
+  // The WebView's own cookie store is in the framework: nothing else.
+}
