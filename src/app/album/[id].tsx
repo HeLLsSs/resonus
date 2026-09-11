@@ -17,6 +17,7 @@ import { TrackListSkeleton } from '@/components/TrackListSkeleton';
 import { TrackListView } from '@/components/TrackListView';
 import { useDownloadMessage } from '@/hooks/useDownloadMessage';
 import { useFavoriteIds } from '@/hooks/useFavoriteIds';
+import { useSongSort } from '@/hooks/useSongSort';
 import { songsLabel, useT } from '@/i18n';
 import { formatTotalDuration } from '@/lib/format';
 import { useAuthStore } from '@/store/auth';
@@ -188,6 +189,32 @@ export default function AlbumScreen() {
     playQueue(fresh.songs, 0, fresh.album.name, `/album/${id}`).catch(() => {});
   }, [play, fresh, id, playQueue]);
 
+  /**
+   * A record has an order of its own, and it is the one the artist chose: the
+   * songs arrive in disc and track order and that is what the screen opens on,
+   * every time, whatever was picked here last. Sorting a record by title or by
+   * length is a thing somebody occasionally wants to do and never a thing they
+   * want done to them, so it is asked for by hand and the first entry in the
+   * menu, "Album order", puts it back.
+   *
+   * Nothing is saved to disk for the same reason (no `persistKey`): a record
+   * you sorted by length in March should not still be in that order in June.
+   */
+  const {
+    songs: displaySongs,
+    sort,
+    openSort,
+    sortSheet,
+    filter,
+    filterBar,
+    filterEmpty,
+  } = useSongSort(data?.songs ?? [], undefined, {
+    fields: ['recent', 'date', 'alpha', 'artist', 'year', 'duration', 'plays', 'rating', 'downloaded'],
+    labels: { recent: 'Album order' },
+    filters: ['downloaded', 'favorites'],
+  });
+  const arranged = sort.field !== 'recent' || !!filter;
+
   const discHeaders = useMemo(
     () =>
       discHeadersFor(data?.songs ?? [], data?.album.discTitles, showDiscHeaders, (n) =>
@@ -230,9 +257,11 @@ export default function AlbumScreen() {
     ? `℗ ${data.album.year ? `${data.album.year} ` : ''}${labels.join(' · ')}`
     : null;
 
+  // What is on screen, which is the record itself until somebody sorts or
+  // narrows it: the play button plays the list you are looking at.
   const playAlbum = async (startIndex: number, opts?: { shuffled?: boolean }) => {
     try {
-      await playQueue(data.songs, startIndex, data.album.name, `/album/${id}`, opts);
+      await playQueue(displaySongs, startIndex, data.album.name, `/album/${id}`, opts);
     } catch {
       // playQueue already shows a failure toast when it can; keep the UI alive.
     }
@@ -283,10 +312,16 @@ export default function AlbumScreen() {
         // Same sheet as the long-press on cards: play, queue, download,
         // favorite and pin, without duplicating the menu.
         onMenu={openAlbumMenu}
-        songs={data.songs}
+        onSort={data.songs.length > 1 ? openSort : undefined}
+        songs={displaySongs}
+        filterBar={filterBar}
+        emptyState={filterEmpty}
         currentId={playing?.id}
         numbered
-        discHeaders={discHeaders}
+        // Only over the record as it came: once it is sorted or narrowed, the
+        // rows either side of a "Disc 2" are no longer disc 2, and a heading
+        // that lies about what follows it is worse than no heading.
+        discHeaders={arranged ? undefined : discHeaders}
         favorite={{
           id: data.album.id,
           type: 'album',
@@ -329,6 +364,7 @@ export default function AlbumScreen() {
         }}
         onPlay={(start, opts) => playAlbum(start, opts)}
       />
+      {sortSheet}
       <PlaylistPickerSheet songs={addingSongs} onClose={() => setAddingSongs(null)} />
       <CoverViewer
         visible={coverOpen}

@@ -1,5 +1,7 @@
 /**
- * The menu for choosing an order: the fields, and which way round.
+ * The menu for arranging a list: what to order it by, which way round, and —
+ * where the screen offers them — which of a couple of narrowings to put it
+ * under for the moment.
  *
  * One component for the two hooks that ask the question, `useSongSort` (which
  * reorders a list the screen already holds) and `useServerSort` (which puts the
@@ -21,11 +23,18 @@ import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
 
 export type { SortDirection } from '@/api/subsonic';
 
+/** Past this many orders the menu is taller than a small phone, and the sheet
+ *  it sits in starts scrolling rather than running off the top. */
+const SCROLLS_ABOVE = 6;
+
 export const SortSheet = memo(function SortSheet({
   options,
   field,
   dir,
   onPick,
+  filters,
+  filter,
+  onFilter,
   openRef,
 }: {
   /** In the order they should be shown; the label is a translation key. */
@@ -36,13 +45,24 @@ export const SortSheet = memo(function SortSheet({
    *  that would ask goes with it. */
   dir?: SortDirection;
   onPick: (field: string, dir: SortDirection) => void;
+  /**
+   * The narrowings this list offers, if any. They live here rather than in a
+   * row of their own above the list because a filter that is always on screen
+   * is a permanent control for something meant to last a minute; what says one
+   * is on is the bar over the list, which only exists while it is.
+   */
+  filters?: { key: string; label: string }[];
+  /** Which one is on, if any. */
+  filter?: string | null;
+  /** Picking the one already on turns it off. */
+  onFilter?: (filter: string | null) => void;
   openRef: React.MutableRefObject<() => void>;
 }) {
   const t = useT();
   // Memoized, so the screen repainting is not enough to bring this one along.
   useTheme();
   return (
-    <SheetModal openRef={openRef}>
+    <SheetModal openRef={openRef} scrolls={options.length > SCROLLS_ABOVE}>
       {/* Choosing closes it. Both halves are a finished answer on their own, and
           leaving it up afterwards asked for a second gesture to dismiss what had
           already been decided. Changing the field AND the direction takes two
@@ -75,6 +95,37 @@ export const SortSheet = memo(function SortSheet({
               </Pressable>
             );
           })}
+
+          {filters && filters.length > 0 && onFilter ? (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.sheetTitle}>{t('Show only')}</Text>
+              <View style={styles.dirRow}>
+                {filters.map((f) => {
+                  const active = filter === f.key;
+                  return (
+                    <Pressable
+                      key={f.key}
+                      style={[styles.dirChip, active && { backgroundColor: colors.accent }]}
+                      onPress={() => {
+                        onFilter(active ? null : f.key);
+                        close();
+                      }}
+                    >
+                      <Ionicons
+                        name={active ? 'checkmark' : 'funnel-outline'}
+                        size={16}
+                        color={active ? colors.onAccent : colors.text}
+                      />
+                      <Text style={[styles.dirChipText, active && { color: colors.onAccent }]}>
+                        {t(f.label)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
 
           {dir === undefined ? null : (
             <>

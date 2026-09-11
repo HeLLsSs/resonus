@@ -15,6 +15,7 @@ import { Message } from '@/components/Message';
 import { SheetModal } from '@/components/SheetModal';
 import { TrackListSkeleton } from '@/components/TrackListSkeleton';
 import { TrackListView } from '@/components/TrackListView';
+import { useSongSort } from '@/hooks/useSongSort';
 import { songsLabel, useT } from '@/i18n';
 import { formatTotalDuration } from '@/lib/format';
 import { resolveSmartPlaylist } from '@/lib/smartPlaylists';
@@ -66,6 +67,26 @@ export default function SmartPlaylistScreen() {
     [data, list, deal],
   );
 
+  /**
+   * The rules already say how the list is ordered, and that order is part of
+   * what the list IS ("the 50 I have played most"), so 'recent' — the order the
+   * rules produced — stays the default and says so. Sorting here is for reading
+   * the same selection another way round, and it is forgotten when the screen
+   * is (no `persistKey`): what the rules make is rebuilt every visit anyway.
+   */
+  const {
+    songs: displaySongs,
+    openSort,
+    sortSheet,
+    filter,
+    filterBar,
+    filterEmpty,
+  } = useSongSort(songs, undefined, {
+    fields: ['recent', 'date', 'alpha', 'artist', 'album', 'year', 'duration', 'plays', 'rating', 'downloaded'],
+    labels: { recent: 'By the rules' },
+    filters: ['downloaded', 'favorites'],
+  });
+
   if (!list) return <Message text={t('Nothing here yet')} />;
   if (isLoading) return <TrackListSkeleton />;
   if (error && !data) return <Message text={t("Couldn't load your songs.")} onRetry={() => void refetch()} />;
@@ -98,22 +119,27 @@ export default function SmartPlaylistScreen() {
         title={list.name}
         meta={meta.join(' · ')}
         renderCover={(size) => <SmartPlaylistArt size={size} />}
-        songs={songs}
+        songs={displaySongs}
         currentId={playing?.id}
         onMenu={() => menuRef.current()}
+        onSort={songs.length > 1 || filter ? openSort : undefined}
+        filterBar={filterBar}
         showArtwork={showListArtwork}
         searchable
         emptyState={
-          <EmptyState
-            icon="sparkles-outline"
-            title={t('Nothing matches these rules yet')}
-            subtitle={t('Loosen a rule or two.')}
-            action={{ label: t('Edit rules'), onPress: () => router.push(`/smart-playlist/edit?id=${list.id}`) }}
-          />
+          filterEmpty ?? (
+            <EmptyState
+              icon="sparkles-outline"
+              title={t('Nothing matches these rules yet')}
+              subtitle={t('Loosen a rule or two.')}
+              action={{ label: t('Edit rules'), onPress: () => router.push(`/smart-playlist/edit?id=${list.id}`) }}
+            />
+          )
         }
         selection={{ onAddTo: (sel) => usePlaylistPicker.getState().open(sel) }}
-        onPlay={(start, opts) => playQueue(songs, start, list.name, href, opts)}
+        onPlay={(start, opts) => playQueue(displaySongs, start, list.name, href, opts)}
       />
+      {sortSheet}
       <SheetModal openRef={menuRef}>
         {(close) => (
           <>

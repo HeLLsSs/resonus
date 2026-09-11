@@ -154,7 +154,10 @@ export default function PlaylistScreen() {
    * `added` keeps the name it has on every other screen, "Recently added",
    * rather than being called "Recent" only here — which is a third thing again,
    * since "Recent" elsewhere is about what YOU played, not about when a song
-   * joined a list.
+   * joined a list. It is about this playlist and not about the file: the server
+   * appends, so a song's place in the list is when it joined it, and that is
+   * all this order knows. When the file itself reached the library is "Date
+   * added", which is the next one down and a different answer.
    */
   const {
     songs: displaySongs,
@@ -162,12 +165,28 @@ export default function PlaylistScreen() {
     openSort,
     sortSheet,
     setSort,
+    filter,
+    filterBar,
+    filterEmpty,
   } = useSongSort(data?.songs ?? [], `playlist:${id}`, {
-    fields: ['recent', 'added', 'alpha', 'artist', 'album', 'downloaded'],
+    fields: [
+      'recent',
+      'added',
+      'date',
+      'alpha',
+      'artist',
+      'album',
+      'year',
+      'duration',
+      'plays',
+      'rating',
+      'downloaded',
+    ],
     labels: { recent: 'Default' },
     // The list opens in the order it came in, new items at the bottom;
     // "Recently added" puts the latest at the top.
     defaultSort: { field: 'recent', dir: 'asc' },
+    filters: ['downloaded', 'favorites'],
   });
 
   async function onSaveEdit(changes: PlaylistEdit) {
@@ -357,18 +376,23 @@ export default function PlaylistScreen() {
         playlistId={id}
         showArtwork={showListArtwork}
         searchable
-        onSort={data.songs.length > 1 ? openSort : undefined}
+        // Or when a filter is on, so the menu that turns it off stays
+        // reachable from the list it emptied.
+        onSort={data.songs.length > 1 || filter ? openSort : undefined}
+        filterBar={filterBar}
         download={
           !offline && data.songs.length > 0
             ? { ...download, onPress: onDownloadPress }
             : undefined
         }
         emptyState={
-          <EmptyState
-            icon="musical-notes-outline"
-            title={t('This playlist is empty')}
-            subtitle={t('Add songs from the ⋯ menu of any song.')}
-          />
+          filterEmpty ?? (
+            <EmptyState
+              icon="musical-notes-outline"
+              title={t('This playlist is empty')}
+              subtitle={t('Add songs from the ⋯ menu of any song.')}
+            />
+          )
         }
         selection={{
           onRemove: (_sel, indices) => removeMany(indices),

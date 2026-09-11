@@ -158,6 +158,10 @@ interface Props {
    * reshuffle).
    */
   addAction?: { label: string; icon?: keyof typeof Ionicons.glyphMap; onPress: () => void };
+  /** The line that says a quick filter is narrowing the list, from
+   *  `useSongSort`. It sits right above the rows, where what it is talking
+   *  about starts. */
+  filterBar?: ReactNode;
   /** Extra content at the bottom of the list (e.g. "More from this artist"). */
   footer?: ReactNode;
   /** What to show below the header when there are no songs (e.g. empty playlist). */
@@ -217,6 +221,7 @@ export function TrackListView({
   playlistIndices,
   onSort,
   addAction,
+  filterBar,
   footer,
   emptyState,
   showArtwork,
@@ -768,6 +773,8 @@ export function TrackListView({
                 <Text style={styles.addLabel}>{addAction.label}</Text>
               </Pressable>
             ) : null}
+
+            {filterBar ? <>{filterBar}</> : null}
           </View>
             )}
           </View>

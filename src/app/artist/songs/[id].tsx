@@ -145,11 +145,15 @@ export default function ArtistSongsScreen() {
     songs: shown,
     openSort,
     sortSheet,
+    filter,
+    filterBar,
+    filterEmpty,
   } = useSongSort(all, `artistSongs:${id}`, {
     // 'recent' is the order they were gathered in: the discography newest
     // first, each record in its own running order. Named for what that is.
-    fields: ['recent', 'alpha', 'album', 'downloaded'],
+    fields: ['recent', 'date', 'alpha', 'album', 'year', 'duration', 'plays', 'rating', 'downloaded'],
     labels: { recent: 'By album' },
+    filters: ['downloaded', 'favorites'],
   });
 
   // ── Download ─────────────────────────────────────────────────────────────
@@ -290,7 +294,7 @@ export default function ArtistSongsScreen() {
                 )}
               </Pressable>
             ) : null}
-            {all.length > 1 ? (
+            {all.length > 1 || filter ? (
               <Pressable
                 hitSlop={10}
                 accessibilityRole="button"
@@ -329,6 +333,8 @@ export default function ArtistSongsScreen() {
         </View>
       ) : null}
 
+      {filterBar ? <View style={styles.filterBar}>{filterBar}</View> : null}
+
       <FlatList
         {...listPerf}
         data={shown}
@@ -338,6 +344,7 @@ export default function ArtistSongsScreen() {
           { paddingBottom: bottomPad, paddingHorizontal: listPad },
         ]}
         extraData={selectedIds}
+        ListEmptyComponent={filterEmpty ? <>{filterEmpty}</> : null}
         renderItem={({ item, index }) => (
           <TrackRow
             song={item}
@@ -517,4 +524,6 @@ const styles = themed((colors) => ({
   // Same side margin as the album and playlist song lists: `TrackRow` brings
   // no horizontal padding of its own.
   list: { paddingHorizontal: spacing.lg, paddingBottom: SCREEN_BOTTOM_PADDING },
+  // The bar sits to the same margin as the rows it is talking about.
+  filterBar: { paddingHorizontal: spacing.lg },
 }));

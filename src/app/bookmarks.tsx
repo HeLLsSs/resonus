@@ -19,6 +19,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Message } from '@/components/Message';
 import { useScreenBottomPadding } from '@/hooks/useScreenBottomPadding';
 import { useListPadding } from '@/hooks/useScreenSize';
+import { useSongSort } from '@/hooks/useSongSort';
 import { useT } from '@/i18n';
 import {
   loadBookmarks,
@@ -69,6 +70,26 @@ export function BookmarksBrowser({ embedded }: BrowserProps) {
     () => Object.values(byId).sort((a, b) => b.changed.localeCompare(a.changed)),
     [byId],
   );
+
+  /**
+   * The same menu the song lists have, over the songs the bookmarks are on. The
+   * orders it offers are the ones a bookmark can answer: what the position in a
+   * song is has nothing to do with the year it came out or how often it has
+   * been played, and offering those here would be offering to sort by nothing.
+   */
+  const bookmarked = useMemo(() => bookmarks.map((bm) => bm.song), [bookmarks]);
+  const { indices, openSort, sortSheet, sortLabel, filter, filterBar, filterEmpty } = useSongSort(
+    bookmarked,
+    'bookmarks',
+    {
+      fields: ['recent', 'alpha', 'artist', 'album', 'duration', 'downloaded'],
+      labels: { recent: 'Recently bookmarked' },
+      filters: ['downloaded', 'favorites'],
+    },
+  );
+  // Back to bookmarks: the rows show a position and a comment, which only the
+  // bookmark has, and `indices` is what says which one each song came from.
+  const shown = useMemo(() => indices.map((i) => bookmarks[i]), [indices, bookmarks]);
 
   const play = (bm: Bookmark) => {
     void playQueue([bm.song], 0, t('Bookmarks'), '/bookmarks').then((ok) => {
@@ -132,66 +153,95 @@ export function BookmarksBrowser({ embedded }: BrowserProps) {
           <ActivityIndicator color={colors.accent} />
         </View>
       ) : (
-        <FlatList
-          {...listPerf}
-          data={bookmarks}
-          keyExtractor={(bm) => bm.song.id}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: bottomPad, paddingHorizontal: listPad },
-          ]}
-          ListEmptyComponent={
-            <EmptyState
-              icon="bookmark-outline"
-              title={t('No bookmarks yet')}
-              subtitle={t(
-                'Long songs keep their place on their own. Any song can be bookmarked from its menu while it plays.',
-              )}
-            />
-          }
-          renderItem={({ item }) => (
-            <Pressable
-              style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
-              onPress={() => play(item)}
-              onLongPress={() => {
-                haptic('medium');
-                setDeleting(item);
-              }}
-            >
-              {showListArtwork ? (
-                <Cover uri={songCoverUrl(item.song, COVER.thumb)} size={48} />
-              ) : null}
-              <View style={styles.info}>
-                <Text style={styles.rowTitle} numberOfLines={1}>
-                  {item.song.title}
-                </Text>
-                {item.song.artist ? (
-                  <Text style={styles.rowSub} numberOfLines={1}>
-                    {item.song.artist}
-                  </Text>
-                ) : null}
-                <Text style={styles.rowSub} numberOfLines={1}>
-                  {detail(item)}
-                </Text>
-                {item.comment ? (
-                  <Text style={styles.comment} numberOfLines={2}>
-                    {item.comment}
-                  </Text>
-                ) : null}
-              </View>
+        <>
+          {/* The order written out beside the button rather than hidden behind
+              it, the way a browse screen does it: this list has no header of its
+              own to put it in, and inside the Explore tab it has no header at
+              all. */}
+          {bookmarks.length > 1 || filter ? (
+            <View style={[styles.toolbar, { paddingHorizontal: listPad }]}>
               <Pressable
-                hitSlop={10}
+                style={styles.sort}
+                hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={t('Remove bookmark')}
-                onPress={() => setDeleting(item)}
-                style={({ pressed }) => pressed && { opacity: 0.6 }}
+                accessibilityLabel={t('Sort')}
+                onPress={openSort}
               >
-                <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
+                <Ionicons name="swap-vertical" size={18} color={colors.textSecondary} />
+                <Text style={styles.sortText} numberOfLines={1}>
+                  {sortLabel}
+                </Text>
               </Pressable>
-            </Pressable>
-          )}
-        />
+            </View>
+          ) : null}
+          {filterBar ? <View style={{ paddingHorizontal: listPad }}>{filterBar}</View> : null}
+          <FlatList
+            {...listPerf}
+            data={shown}
+            keyExtractor={(bm) => bm.song.id}
+            contentContainerStyle={[
+              styles.list,
+              { paddingBottom: bottomPad, paddingHorizontal: listPad },
+            ]}
+            ListEmptyComponent={
+              filterEmpty ? (
+                <>{filterEmpty}</>
+              ) : (
+                <EmptyState
+                  icon="bookmark-outline"
+                  title={t('No bookmarks yet')}
+                  subtitle={t(
+                    'Long songs keep their place on their own. Any song can be bookmarked from its menu while it plays.',
+                  )}
+                />
+              )
+            }
+            renderItem={({ item }) => (
+              <Pressable
+                style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+                onPress={() => play(item)}
+                onLongPress={() => {
+                  haptic('medium');
+                  setDeleting(item);
+                }}
+              >
+                {showListArtwork ? (
+                  <Cover uri={songCoverUrl(item.song, COVER.thumb)} size={48} />
+                ) : null}
+                <View style={styles.info}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {item.song.title}
+                  </Text>
+                  {item.song.artist ? (
+                    <Text style={styles.rowSub} numberOfLines={1}>
+                      {item.song.artist}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.rowSub} numberOfLines={1}>
+                    {detail(item)}
+                  </Text>
+                  {item.comment ? (
+                    <Text style={styles.comment} numberOfLines={2}>
+                      {item.comment}
+                    </Text>
+                  ) : null}
+                </View>
+                <Pressable
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('Remove bookmark')}
+                  onPress={() => setDeleting(item)}
+                  style={({ pressed }) => pressed && { opacity: 0.6 }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
+                </Pressable>
+              </Pressable>
+            )}
+          />
+        </>
       )}
+
+      {sortSheet}
 
       <Dialog
         visible={deleting !== null}
@@ -218,6 +268,10 @@ const styles = themed((colors) => ({
   },
   title: { color: colors.text, fontSize: fontSize.lg, fontWeight: '600' },
   center: { flex: 1, justifyContent: 'center' },
+  // The same row the browse screens put above their lists, to the same margin.
+  toolbar: { flexDirection: 'row', alignItems: 'center', paddingBottom: spacing.xs },
+  sort: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 },
+  sortText: { color: colors.textSecondary, fontSize: fontSize.sm, fontWeight: '600' },
   list: { flexGrow: 1, paddingTop: spacing.sm },
   row: {
     flexDirection: 'row',

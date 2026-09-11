@@ -106,11 +106,19 @@ export default function FavoritesScreen() {
    * On a server that cannot order them that way it falls back to "Default",
    * the word the playlists use for "however this list came" (see `starredByDate`).
    */
-  const { songs: displaySongs, openSort, sortSheet } = useSongSort(
-    data?.songs ?? [],
-    'favorites',
-    { labels: { recent: starredByDate() ? 'Recently added' : 'Default' } },
-  );
+  const {
+    songs: displaySongs,
+    openSort,
+    sortSheet,
+    filter,
+    filterBar,
+    filterEmpty,
+  } = useSongSort(data?.songs ?? [], 'favorites', {
+    labels: { recent: starredByDate() ? 'Recently added' : 'Default' },
+    // Every song here is a favorite already, so only the other narrowing has
+    // anything to say.
+    filters: ['downloaded'],
+  });
   // Over `displaySongs`: this is what `downloadFavorites` downloads, and with a
   // filter applied it's not the same as `data.songs`.
   const downloadMsg = useDownloadMessage(displaySongs);
@@ -166,7 +174,9 @@ export default function FavoritesScreen() {
     );
   }
 
-  if (displaySongs.length === 0 && offline) {
+  // Not while a filter is on: there the list is empty because it was narrowed,
+  // and this screen has no way back from it (`filterEmpty` does).
+  if (displaySongs.length === 0 && offline && !filter) {
     return (
       <View style={styles.center}>
         <EmptyState
@@ -195,7 +205,11 @@ export default function FavoritesScreen() {
         searchable
         searchPlaceholder={t('Find in favorites')}
         onMenu={displaySongs.length > 0 ? () => menuRef.current() : undefined}
-        onSort={displaySongs.length > 1 ? openSort : undefined}
+        // Counted on the whole list rather than the shown one: the menu that
+        // turns the filter off has to stay reachable from a list it emptied.
+        onSort={data.songs.length > 1 || filter ? openSort : undefined}
+        filterBar={filterBar}
+        emptyState={filterEmpty}
         addAction={{ label: t('Add to favorites'), onPress: () => router.push('/favorites-add') }}
         download={
           !offline && displaySongs.length > 0
