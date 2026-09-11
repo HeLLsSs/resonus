@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="./assets/images/icon-transparent.png" width="120" alt="Resonus icon" />
+  <img src="./assets/images/icon-transparent.png" width="120" alt="Resonuls icon" />
 </p>
 
-<h1 align="center">Resonus</h1>
+<h1 align="center">Resonuls</h1>
 
 <p align="center">
   A clean music player for your self-hosted server, and your local files.
@@ -10,47 +10,119 @@
   Android, with an experimental iOS build.
 </p>
 
+<p align="center">
+  <em>A fork of <a href="https://github.com/juananzzz/resonus">Resonus</a> by
+  <a href="https://github.com/juananzzz">juananzzz</a>, with everything below
+  added on top.</em>
+</p>
+
 ---
 
 <p align="center">
-  <a href="https://github.com/juananzzz/resonus/releases/latest"><img src="https://img.shields.io/badge/⬇_Download_APK-6366F1?style=for-the-badge" alt="Download APK" /></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/juananzzz/resonus"><img src="./assets/images/obtainium.svg" height="28" alt="Get via Obtainium" /></a>
-  <a href="#ios-experimental"><img src="https://img.shields.io/badge/iOS_experimental-6366F1?style=for-the-badge&logo=apple&logoColor=white" alt="iOS (experimental)" /></a>
-  <a href="https://altdirect.app/?url=https://raw.githubusercontent.com/juananzzz/resonus/main/Source.json"><img src="https://img.shields.io/badge/Add_as_an_AltSource-6366F1?style=for-the-badge&logo=apple&logoColor=white" alt="Add as an AltSource" /></a>
-  <a href="https://discord.gg/pecE8MTPVr"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" /></a>
-  <a href="https://ko-fi.com/juananzzz"><img src="https://img.shields.io/badge/Support_on_Ko--fi-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" alt="Support on Ko-fi" /></a>
+  <a href="https://github.com/HeLLsSs/resonus/releases/latest"><img src="https://img.shields.io/badge/⬇_Download_APK-6366F1?style=for-the-badge" alt="Download APK" /></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/HeLLsSs/resonus"><img src="./assets/images/obtainium.svg" height="28" alt="Get via Obtainium" /></a>
 </p>
 
 ## Screenshots
 
-| Home | Player | Album | Library |
-| :---: | :---: | :---: | :---: |
-| <img src="./assets/screenshots/dark-home.jpg" width="200" alt="Home, dark" /> | <img src="./assets/screenshots/dark-player.jpg" width="200" alt="Player, dark" /> | <img src="./assets/screenshots/dark-album.jpg" width="200" alt="Album, dark" /> | <img src="./assets/screenshots/dark-library.jpg" width="200" alt="Library, dark" /> |
-| <img src="./assets/screenshots/light-home.jpg" width="200" alt="Home, light" /> | <img src="./assets/screenshots/light-player.jpg" width="200" alt="Player, light" /> | <img src="./assets/screenshots/light-album.jpg" width="200" alt="Album, light" /> | <img src="./assets/screenshots/light-library.jpg" width="200" alt="Library, light" /> |
+| Home | Player | Queue |
+| :---: | :---: | :---: |
+| <img src="./assets/screenshots/fork-home.jpg" width="200" alt="Home" /> | <img src="./assets/screenshots/fork-player.jpg" width="200" alt="Playing a track from a For you mix" /> | <img src="./assets/screenshots/fork-queue.jpg" width="200" alt="A queue weaving library and YouTube tracks" /> |
 
-| Artist | Lyrics | Queue | Servers |
-| :---: | :---: | :---: | :---: |
-| <img src="./assets/screenshots/artist.jpg" width="200" alt="Artist" /> | <img src="./assets/screenshots/lyrics.jpg" width="200" alt="Synced lyrics" /> | <img src="./assets/screenshots/queue.jpg" width="200" alt="Queue" /> | <img src="./assets/screenshots/servers.jpg" width="200" alt="Supported servers" /> |
+| YouTube | Navifind | Settings |
+| :---: | :---: | :---: |
+| <img src="./assets/screenshots/fork-youtube.jpg" width="200" alt="The YouTube tab" /> | <img src="./assets/screenshots/fork-navifind.jpg" width="200" alt="Navifind settings" /> | <img src="./assets/screenshots/fork-settings.jpg" width="200" alt="Settings, with the outputs this fork adds" /> |
+
+## What this fork adds
+
+Everything Resonus does, plus:
+
+### Navifind and YouTube Music
+
+- **Navifind support**: with that proxy in
+  front of Navidrome, a search also answers with tracks it can fetch from
+  YouTube and SoundCloud. They are badged as such, play straight away, and the
+  proxy files them into the library by itself after ten seconds of listening.
+- **Import from a link**: paste a YouTube, SoundCloud or Spotify address and a
+  playlist or album becomes a playlist of the same name on the server once its
+  tracks have arrived. A notification says when the proxy has finished.
+- **A YouTube tab**: the shelves of the YouTube Music home page your account is
+  shown, your playlists, the tracks you liked and the records you keep. It
+  starts off and is offered only where Navifind is on.
+- **Signing in from the phone**: one button opens Google's own sign-in page
+  inside the app, and the session it leaves behind goes to the proxy by itself.
+  Two-factor, passkeys and account recovery all behave as they do anywhere
+  else, and no password passes through the app. Pasting a browser's `Cookie`
+  header still works underneath, as the way out.
+
+### A mix built from what you listen to
+
+- **"For you"**: one press and it plays music drawn from three places at once —
+  what the library answers for the artists and genres you play most, your
+  favorites, and what YouTube Music picks for your account. They are woven
+  rather than laid end to end, what you heard in the last three hours is left
+  out, and a song your server and YouTube both have is taken once.
+- It leaves a dated playlist behind. The library's songs go in immediately and
+  each YouTube track joins as the proxy finishes fetching it, so the music
+  starts at once rather than waiting on the playlist.
+
+### More outputs
+
+- **Home Assistant**: the media players it knows, Chromecast, DLNA and Sonos
+  among them, appear in the Output sheet. One speaker is often several entities
+  there, so they are kept one per name, and the one that can wake a speaker in
+  standby is remembered and asked first.
+- **Music Assistant**, spoken to directly rather than through Home Assistant.
+  Nothing is polled, and no address is handed to a speaker: a song is named by
+  its id in the library Music Assistant already keeps, and it fetches the song
+  itself. So a server behind custom headers casts like any other, and the phone
+  does not have to stay awake for the music to go on.
+
+### Android Auto
+
+- **Search reaches the whole library**, not only the browse tree the phone had
+  pushed, so a record nobody has played lately is found by typing its name.
+  Results come grouped under Songs, Albums and Artists.
+- **Keep a song as a favorite from the playback screen**, which until now meant
+  picking up the phone.
+- **The car says when a song will not play.** A server going out of reach used
+  to stop the music and leave the screen saying nothing.
+- **The browser explains itself when there is nothing to show** — no account on
+  this phone, or offline with nothing downloaded — rather than offering empty
+  tabs. A row that resumes a song carries how far through it already is.
+- **The car, the widget and another app's broadcast start the app themselves**,
+  with no screen and nothing brought to the front. A song tapped on the car's
+  screen with the phone asleep in a pocket used to be handed to nobody.
+
+### Lists
+
+- **More ways to sort a song list**: the date added, the year, the length, the
+  play count and the rating, either way round. A song the server says nothing
+  about goes to the end whichever way the list runs.
+- **A quick filter** narrows a list to the downloaded songs or the favorites
+  for as long as you are looking at it, with a line across the top saying how
+  much it is hiding.
+- Both reach albums, playlists, smart playlists, an artist's songs, the
+  favorites and the bookmarks.
+
+### Elsewhere
+
+- Custom HTTP headers reach casting, DLNA and the car: a server behind them is
+  relayed through the phone rather than handed out as an address.
+- The update check looks at this fork's own releases.
+- French translation.
 
 ## Download
 
-### Android
-
-Get the latest APK from the [Releases](https://github.com/juananzzz/resonus/releases/latest) page and install it on your Android device.
-
-Also available on [Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/juananzzz/resonus) for automatic updates.
-
-### iOS (experimental)
-
-Every release since 0.7.5 also carries an `.ipa`, on the same
-[Releases](https://github.com/juananzzz/resonus/releases/latest) page. It is
-**unsigned**: no App Store, no TestFlight, so it has to be sideloaded with
-AltStore, Sideloadly or similar, and renewed as that tool asks.
-
-Not implemented yet on iOS: CarPlay, casting, the equalizer and gapless
-playback.
+Get the latest APK from the [Releases](https://github.com/HeLLsSs/resonus/releases/latest)
+page, or add the repository to
+[Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/HeLLsSs/resonus)
+for automatic updates. The app also checks for a newer release by itself and
+can download and install it; the switch is under Settings › About.
 
 ## Features
+
+Everything the upstream project does:
 
 - **Navidrome / OpenSubsonic / Jellyfin / Ampache**: multi-profile login, multi-library support, plus several server addresses with automatic switching
 - **Local mode**: play music straight from your device or a folder, no server needed
@@ -64,7 +136,6 @@ playback.
 - **Organize**: multi-select (queue, playlist or download in batch), star ratings, pinned items, play history
 - **Themes**: dark, light (experimental) or whichever one the phone is on, each with its own accent color
 - **Make it yours**: reorder and show/hide Home sections and explore chips, app fonts, configurable swipe and ⋯ menu actions
-- **Android Auto** (experimental)
 - **Landscape and tablet layouts**
 - **Queue sync across devices**
 - **In 9 languages**: English, Spanish, German, Catalan, Russian, Italian, Simplified Chinese, Ukrainian, French
@@ -72,14 +143,17 @@ playback.
 ## FAQ
 
 The questions that come up most often are answered in
-[docs/FAQ.md](./docs/FAQ.md), starting with how to get Resonus to show up in
-Android Auto. The app links to it too, from Settings › About.
+[docs/FAQ.md](./docs/FAQ.md), starting with how to get the app to show up in
+Android Auto. Controlling it from other apps is documented in
+[docs/INTENTS.md](./docs/INTENTS.md).
 
-## Translations
+## Credits
 
-More languages are welcome via pull request. See
-[TRANSLATING.md](./TRANSLATING.md) for how to add one, plus context for the
-trickier strings.
+Resonuls is a fork of [Resonus](https://github.com/juananzzz/resonus), which is
+where almost all of this comes from. If you enjoy the app, the person to thank
+is [juananzzz](https://github.com/juananzzz) — there is a
+[Ko-fi](https://ko-fi.com/juananzzz) and a
+[Discord](https://discord.gg/pecE8MTPVr) for the upstream project.
 
 Thanks to the people who have translated the app:
 
@@ -95,18 +169,8 @@ Thanks to the people who have translated the app:
 | Українська | [albedych](https://github.com/albedych) |
 | Français | Gaëtan |
 
-## Community
-
-Join the [Discord server](https://discord.gg/pecE8MTPVr) to share feedback,
-report bugs, ask questions, or just follow along with development.
-
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to
-set up the project, run it on an emulator, and open a pull request.
-
-## Support
-
-Resonus is free and open source, built in my spare time. If you enjoy it and
-want to help me keep working on it, you can buy me a coffee on
-[Ko-fi](https://ko-fi.com/juananzzz).
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to set up the project, run it
+on an emulator, and open a pull request. Changes that are not specific to this
+fork are worth sending upstream.
