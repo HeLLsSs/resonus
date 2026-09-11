@@ -5,12 +5,12 @@
     "website": "https://github.com/juananzzz/resonus",
     "tintColor": "#1bd465",
     "featuredApps": [
-        "com.juananzzz.resonus"
+        "com.hellsss.resonuls"
     ],
     "apps": [
         {
             "name": "Resonus",
-            "bundleIdentifier": "com.juananzzz.resonus",
+            "bundleIdentifier": "com.hellsss.resonuls",
             "developerName": "juananzzz",
             "subtitle": "A clean Android and iOS music player for your self-hosted server, and your local files.",
             "localizedDescription": "Features\nNavidrome / OpenSubsonic / Jellyfin / Ampache: multi-profile login, multi-library support, plus several server addresses with automatic switching\nLocal mode: play music straight from your device or a folder, no server needed\nOffline mode: your favorites, playlists and albums stay browsable with no connection; downloaded songs play, the rest show grayed out, and it switches automatically when the server is unreachable\nDownloads: albums, playlists, an artist's whole discography or single songs, in original quality or transcoded\nSynced lyrics: karaoke view with tap-to-seek, full-screen mode, optional LRCLIB lookup\nInternet radio: browse and manage your stations\nPlayback: crossfade, ReplayGain normalization, playback speed, sleep timer, queue with undo, shuffle, repeat, background & lock-screen controls\nAutoplay & mixes: keep the music going with similar songs, or start a mix from any track\nOrganize: multi-select (queue, playlist or download in batch), star ratings, pinned items, play history\nThemes: dark, light (experimental) or whichever one the phone is on, each with its own accent color\nMake it yours: reorder and show/hide Home sections and explore chips, app fonts, configurable swipe and ⋯ menu actions\nLandscape and tablet layouts\nQueue sync across devices\nIn 8 languages: English, Spanish, German, Catalan, Russian, Italian, Simplified Chinese, Ukrainian",

@@ -7,6 +7,13 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.8.2] - 2026-09-11
+
+### Changed
+
+- The app is called Resonuls, and its Android identifier is `com.hellsss.resonuls`. Android treats that as a different application: this one installs alongside the old Resonus rather than over it, and starts with nothing in it. Back up from the old app (Settings > Backup & restore), restore into this one from the profiles screen, then remove the old one. The deep links it answers are still `resonus://`, and so are the broadcast actions other apps send it, so anything automating the app keeps working.
+- Settings > Navifind describes the YouTube account row by how you sign in rather than by pasting a cookie.
+
 ## [0.8.1] - 2026-09-11
 
 ### Added
@@ -1977,5 +1984,6 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.8.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.2
 [0.8.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.1
 [0.2.1]: https://github.com/juananzzz/resonus/releases/tag/v0.2.1

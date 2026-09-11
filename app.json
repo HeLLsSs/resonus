@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "Resonus",
-    "slug": "resonus",
-    "version": "0.8.1",
+    "name": "Resonuls",
+    "slug": "resonuls",
+    "version": "0.8.2",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "resonus",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.juananzzz.resonus",
+      "bundleIdentifier": "com.hellsss.resonuls",
       "supportsTablet": true,
       "icon": "./assets/images/ios-icon.png",
       "infoPlist": {
@@ -18,8 +18,8 @@
       }
     },
     "android": {
-      "package": "com.juananzzz.resonus",
-      "versionCode": 50,
+      "package": "com.hellsss.resonuls",
+      "versionCode": 51,
       "adaptiveIcon": {
         "backgroundColor": "#1CD667",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
