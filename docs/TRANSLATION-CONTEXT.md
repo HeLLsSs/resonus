@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1129 of them.
+Every string the app can show, under the screen it shows up on. 1130 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -1406,6 +1406,7 @@ you are actually typing into, which is easier than reading it here.
 | `Signed in. Navifind can read the account again.` |  |
 | `That is not a whole YouTube cookie: the SAPISID it is signed with is not in it. Copy the Cookie line again, all of it.` |  |
 | `The session has expired` |  |
+| `The session Navifind holds opens this one alone. To add another, sign in again and use "Add another account" before finishing.` |  |
 | `The sign-in was closed before it finished, so nothing was changed.` |  |
 | `The way round when the sign-in page will not finish, or when the account is already signed in to a browser somewhere else.` |  |
 | `The whole header, as the browser sent it.` |  |

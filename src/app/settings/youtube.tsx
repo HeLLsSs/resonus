@@ -416,16 +416,24 @@ export default function YoutubeSettings() {
           <Text style={settingsStyles.sectionDescription}>{result.text}</Text>
         ) : null}
 
-        {/* The other accounts the same cookie opens. A Google session carries
-            every account the browser was signed in to, numbered, and switching
-            between them is a choice rather than a second sign-in. Only shown
-            where there is more than one: a list of one asks to be read for
-            nothing. */}
-        {state === 'ok' && accounts.data && accounts.data.length > 1 ? (
+        {/* The accounts the stored cookie opens. A Google session carries every
+            account the browser was signed in to, numbered, and switching
+            between them is a choice rather than a second sign-in.
+
+            Shown even when there is only one, which looks like a list asking to
+            be read for nothing and is not: it is the only place that says how
+            many accounts the session actually carries. Hidden below two, the
+            screen looked identical whether a second sign-in had joined the
+            first or quietly replaced it. */}
+        {state === 'ok' && accounts.data && accounts.data.length > 0 ? (
           <>
             <Text style={settingsStyles.sectionTitle}>{t('Accounts')}</Text>
             <Text style={settingsStyles.sectionDescription}>
-              {t('All of these are open with the session Navifind holds. Pick the one it reads.')}
+              {accounts.data.length > 1
+                ? t('All of these are open with the session Navifind holds. Pick the one it reads.')
+                : t(
+                    'The session Navifind holds opens this one alone. To add another, sign in again and use "Add another account" before finishing.',
+                  )}
             </Text>
             {accounts.data.map((choice) => (
               <SettingRow

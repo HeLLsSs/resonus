@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.8.7] - 2026-09-11
+
+### Changed
+
+- Settings > Navifind > YouTube always lists the accounts the session opens, even when it opens only one. Hidden below two, the screen looked exactly the same whether a second sign-in had joined the first or quietly replaced it, which is the one thing it needed to say.
+
 ## [0.8.6] - 2026-09-11
 
 ### Fixed
@@ -2011,6 +2017,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.8.7]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.7
 [0.8.6]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.6
 [0.8.5]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.5
 [0.8.4]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.4
