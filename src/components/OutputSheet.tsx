@@ -1,7 +1,8 @@
 /**
  * Audio output picker (Spotify Connect style): this phone, the server's own
- * speakers, a UPnP/DLNA renderer or a Google Cast receiver on the network.
- * When opened it searches for both kinds and keeps searching while it is up.
+ * speakers, a UPnP/DLNA renderer or a Google Cast receiver on the network, a
+ * media player Home Assistant knows about, or one of Music Assistant's own.
+ * When opened it searches for all of them and keeps searching while it is up.
  *
  * Sonos speakers are the reason this is more than a list. They arrive one per
  * room and can be played as a group, so while a Sonos session is on, the list
@@ -14,6 +15,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Slider from '@react-native-community/slider';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -31,6 +33,8 @@ import {
   type AudioOutputDevice,
 } from '@/lib/audioOutput';
 import { formatGroupedDeviceLabel, normalizeOutputDisplayName } from '@/lib/format';
+import type { HaPlayer } from '@/lib/homeAssistant';
+import type { MaPlayer } from '@/lib/musicAssistant';
 import {
   castConnect,
   castDisconnect,
@@ -39,6 +43,8 @@ import {
   useGoogleCast,
   type CastDevice,
 } from '@/store/googleCast';
+import { haConnect, haDisconnect, haSearch, useHomeAssistant } from '@/store/homeAssistant';
+import { maConnect, maDisconnect, maSearch, useMusicAssistant } from '@/store/musicAssistant';
 import {
   jukeboxConnect,
   jukeboxDisconnect,
@@ -58,15 +64,18 @@ import {
 } from '@/store/upnp';
 import { colors, fontSize, radius, SHEET_MAX_WIDTH, spacing, themed } from '@/theme';
 
-/** Both discoveries at once: they are two answers to the same question. */
+/** Every discovery at once: they are four answers to the same question. */
 function searchAll() {
   void upnpSearch();
   void castSearch();
+  void haSearch();
+  void maSearch();
 }
 
 export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const t = useT();
+  const router = useRouter();
   const toast = useToast((s) => s.show);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const upnpId = useUpnp((s) => (s.connected ? s.deviceId : null));
@@ -77,7 +86,17 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   const castId = useGoogleCast((s) => (s.connected ? s.deviceId : null));
   const castDevices = useGoogleCast((s) => s.devices);
   const castScanning = useGoogleCast((s) => s.scanning);
-  const phoneActive = !upnpId && !jukeboxActive && !castId;
+  const haId = useHomeAssistant((s) => (s.connected ? s.entityId : null));
+  const haPlayers = useHomeAssistant((s) => s.players);
+  const haSearching = useHomeAssistant((s) => s.searching);
+  const haOn = useHomeAssistant((s) => s.enabled);
+  const haReady = useHomeAssistant((s) => s.enabled && !!s.url && !!s.token);
+  const maId = useMusicAssistant((s) => (s.connected ? s.playerId : null));
+  const maPlayers = useMusicAssistant((s) => s.players);
+  const maSearching = useMusicAssistant((s) => s.searching);
+  const maOn = useMusicAssistant((s) => s.enabled);
+  const maReady = useMusicAssistant((s) => s.enabled && !!s.url && !!s.username);
+  const phoneActive = !upnpId && !jukeboxActive && !castId && !haId && !maId;
   // The phone's own outputs and its media volume, only while the phone is the
   // one playing: a remote output has a volume of its own and the phone's
   // outputs are nothing to it.
@@ -170,6 +189,8 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   }, [activeSonosGroupMode, devices, isSonosSession, upnpId]);
 
   const activeCastDevice = castId ? castDevices.find((device) => device.id === castId) ?? null : null;
+  const activeHaPlayer = haId ? haPlayers.find((player) => player.entityId === haId) ?? null : null;
+  const activeMaPlayer = maId ? maPlayers.find((player) => player.playerId === maId) ?? null : null;
 
   /**
    * One of the phone's outputs by name. Only the Bluetooth ones have a name of
@@ -197,7 +218,11 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
       ? t('Server speakers (Jukebox)')
       : activeCastDevice
         ? activeCastDevice.name
-        : activeSonosGroupMode
+        : activeHaPlayer
+          ? activeHaPlayer.name
+          : activeMaPlayer
+          ? activeMaPlayer.name
+          : activeSonosGroupMode
           ? formatGroupedDeviceLabel(activeGroupMembers.map((device) => device.name))
           : activeUpnpDevice
             ? normalizeOutputDisplayName(activeUpnpDevice.name)
@@ -218,6 +243,8 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     if (upnpId) await upnpDisconnect();
     else if (jukeboxActive) await jukeboxDisconnect();
     else if (castId) await castDisconnect();
+    else if (haId) await haDisconnect();
+    else if (maId) await maDisconnect();
   }
 
   /**
@@ -233,6 +260,8 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     if (device.id === upnpId) return;
     // Silent handoff between remote outputs (does not resume on local in between).
     if (castId) await castDisconnect(true);
+    if (haId) await haDisconnect(true);
+    if (maId) await maDisconnect(true);
     const ok = await upnpConnect(device);
     if (!ok) toast(t("Couldn't complete the action"));
   }
@@ -242,6 +271,8 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     // Silent handoff between remote outputs (does not resume on local in between).
     if (upnpId) await upnpDisconnect(true);
     if (castId) await castDisconnect(true);
+    if (haId) await haDisconnect(true);
+    if (maId) await maDisconnect(true);
     const ok = await jukeboxConnect();
     if (!ok) toast(t("Couldn't complete the action"));
   }
@@ -251,8 +282,44 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     // Silent handoff between remote outputs (does not resume on local in between).
     if (upnpId) await upnpDisconnect(true);
     if (jukeboxActive) await jukeboxDisconnect(true);
+    if (haId) await haDisconnect(true);
+    if (maId) await maDisconnect(true);
     const ok = await castConnect(device);
     if (!ok) toast(t("Couldn't complete the action"));
+  }
+
+  async function pickHaPlayer(player: HaPlayer) {
+    if (player.entityId === haId) return;
+    // Silent handoff between remote outputs (does not resume on local in between).
+    if (upnpId) await upnpDisconnect(true);
+    if (jukeboxActive) await jukeboxDisconnect(true);
+    if (castId) await castDisconnect(true);
+    if (maId) await maDisconnect(true);
+    const ok = await haConnect(player);
+    if (!ok) toast(t("Couldn't complete the action"));
+  }
+
+  async function pickMaPlayer(player: MaPlayer) {
+    if (player.playerId === maId) return;
+    // Silent handoff between remote outputs (does not resume on local in between).
+    if (upnpId) await upnpDisconnect(true);
+    if (jukeboxActive) await jukeboxDisconnect(true);
+    if (castId) await castDisconnect(true);
+    if (haId) await haDisconnect(true);
+    const ok = await maConnect(player);
+    if (!ok) toast(t("Couldn't complete the action"));
+  }
+
+  /** Nothing to pick from until Home Assistant has an address and a token: the row goes there. */
+  function openHaSettings() {
+    close();
+    router.push('/settings/home-assistant');
+  }
+
+  /** The same for Music Assistant, which needs an address and an account. */
+  function openMaSettings() {
+    close();
+    router.push('/settings/music-assistant');
   }
 
   async function runGroupAction(key: string, action: () => Promise<boolean>) {
@@ -295,13 +362,18 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   }
 
   /** The icon for an output, by what it is. */
-  const outputIcon = (kind: 'phone' | 'server' | 'group' | 'tv' | 'speaker' | 'cast', active?: boolean) => {
+  const outputIcon = (
+    kind: 'phone' | 'server' | 'group' | 'tv' | 'speaker' | 'cast' | 'home' | 'music',
+    active?: boolean,
+  ) => {
     const color = active ? colors.accent : colors.text;
     if (kind === 'phone') return <Ionicons name="phone-portrait-outline" size={22} color={color} />;
+    if (kind === 'home') return <Ionicons name="home-outline" size={22} color={color} />;
     if (kind === 'server') return <Ionicons name="server-outline" size={22} color={color} />;
     if (kind === 'group') return <MaterialIcons name="speaker-group" size={22} color={color} />;
     if (kind === 'tv') return <Ionicons name="tv-outline" size={22} color={color} />;
     if (kind === 'cast') return <Ionicons name="logo-google" size={22} color={color} />;
+    if (kind === 'music') return <Ionicons name="musical-notes-outline" size={22} color={color} />;
     return <MaterialIcons name="speaker" size={22} color={color} />;
   };
 
@@ -517,11 +589,81 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
                 </>
               ) : null}
 
+              {/* The house's players, under a heading of their own like the Cast
+                  receivers: a Chromecast or a Sonos is in one of the lists above
+                  as well, and the heading says which way it is being reached.
+                  Without an address and a token there is nothing to list, and
+                  the one row is the way to the screen that takes them. */}
+              {haOn ? (
+                <>
+              <Text style={styles.sectionTitle}>{t('Home Assistant')}</Text>
+              {!haReady ? (
+                <Row
+                  icon={outputIcon('home')}
+                  label={t('Set up Home Assistant')}
+                  onPress={openHaSettings}
+                  action={<Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+                />
+              ) : haPlayers.length > 0 ? (
+                haPlayers.map((player) => {
+                  const active = player.entityId === haId;
+                  return (
+                    <Row
+                      key={`ha:${player.entityId}`}
+                      icon={outputIcon('home', active)}
+                      label={player.name}
+                      active={active}
+                      onPress={() => void pickHaPlayer(player)}
+                    />
+                  );
+                })
+              ) : haSearching ? null : (
+                <Text style={styles.scanText}>{t('No media players in Home Assistant')}</Text>
+              )}
+                </>
+              ) : null}
+
+              {/* Music Assistant, spoken to directly rather than through Home
+                  Assistant: the same speaker can be in both lists, and the
+                  heading says which way it is being reached. This one plays
+                  from the server's own library, so nothing is served from the
+                  phone and the phone can go to sleep. Without an address and
+                  an account there is nothing to list, and the one row is the
+                  way to the screen that takes them. */}
+              {maOn ? (
+                <>
+                  <Text style={styles.sectionTitle}>{t('Music Assistant')}</Text>
+                  {!maReady ? (
+                    <Row
+                      icon={outputIcon('music')}
+                      label={t('Set up Music Assistant')}
+                      onPress={openMaSettings}
+                      action={<Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+                    />
+                  ) : maPlayers.length > 0 ? (
+                    maPlayers.map((player) => {
+                      const active = player.playerId === maId;
+                      return (
+                        <Row
+                          key={`ma:${player.playerId}`}
+                          icon={outputIcon('music', active)}
+                          label={player.name}
+                          active={active}
+                          onPress={() => void pickMaPlayer(player)}
+                        />
+                      );
+                    })
+                  ) : maSearching ? null : (
+                    <Text style={styles.scanText}>{t('No players in Music Assistant')}</Text>
+                  )}
+                </>
+              ) : null}
+
               {/* What the search is doing, and only while it is doing it: a line
                   that says it is searching whether or not it is says nothing at
                   all. When it has finished and found nothing, that is the news,
                   and the way to try again goes with it. */}
-              {scanning || castScanning ? (
+              {scanning || castScanning || haSearching || maSearching ? (
                 <View style={styles.scanRow}>
                   <ActivityIndicator size="small" color={colors.textSecondary} />
                   <Text style={styles.scanText}>{t('Searching for devices…')}</Text>
