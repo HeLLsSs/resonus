@@ -184,6 +184,17 @@ export function cleanAuthUser(pasted: string): string {
 export const SIGN_IN_URL =
   'https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fmusic.youtube.com%2F';
 
+/**
+ * Where adding a second account starts.
+ *
+ * `AddSession` is Google's own "add an account" entry: it keeps the accounts
+ * already signed in and puts another beside them, which is what makes one
+ * cookie carry several. Signing in again from the front page would replace the
+ * session instead, and the proxy would be back to reading one account.
+ */
+export const ADD_ACCOUNT_URL =
+  'https://accounts.google.com/AddSession?service=youtube&continue=https%3A%2F%2Fmusic.youtube.com%2F';
+
 /** The address whose jar is the one to read, and the one the sign-in ends on. */
 export const MUSIC_ORIGIN = 'https://music.youtube.com';
 

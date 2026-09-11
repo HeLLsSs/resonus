@@ -1133,5 +1133,7 @@
   "For you · {date}": "For you · {date}",
   "Navifind now reads {name}.": "Navifind now reads {name}.",
   "Navifind could not switch account, so nothing changed.": "Navifind could not switch account, so nothing changed.",
-  "All of these are open with the session Navifind holds. Pick the one it reads.": "All of these are open with the session Navifind holds. Pick the one it reads."
+  "All of these are open with the session Navifind holds. Pick the one it reads.": "All of these are open with the session Navifind holds. Pick the one it reads.",
+  "Add another account": "Add another account",
+  "Sign in to a second YouTube account and switch between them here.": "Sign in to a second YouTube account and switch between them here."
 }

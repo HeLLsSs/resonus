@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1128 of them.
+Every string the app can show, under the screen it shows up on. 1130 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -1368,6 +1368,7 @@ you are actually typing into, which is easier than reading it here.
 | `A cookie is ready to send` | Stands in place of the pasted cookie, which is a credential and is never drawn on screen |
 | `Account number` | Which of the accounts signed in to the same browser the cookie belongs to: the value of YouTube's `X-Goog-AuthUser` header, usually 0. Not an account number on the server |
 | `Accounts` |  |
+| `Add another account` |  |
 | `All of these are open with the session Navifind holds. Pick the one it reads.` |  |
 | `Ask again` | Asks the proxy once more what it makes of its YouTube account, after it did not answer |
 | `Asking Navifind…` |  |
@@ -1399,6 +1400,7 @@ you are actually typing into, which is easier than reading it here.
 | `Send to Navifind` | Hands the pasted cookie to the proxy, which tries it against YouTube before keeping it |
 | `Sign in` | The button that signs in. A verb |
 | `Sign in as somebody else` |  |
+| `Sign in to a second YouTube account and switch between them here.` | The line under “Add another account”, explaining it |
 | `Sign in to YouTube Music` |  |
 | `Signed in as {name}.` |  |
 | `Signed in to YouTube` |  |

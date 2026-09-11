@@ -29,7 +29,7 @@ import { WebView, type WebViewNavigation } from 'react-native-webview';
 
 import { useT } from '@/i18n';
 import { clearWebCookies, readWebCookie } from '@/lib/webCookies';
-import { MUSIC_ORIGIN, SIGN_IN_URL, signedIn } from '@/lib/youtube';
+import { ADD_ACCOUNT_URL, MUSIC_ORIGIN, SIGN_IN_URL, signedIn } from '@/lib/youtube';
 import { colors, fontSize, spacing, themed } from '@/theme';
 
 /**
@@ -48,12 +48,23 @@ const BROWSER_UA =
 export function YoutubeSignIn({
   onSignedIn,
   onCancel,
+  adding = false,
 }: {
   /** The whole `Cookie` header, once there is a session to hand over. Called
    *  once: the sign-in closes itself on the way out of it. */
   onSignedIn: (cookie: string) => void;
   /** Closed with nothing to show for it. */
   onCancel: () => void;
+  /**
+   * Adding a second account to the session rather than starting one.
+   *
+   * The difference is the whole point of it: a fresh sign-in empties the jar
+   * first, so what comes out carries exactly one account, and Navifind can
+   * then read only that one. Adding keeps what is there and lands on Google's
+   * own "choose an account" page, so the cookie that comes out carries both
+   * and switching between them is a number rather than a second sign-in.
+   */
+  adding?: boolean;
 }) {
   const t = useT();
   const insets = useSafeAreaInsets();
@@ -108,7 +119,7 @@ export function YoutubeSignIn({
             <Ionicons name="close" size={26} color={colors.text} />
           </Pressable>
           <Text style={styles.title} numberOfLines={1}>
-            {t('Sign in to YouTube Music')}
+            {adding ? t('Add another account') : t('Sign in to YouTube Music')}
           </Text>
           <View style={styles.close} />
         </View>
@@ -116,7 +127,7 @@ export function YoutubeSignIn({
         <View style={styles.body}>
           <WebView
             ref={webview}
-            source={{ uri: SIGN_IN_URL }}
+            source={{ uri: adding ? ADD_ACCOUNT_URL : SIGN_IN_URL }}
             userAgent={BROWSER_UA}
             // Google's sign-in opens some of its steps in a second window, and
             // a WebView that cannot make one simply drops them. They load here

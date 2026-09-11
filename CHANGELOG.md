@@ -7,6 +7,13 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.8.5] - 2026-09-11
+
+### Added
+
+- The YouTube tab shows the whole home page. YouTube serves only three shelves at a time and keeps the rest behind a continuation it hands out as the web page scrolls, so everything past the third was never asked for: "Nouveautés et classiques", "Titres tendance pour vous", "Mixés pour vous", "De la communauté" and a dozen more. Twenty shelves now arrive in about two seconds.
+- More than one YouTube account. A Google session carries every account signed in to it, numbered, and which one Navifind reads is a header rather than a second session: Settings > Navifind > YouTube lists them and switches on a tap, with no cookie to paste again. "Add another account" signs a second one in beside the first.
+
 ## [0.8.4] - 2026-09-11
 
 ### Changed
@@ -1998,6 +2005,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.8.5]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.5
 [0.8.4]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.4
 [0.8.3]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.3
 [0.8.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.2

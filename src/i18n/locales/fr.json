@@ -1134,5 +1134,7 @@
   "Resonuls has no account on this phone yet": "Resonuls n'a encore aucun compte sur ce téléphone",
   "Navifind now reads {name}.": "Navifind lit maintenant {name}.",
   "Navifind could not switch account, so nothing changed.": "Navifind n'a pas pu changer de compte, rien n'a été modifié.",
-  "All of these are open with the session Navifind holds. Pick the one it reads.": "La session que détient Navifind les ouvre tous. Choisis celui qu'il lit."
+  "All of these are open with the session Navifind holds. Pick the one it reads.": "La session que détient Navifind les ouvre tous. Choisis celui qu'il lit.",
+  "Add another account": "Ajouter un autre compte",
+  "Sign in to a second YouTube account and switch between them here.": "Connecte-toi à un second compte YouTube et bascule entre les deux ici."
 }

@@ -87,7 +87,7 @@ export default function YoutubeSettings() {
   const [busy, setBusy] = useState<'save' | 'forget' | null>(null);
   /** Whether Google's page is up. Mounting is what opens it and unmounting is
    *  what empties the jar behind it, so there is nothing else to keep. */
-  const [signingIn, setSigningIn] = useState(false);
+  const [signingIn, setSigningIn] = useState<'new' | 'add' | null>(null);
   /**
    * What the last thing done here came to, and which of the two ways in it is
    * about — because it is written under the button that was pressed, and a
@@ -222,7 +222,7 @@ export default function YoutubeSettings() {
     if (busy) return;
     setResult(null);
     await clearWebCookies();
-    setSigningIn(true);
+    setSigningIn('new');
   };
 
   const forget = async () => {
@@ -441,6 +441,27 @@ export default function YoutubeSettings() {
           </>
         ) : null}
 
+        {/* A second account goes in beside the first rather than replacing it:
+            `AddSession` keeps what is signed in and adds to it, which is what
+            makes one cookie carry several. Offered wherever a session works,
+            including the common case of one account, since that is exactly
+            when somebody would want a second. */}
+        {state === 'ok' && webCookiesAvailable ? (
+          <SettingRow
+            icon="person-add-outline"
+            label={t('Add another account')}
+            description={t('Sign in to a second YouTube account and switch between them here.')}
+            onPress={
+              busy || offline
+                ? undefined
+                : () => {
+                    setResult(null);
+                    setSigningIn('add');
+                  }
+            }
+          />
+        ) : null}
+
         {/* Only a pasted cookie is this screen's to drop. What the server was
             started with is the server's, and forgetting it is not on offer. */}
         {account.data?.source === 'stored' ? (
@@ -460,14 +481,24 @@ export default function YoutubeSettings() {
           a sign-in that was abandoned leaves nothing on the phone either. */}
       {signingIn ? (
         <YoutubeSignIn
+          adding={signingIn === 'add'}
           onSignedIn={(whole) => {
-            setSigningIn(false);
+            const from = signingIn;
+            setSigningIn(null);
             // The sign-in worked; whether Navifind keeps it is its own answer,
             // and `send` is the one that says so.
-            void send(whole, FIRST_ACCOUNT, 'sign-in');
+            // An added account lands beside the one already there, so what
+            // Navifind reads is left alone: the point was to make the other
+            // one reachable, not to move to it.
+            const keep = accounts.data?.find((a) => a.active)?.index;
+            void send(
+              whole,
+              from === 'add' && keep !== undefined ? String(keep) : FIRST_ACCOUNT,
+              'sign-in',
+            );
           }}
           onCancel={() => {
-            setSigningIn(false);
+            setSigningIn(null);
             said('sign-in', t('The sign-in was closed before it finished, so nothing was changed.'));
           }}
         />
