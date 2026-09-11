@@ -756,17 +756,40 @@ export function stop(client: MaClient, playerId: string): Promise<unknown> {
 }
 
 /**
- * Asks the player to move in the track — which, measured, it does not do.
+ * Whether this player is fed as one continuous stream.
  *
- * On the live server this and `player_queues/seek` are both answered OK and
- * both **restart the track from the beginning** on a Chromecast fed by the
- * opensubsonic provider: asked for 150 seconds, the player came back at zero
- * with a fresh `elapsed_time_last_updated`. The same speaker seeks correctly
- * through Home Assistant, so it is not the speaker; whether it is the
- * provider's stream, Music Assistant or a setting of the server was not
- * established. It is sent all the same and not worked around: a house where it
- * works is served by the same call, and pretending the app cannot seek would
- * be as wrong as pretending it can.
+ * Music Assistant can hand a player the whole queue as a single stream rather
+ * than a track at a time, which is what its `flow_mode` setting says. A player
+ * fed that way has no notion of where one track ends, so it cannot move inside
+ * one: asking makes the server restart the stream at the track's start, which
+ * is exactly what a seek looked like it was doing. Measured on the live
+ * server, where the Chromecast in question has `flow_mode` on and the same
+ * speaker seeks perfectly well through Home Assistant, which talks to it
+ * directly.
+ *
+ * False on anything this cannot be read for: a seek that turns out to restart
+ * the track is a smaller wrong than a seek bar that refuses to move on a
+ * player where it would have worked.
+ */
+export async function flowMode(client: MaClient, playerId: string): Promise<boolean> {
+  try {
+    const config = (await client.command('config/players/get', { player_id: playerId })) as
+      | { values?: Record<string, { value?: unknown } | unknown> }
+      | undefined;
+    const entry = config?.values?.flow_mode;
+    const value = entry && typeof entry === 'object' ? (entry as { value?: unknown }).value : entry;
+    return value === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Asks the player to move in the track.
+ *
+ * Answered OK whether or not it can be done: on a player in flow mode it
+ * restarts the track instead, which is why the caller asks `flowMode` first
+ * rather than sending this and hoping (see above).
  */
 export function seek(client: MaClient, playerId: string, sec: number): Promise<unknown> {
   return client.command('players/cmd/seek', { player_id: playerId, position: Math.max(0, Math.round(sec)) });

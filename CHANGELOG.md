@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.9.1] - 2026-09-12
+
+### Fixed
+
+- Moving within a track on a Music Assistant speaker restarted it instead. The cause is `flow_mode`, a Music Assistant setting that feeds a player the whole queue as one continuous stream: a player fed that way has no notion of where a track begins, so the server restarts the stream at its start. The app reads the setting when it takes a player and no longer sends a request that cannot land, saying once why the bar will not move. Speakers not in flow mode seek as they always did.
+
 ## [0.9.0] - 2026-09-12
 
 ### Added
@@ -2032,6 +2038,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.9.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.1
 [0.9.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.0
 [0.8.8]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.8
 [0.8.7]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.7

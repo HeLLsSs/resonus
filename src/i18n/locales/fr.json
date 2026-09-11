@@ -1137,5 +1137,6 @@
   "Add another account": "Ajouter un autre compte",
   "Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself. A second account can be signed in beside the first before you finish, and you can then switch between them here.": "La page de Google s'ouvre ici, connectée à personne. Qui s'y connecte est le compte que Navifind lit, et la session qu'elle laisse lui parvient d'elle-même. Tu peux connecter un second compte à côté du premier avant de terminer, puis basculer de l'un à l'autre ici.",
   "The session Navifind holds opens this one alone. To add another, sign in again and use \"Add another account\" before finishing.": "La session que détient Navifind n'ouvre que celui-ci. Pour en ajouter un, reconnecte-toi et utilise « Ajouter un autre compte » avant de terminer.",
-  "Switch account": "Changer de compte"
+  "Switch account": "Changer de compte",
+  "This speaker is fed one continuous stream, so it cannot move within a track.": "Cette enceinte reçoit un flux continu, elle ne peut donc pas se déplacer dans un morceau."
 }

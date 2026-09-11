@@ -56,6 +56,7 @@ import {
   positionAt,
   queueFrom,
   queueTimeFrom,
+  flowMode,
   seek as cmdSeek,
   setDontStopTheMusic,
   setPowered as cmdPower,
@@ -92,6 +93,13 @@ interface MusicAssistantStoreState {
   playerId: string | null;
   /** Players found in the last look. */
   players: MaPlayer[];
+  /**
+   * Whether the player taken is fed as one continuous stream, in which case it
+   * cannot move inside a track (`flowMode` in `lib/musicAssistant.ts`). Read
+   * once when the player is taken; false until the answer is in, which is the
+   * safe way round — a seek bar that works is worth more than one that guesses.
+   */
+  flowMode: boolean;
   searching: boolean;
 }
 
@@ -105,6 +113,7 @@ export const useMusicAssistant = create<MusicAssistantStoreState>(() => ({
   connected: false,
   playerId: null,
   players: [],
+  flowMode: false,
   searching: false,
 }));
 
@@ -601,10 +610,22 @@ export async function maConnect(player: MaPlayer): Promise<boolean> {
   useMusicAssistant.setState({
     connected: true,
     playerId: player.playerId,
+    // Asked now rather than at the first drag of the bar: the answer decides
+    // whether the bar is worth showing at all, and it does not change while a
+    // player is held.
+    flowMode: false,
     players: known
       ? useMusicAssistant.getState().players
       : [...useMusicAssistant.getState().players, player].sort((a, b) => a.name.localeCompare(b.name)),
   });
+  const talking = client;
+  if (talking) {
+    void flowMode(talking, player.playerId).then((one) => {
+      if (useMusicAssistant.getState().playerId === player.playerId) {
+        useMusicAssistant.setState({ flowMode: one });
+      }
+    });
+  }
   events?.onConnected();
   return true;
 }
@@ -632,7 +653,7 @@ export async function maDisconnect(silent = false, leaveSounding = false): Promi
   // Closes the casting media session on any disconnect path (including silent
   // ones: output switch, reset), not just the normal one.
   castStop();
-  useMusicAssistant.setState({ connected: false, playerId: null });
+  useMusicAssistant.setState({ connected: false, playerId: null, flowMode: false });
   // Read before the reset below: it is where the local player picks the song
   // back up.
   const resumeAtSec = lastPositionSec;
@@ -1363,8 +1384,20 @@ export async function maPause(): Promise<void> {
  */
 export async function maSeek(sec: number): Promise<void> {
   const held = client;
-  const { playerId } = useMusicAssistant.getState();
+  const { playerId, flowMode: oneStream } = useMusicAssistant.getState();
   if (!held || !playerId) return;
+  if (oneStream) {
+    // Sending it would restart the track, which is worse than not moving: the
+    // person asked to hear the middle of a song and would get its start. Said
+    // once per player, since a bar somebody is dragging fires this often.
+    if (saidFlowMode !== playerId) {
+      saidFlowMode = playerId;
+      useToast
+        .getState()
+        .show(tg('This speaker is fed one continuous stream, so it cannot move within a track.'));
+    }
+    return;
+  }
   // Where the song is now is what was asked for here, not what a load asked
   // for before it.
   pendingSeekSec = null;
@@ -1375,6 +1408,9 @@ export async function maSeek(sec: number): Promise<void> {
     // ignore
   }
 }
+
+/** The player the flow-mode notice has already been shown for. */
+let saidFlowMode: string | null = null;
 
 /** Player volume; the app slider goes 0..1 and Music Assistant takes 0..100. */
 export function maSetVolume(volume: number): void {
