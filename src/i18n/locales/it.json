@@ -839,7 +839,6 @@
   "Navifind sits in front of Navidrome and answers searches with tracks it can fetch from YouTube and SoundCloud. Only turn it on if your server address points at it.": "Navifind si trova davanti a Navidrome e risponde alle ricerche con tracce che può recuperare da YouTube e SoundCloud. Attivalo solo se l'indirizzo del tuo server punta a Navifind.",
   "Use Navifind": "Usa Navifind",
   "Marks online tracks in searches and lets them be copied into the library.": "Contrassegna le tracce online nelle ricerche e permette di copiarle nella libreria.",
-  "About Navifind": "Informazioni su Navifind",
   "Import into the library": "Importa nella libreria",
   "A YouTube, SoundCloud or Spotify link. A playlist or an album becomes a playlist of the same name on the server once its tracks are in.": "Un link YouTube, SoundCloud o Spotify. Una playlist o un album diventa una playlist con lo stesso nome sul server una volta che le sue tracce sono arrivate.",
   "Sending…": "Invio…",

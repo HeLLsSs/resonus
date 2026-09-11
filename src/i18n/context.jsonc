@@ -36,6 +36,14 @@
     "Descending": "Sort option: the order of a list",
     "Filter artists": "Search box that narrows the list as you type, rather than a filter you set",
     "Filter genres": "Search box that narrows the list as you type, rather than a filter you set",
+    "Album order": "Sort option: the record's own order, disc by disc and track by track, which is what an album opens on. Picking it again undoes any other sort",
+    "By the rules": "Sort option on a smart playlist: the order its own rules produced, as opposed to sorting what they found",
+    "Recently bookmarked": "Sort option: the bookmark moved most recently comes first",
+    "Show only": "Sort sheet: the heading over the two narrowings that hide part of the list for as long as you are on the screen. A filter of the moment, not a setting and not a smart playlist",
+    "Downloaded only": "Written over a list that is hiding everything not on the phone. Tapping it shows the whole list again",
+    "Favorites only": "Written over a list that is hiding everything that is not a favorite. Tapping it shows the whole list again",
+    "{shown} of {total}": "How much of a list one of those narrowings leaves: \"12 of 240\"",
+    "Nothing here is a favorite": "Shown in place of the rows when the favorites narrowing empties the list",
 
     // ── Library & scanning (Settings › Library) ──────────────────────────────
     "Source": "The music source (which server, or local). Not source code",
@@ -373,7 +381,7 @@
     "Artists": "A heading over a list of them, never a count",
     "Genres": "A heading over a list of them, never a count",
     "Folders": "A heading: browsing the server by folder instead of by album",
-    "Show all": "Opens the full list of what the row is showing a few of",
+    "Show all": "Two places, one word: it opens the full list of what a row is showing a few of, and it is the way out of a list narrowed to the downloaded or favorite songs",
     "All releases": "In an artist's ⋯ menu: it opens everything they have released as one list, of no particular kind. \"Releases\" as the records themselves, the way a discography counts them",
 
     // ── The shelves of a discography ─────────────────────────────────────────
@@ -457,9 +465,9 @@
     "Good night": "Home's greeting, for the small hours. Spanish uses the same words as for the evening, which is fine",
 
     // ── Song information sheet ───────────────────────────────────────────────
-    "Year": "Label of a field in the song information sheet: the year of the release",
+    "Year": "Label of a field in the song information sheet: the year of the release. Also a sort order, by that same year",
     "Genre": "Label of a field in the song information sheet",
-    "Duration": "Label of a field in the song information sheet: how long the song is",
+    "Duration": "Label of a field in the song information sheet: how long the song is. Also a sort order, by that same length",
     "Cover art": "Three places, one word: a section header in Settings › Player, a line of the storage bar in Settings › Downloads, and what the screen reader calls the picture in the song information sheet",
 
     // ── Songs, favourites and the queue ──────────────────────────────────────
@@ -634,6 +642,30 @@
     "Add to the group": "Read out by the screen reader, never shown: the + beside a Sonos room in the output sheet, which sets that room playing along with the one already playing. Sonos only, and `group` is a group of SPEAKERS in the sense Sonos itself uses — rooms playing the same thing together. Whatever word Sonos uses in your language is the one",
     "Remove from the group": "The − beside `Add to the group`, and the same in reverse: it takes that room out of the group so it stops playing along. Read out by the screen reader, never shown, and Sonos only",
     "Radio": "Internet radio stations. Most languages keep the word",
+    "Set up Home Assistant": "In the output sheet, under the `Home Assistant` heading, when no address or token has been given yet: the row opens the settings screen that takes them",
+    "No media players in Home Assistant": "In the output sheet, under the `Home Assistant` heading: Home Assistant answered but has no media player that can be handed a URL. `Media player` is Home Assistant's own name for a speaker or TV it controls",
+    "Home Assistant couldn't play this song": "Toast when a Home Assistant media player refused the track it was handed; the player's reason may follow in brackets",
+    "Home Assistant refused the token": "Toast when Home Assistant stops accepting the access token mid-session; the session ends",
+    "Lost contact with Home Assistant": "Toast when Home Assistant stops answering mid-session; the session ends and the phone plays on",
+
+    // ── Settings › Home Assistant ────────────────────────────────────────────
+    "Address": "The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box",
+    "Long-lived access token": "Home Assistant's own name for the token made on the profile page. Use the words Home Assistant uses in your language",
+    "Save and test": "Keeps the address and token and checks them against Home Assistant at once",
+    "Testing…": "While the check above runs",
+    "Home Assistant {version}: 1 media player can take a URL.": "The result of the check. `{version}` is Home Assistant's version number; `media player` is Home Assistant's own term",
+    "Home Assistant {version}: {n} media players can take a URL.": "The same with `{n}` players",
+    "Home Assistant does not accept this token.": "The check failed on the token",
+    "Couldn't reach Home Assistant": "The check got no answer; the reason may follow in brackets",
+    "Forget Home Assistant": "Clears the address and token",
+
+    // ── Settings › Navifind › YouTube ────────────────────────────────────────
+    "Cookie": "The `Cookie` header a browser sends to YouTube, pasted here so the proxy can read the account with it. The web technology, not something to eat",
+    "A cookie is ready to send": "Stands in place of the pasted cookie, which is a credential and is never drawn on screen",
+    "Clear the paste": "Throws the pasted cookie away, before anything has been sent",
+    "Send to Navifind": "Hands the pasted cookie to the proxy, which tries it against YouTube before keeping it",
+    "Account number": "Which of the accounts signed in to the same browser the cookie belongs to: the value of YouTube's `X-Goog-AuthUser` header, usually 0. Not an account number on the server",
+    "Ask again": "Asks the proxy once more what it makes of its YouTube account, after it did not answer",
 
     // ── Playlist ─────────────────────────────────────────────────────────────
     "Description": "The playlist's own description: what whoever made it wrote about it",
@@ -729,6 +761,7 @@
   // names under `Time spent` (`offline catalog`, `storage used`, `net getAlbum`…),
   // are written in English for the same reason and never reach a locale file.
   "keepEnglish": [
+    "Home Assistant",
     "Measured over the last {n} min of use.",
     "Interface freezes",
     "Moments when the app stopped responding, longest first.",

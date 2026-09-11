@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1017 of them.
+Every string the app can show, under the screen it shows up on. 1125 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -19,6 +19,7 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `Album order` | Sort option: the record's own order, disc by disc and track by track, which is what an album opens on. Picking it again undoes any other sort |
 | `Couldn't load the album.` | Error on the screen, with a Retry button |
 | `Disc {n}` | Heading over the songs of one disc of a multi-disc album. `{n}` is its number |
 | `More from {artist}` | Heading under an album: their other records. `{artist}` is the name |
@@ -29,29 +30,24 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `{n} minutes` | A value of the sleep timer, in minutes from now |
 | `{n} songs, {size}, copied into a folder of their own.` | The line under that title |
-| `{n} tracks are in the library now` |  |
 | `1 day` | How long a shared link lasts, counted from the moment it is made |
 | `1 hour` | How long a shared link lasts, counted from the moment it is made. Not a time of day |
 | `1 month` | How long a shared link lasts, counted from the moment it is made |
-| `1 track is in the library now` |  |
 | `1 week` | How long a shared link lasts, counted from the moment it is made |
 | `Add to my library` |  |
 | `Allow downloads` | Whether whoever gets the link can download the music, not only listen to it |
 | `Android may stop playback in the background, interrupt downloads or delay the sleep timer. Allowing unrestricted battery use fixes it.` |  |
 | `Artist` | In search results, the little word under a result saying what kind of thing it is |
 | `Artists` | A heading over a list of them, never a count |
-| `at {time}` |  |
 | `Battery optimization is on` | Title of the card warning that Android may cut playback off |
 | `Bookmark here` |  |
 | `Bookmark removed` |  |
 | `Bookmarked at {time}` |  |
-| `Bookmarks` |  |
 | `BPM` | A property of the audio: beats per minute |
 | `Channels` | A property of the audio: mono, stereo |
 | `Clean` | A value of `Content`: the edited version, with the explicit language taken out. Not "tidy" and not "free of noise" |
 | `Comment` | The file's comment tag, where people keep notes about a recording |
 | `Content` | Label of the parental advisory row: whether the recording is explicit. Not the song's lyrics, not what it is about |
-| `Continue listening` |  |
 | `Copying to the library; it shows up once the server has scanned it.` |  |
 | `Couldn't add it to the library` |  |
 | `Couldn't create the link` | The server would not make a share link |
@@ -65,32 +61,23 @@ you are actually typing into, which is easier than reading it here.
 | `Don't remind me` | Its other button: never show this again |
 | `Download removed` | Toast: the file was deleted, the song stays in the library |
 | `Downloading Resonus {version}` |  |
-| `Duration` | Label of a field in the song information sheet: how long the song is |
+| `Duration` | Label of a field in the song information sheet: how long the song is. Also a sort order, by that same length |
 | `Explicit` | A value of `Content`: the recording carries a parental advisory (strong language). Also read out for the E badge next to a title |
 | `Export “{name}”?` | Confirms getting the files of an album or playlist out of the app |
 | `Export as M3U` |  |
 | `Format` | The file format (FLAC, MP3…), written as the player writes it |
 | `Genre` | Label of a field in the song information sheet |
-| `Genres` | A heading over a list of them, never a count |
 | `Go to album` | Leave this sheet and open the album the song is on |
 | `Go to artist` | Leave this sheet and open the artist |
-| `Home` | The first tab, and a folder in the car |
-| `Library` | The settings section, and a folder in the car |
-| `Made for you` |  |
 | `Mix started` | The toast that says the app is now picking the songs |
 | `Moods` | Mood tags the server has on the song: mellow, energetic… |
-| `Nothing new in the library` |  |
 | `Open settings` | Its confirm button: goes to Android's own settings, not the app's |
-| `Past queues` |  |
 | `Pick a date…` | Opens the calendar to choose the day the link stops working |
 | `Pin to top` | Keep this at the top of its list, above everything else. `Unpin` undoes it |
-| `Pinned` |  |
 | `Playback stopped` | The mini player when there is nothing playing any more |
 | `Plays` | How many times the song has been played |
 | `Rate` | Verb: give it stars. Used for a song and for an artist. Not "bitrate" |
 | `Rating` | The stars given to the song. Not a bitrate, not a review |
-| `Recently added` | A sort order, and a section: newest first (in Favorites, last favorited first) |
-| `Recents` | Library section and its sort order: recently opened items |
 | `Remove bookmark` |  |
 | `Remove from playlist` | Menu action: take this song out of the playlist it was opened from |
 | `Removed from playlist` | Toast, with an undo button next to it |
@@ -104,14 +91,11 @@ you are actually typing into, which is easier than reading it here.
 | `Server didn't allow downloads` | Warning after sharing: the link was made and works, but the call that turns downloading on did not go through |
 | `Share` | Make a link on the server that others can open. Getting the file itself out is `Export` |
 | `Share “{name}”` | The sheet's title, with what is being shared |
-| `Shuffle everything` |  |
 | `Size` | The size of the quick grid tiles |
 | `Sleep timer` | Stop playing after a while, for falling asleep to |
 | `Sleep timer ({n} min left)` | The menu row while it is counting down. `{n}` is minutes still to go |
 | `Sleep timer (end of song)` | The same row when it is set to stop at the end of this song |
 | `Sleep timer off` | The toast that says it was turned off |
-| `Smart playlist` |  |
-| `Smart playlists` |  |
 | `Something went wrong` |  |
 | `Song information` | The menu action and the sheet's title: what is known about the track |
 | `Start mix` | Start an auto-generated radio mix from this song |
@@ -120,7 +104,6 @@ you are actually typing into, which is easier than reading it here.
 | `This song carries no information.` | Empty state: the file and the server had nothing to say |
 | `Track` | The track number on its album. Not the song itself |
 | `Turn off` | Turn off the sleep timer |
-| `Unknown title` | Fallback when the file and the server have no title |
 | `Unpin` | Stop keeping it at the top of its list |
 | `Update` | The button that installs a newer version of Resonus. A verb, not a noun: `Update it`, not `An update` |
 | `Update available` |  |
@@ -128,7 +111,7 @@ you are actually typing into, which is easier than reading it here.
 | `When the song ends` | A value of the sleep timer: stop when this song finishes, however long that is |
 | `Will pause in {n} min` | Toast when it is set |
 | `Will pause when the song ends` | Toast when it is set to the end of the song |
-| `Year` | Label of a field in the song information sheet: the year of the release |
+| `Year` | Label of a field in the song information sheet: the year of the release. Also a sort order, by that same year |
 | `You can pin up to {n} items.` | Toast: there is no room for another pinned thing. `{n}` is the limit |
 
 ## Artist
@@ -214,6 +197,7 @@ you are actually typing into, which is easier than reading it here.
 | `Couldn't remove the bookmark` |  |
 | `Long songs keep their place on their own. Any song can be bookmarked from its menu while it plays.` |  |
 | `No bookmarks yet` |  |
+| `Recently bookmarked` | Sort option: the bookmark moved most recently comes first |
 | `Remove bookmark` |  |
 | `Resumed at {time}` |  |
 
@@ -222,6 +206,7 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `A-Z` | Sort option: the order of a list |
+| `Albums` | A heading over a list of them, never a count |
 | `Find an album` | The search box's placeholder on that screen |
 | `Library` | The settings section, and a folder in the car |
 | `New releases` | Home shelf and album sort: albums by the year they came out, newest first. Not "Recently added", which is when the server got hold of them |
@@ -317,6 +302,7 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `{n} added to favorites` |  |
 | `{size} copied into the folder you pick.` | The line under that one. Those go loose into the chosen folder, since a handful of songs has no name to give a folder of their own |
+| `Albums` | A heading over a list of them, never a count |
 | `Export {songs}?` | The same title for a selection instead of a whole album. `{songs}` already reads as a count ("12 songs"), so it comes out like "Export 12 songs?" |
 | `Genre` | Label of a field in the song information sheet |
 | `No albums in this genre` | Empty state heading |
@@ -355,10 +341,14 @@ you are actually typing into, which is easier than reading it here.
 | `{genre} radio` |  |
 | `Afternoon mix` |  |
 | `Another device` |  |
+| `Back online` | The toast shown when the server answers again and the app comes out of offline mode |
 | `Based on what you listen to` |  |
+| `Couldn't build a mix` |  |
 | `Couldn't reach the server. Check your connection.` | Error on Home when the server does not answer at all |
 | `Discover` | Home section: discovery suggestions |
 | `Evening mix` |  |
+| `For you` |  |
+| `For you · {date}` |  |
 | `Good afternoon` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
 | `Good evening` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
 | `Good morning` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
@@ -372,9 +362,12 @@ you are actually typing into, which is easier than reading it here.
 | `Music you haven't played in a while` |  |
 | `New releases` | Home shelf and album sort: albums by the year they came out, newest first. Not "Recently added", which is when the server got hold of them |
 | `Night mix` |  |
+| `Not enough listening yet to build a mix` |  |
 | `Nothing to play in this mix yet` |  |
 | `Play here` |  |
+| `Playing "{name}"` |  |
 | `Playing on {player}` |  |
+| `Playlists` | A section on Home and in the library, and a folder in the car |
 | `Random albums` | A section of Home: albums picked at random, to happen upon something |
 | `Random artists` | A section of Home: artists picked at random |
 | `Random songs from the genre` |  |
@@ -385,6 +378,23 @@ you are actually typing into, which is easier than reading it here.
 | `What you play in the afternoon` |  |
 | `What you play in the evening` |  |
 | `What you play in the morning` |  |
+
+## in carAutoTree
+
+| String | What it is |
+| --- | --- |
+| `at {time}` |  |
+| `Built from what you play` |  |
+| `Continue listening` |  |
+| `Nothing downloaded` |  |
+| `Offline, only downloads can play` |  |
+| `Pinned` |  |
+| `Recently added` | A sort order, and a section: newest first (in Favorites, last favorited first) |
+| `Recents` | Library section and its sort order: recently opened items |
+| `Resonus has no account on this phone yet` |  |
+| `Shuffle everything` |  |
+| `Sign in on your phone` |  |
+| `Unknown title` | Fallback when the file and the server have no title |
 
 ## Label
 
@@ -465,6 +475,7 @@ you are actually typing into, which is easier than reading it here.
 | `Only the music in the folder you choose.` | The line under `Choose a folder (recommended)` |
 | `Plain-text password authentication` |  |
 | `Remove profile?` | Dialog title: take a saved account off this phone |
+| `Restore from a backup` |  |
 | `Saved profiles` | The accounts already signed in to, to pick one |
 | `Scan the whole phone` | The other way: look everywhere for audio files |
 | `Sends the password directly instead of a salted token. Only enable it if your server sits behind a reverse proxy or SSO that requires it.` |  |
@@ -528,8 +539,11 @@ you are actually typing into, which is easier than reading it here.
 | `Hearing aid` |  |
 | `Keep pitch` |  |
 | `Media volume` |  |
+| `Music Assistant` |  |
 | `Next` | Player control: the next track (accessibility label) |
 | `No devices found` |  |
+| `No media players in Home Assistant` | In the output sheet, under the `Home Assistant` heading: Home Assistant answered but has no media player that can be handed a URL. `Media player` is Home Assistant's own name for a speaker or TV it controls |
+| `No players in Music Assistant` |  |
 | `NOW PLAYING` | Small label above the cover, in the same place and style as `PLAYING FROM`, when there is nothing to name |
 | `Open system output picker` |  |
 | `Output` |  |
@@ -538,12 +552,15 @@ you are actually typing into, which is easier than reading it here.
 | `Playback stopped` | The mini player when there is nothing playing any more |
 | `PLAYING FROM` | Small label above the cover, followed by the name of the album, playlist or mix it is playing from, or by `Queue` while the song is one that was added to the queue by hand. Written in capitals by the design, so it can be capitals in your language too, or not, whichever reads right |
 | `Previous` | Player control: the previous track (accessibility label) |
+| `Queue` | The list of songs waiting to play. Not a playlist |
 | `Radio` | Internet radio stations. Most languages keep the word |
 | `Remove from the group` | The − beside `Add to the group`, and the same in reverse: it takes that room out of the group so it stops playing along. Read out by the screen reader, never shown, and Sonos only |
 | `Repeat` | Start again at the end |
 | `Search again` |  |
 | `Searching for devices…` | In the output sheet: looking for speakers and TVs to cast to |
 | `Server speakers (Jukebox)` | Playing out of the speakers attached to the server itself, rather than the phone. Subsonic calls this jukebox mode |
+| `Set up Home Assistant` | In the output sheet, under the `Home Assistant` heading, when no address or token has been given yet: the row opens the settings screen that takes them |
+| `Set up Music Assistant` |  |
 | `Show cover` | Lyrics screen: the button that goes back to the cover art |
 | `Show less` | Folds it back |
 | `Show more` | Unfolds the rest of a text that was cut short |
@@ -614,6 +631,7 @@ you are actually typing into, which is easier than reading it here.
 | `Now playing` | Heading on the queue screen over the song sounding right now. The player's own label is `NOW PLAYING`, a different string |
 | `Past queues` |  |
 | `Play a song or album to start the queue.` | The line under the empty queue |
+| `Queue` | The list of songs waiting to play. Not a playlist |
 | `Queue brought over` | The toast that says it worked |
 | `Queue cleared` | Toast |
 | `Removed from queue` | Toast |
@@ -658,11 +676,13 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `Albums` | A heading over a list of them, never a count |
 | `Artist` | In search results, the little word under a result saying what kind of thing it is |
 | `Artists` | A heading over a list of them, never a count |
 | `Clear all` | Throw away the whole list: the history, the queue, or what you searched for |
 | `Couldn't reach the server. Check your connection.` | Error on Home when the server does not answer at all |
 | `In the lyrics` |  |
+| `Playlists` | A section on Home and in the library, and a folder in the car |
 | `Radio` | Internet radio stations. Most languages keep the word |
 | `Recent searches` | What was searched for before, kept on the phone |
 | `Song` | In search results, the little word under a result saying what kind of thing it is |
@@ -672,6 +692,7 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `Back online` | The toast shown when the server answers again and the app comes out of offline mode |
 | `Exit local mode` | Leave the profile that plays the phone's own files |
 | `Listening stats` |  |
 | `Local profile` | The on-device profile, with no server account. Its library screen is `Local music` |
@@ -898,6 +919,28 @@ you are actually typing into, which is easier than reading it here.
 | `Leave it empty to greet you by the time of day.` | The line under “Custom greeting”, explaining it |
 | `Show greeting` | Whether Home says "Good morning" at the top |
 
+## Settings › Home assistant
+
+| String | What it is |
+| --- | --- |
+| `Address` | The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box |
+| `Couldn't reach Home Assistant` | The check got no answer; the reason may follow in brackets |
+| `Forget Home Assistant` | Clears the address and token |
+| `Home Assistant {version}: {n} media players can take a URL.` | The same with `{n}` players |
+| `Home Assistant {version}: 1 media player can take a URL.` | The result of the check. `{version}` is Home Assistant's version number; `media player` is Home Assistant's own term |
+| `Home Assistant couldn't play this song` | Toast when a Home Assistant media player refused the track it was handed; the player's reason may follow in brackets |
+| `Home Assistant does not accept this token.` | The check failed on the token |
+| `Home Assistant refused the token` | Toast when Home Assistant stops accepting the access token mid-session; the session ends |
+| `Lists its media players in the output sheet.` | The line under “Use Home Assistant”, explaining it |
+| `Long-lived access token` | Home Assistant's own name for the token made on the profile page. Use the words Home Assistant uses in your language |
+| `Lost contact with Home Assistant` | Toast when Home Assistant stops answering mid-session; the session ends and the phone plays on |
+| `Made at the bottom of your profile page in Home Assistant.` |  |
+| `Play on the speakers Home Assistant knows about: Music Assistant, Chromecast, DLNA and Sonos players among them. They join the output list once the address and a token are in.` |  |
+| `Save and test` | Keeps the address and token and checks them against Home Assistant at once |
+| `Something else is playing on this player` |  |
+| `Testing…` | While the check above runs |
+| `Use Home Assistant` |  |
+
 ## Settings › Home buttons
 
 | String | What it is |
@@ -966,6 +1009,32 @@ you are actually typing into, which is easier than reading it here.
 | `We need permission to read your device music.` | Android has not granted access to the phone's files yet |
 | `Where should we get your music?` | Heading when choosing where the phone's own music is read from |
 
+## Settings › Music assistant
+
+| String | What it is |
+| --- | --- |
+| `{n} players can be reached.` |  |
+| `1 player can be reached.` |  |
+| `Address` | The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box |
+| `Couldn't reach Music Assistant` |  |
+| `Forget Music Assistant` |  |
+| `Lists its players in the output sheet.` | The line under “Use Music Assistant”, explaining it |
+| `Lost contact with Music Assistant` |  |
+| `Matched the music library {library}.` |  |
+| `Music Assistant {version} on {name}.` |  |
+| `Music Assistant {version}.` |  |
+| `Music Assistant couldn't play this song` |  |
+| `Music Assistant does not accept these credentials.` |  |
+| `Music Assistant doesn't have this song in its library` |  |
+| `No music library here matches this server.` |  |
+| `Play on the players Music Assistant knows about. It fetches the music from your server itself, by the library it has already made of it, so nothing is streamed through the phone and the phone can go to sleep while it plays.` |  |
+| `Save and test` | Keeps the address and token and checks them against Home Assistant at once |
+| `Something else is playing on this player` |  |
+| `Testing…` | While the check above runs |
+| `Use Music Assistant` |  |
+| `Username` | The username field |
+| `Your Music Assistant account. It is kept on the phone and sent only to sign in.` |  |
+
 ## Settings › Navifind
 
 | String | What it is |
@@ -973,7 +1042,6 @@ you are actually typing into, which is easier than reading it here.
 | `{n} tracks are in the library now` |  |
 | `1 track is in the library now` |  |
 | `A YouTube, SoundCloud or Spotify link. A playlist or an album becomes a playlist of the same name on the server once its tracks are in.` |  |
-| `About Navifind` |  |
 | `Fetching {n} tracks into the library` |  |
 | `Fetching 1 track into the library` |  |
 | `Fetching now` |  |
@@ -992,6 +1060,8 @@ you are actually typing into, which is easier than reading it here.
 | `The server did not answer as Navifind would. Check the address, or turn this off.` |  |
 | `Tracks the proxy has fetched so far. Navidrome picks them up on its next scan.` | The line under “In the library”, explaining it |
 | `Use Navifind` |  |
+| `Which account Navifind reads, and where to paste a fresh cookie.` | The line under “YouTube account”, explaining it |
+| `YouTube account` |  |
 
 ## Settings › Navigation bar
 
@@ -1010,6 +1080,7 @@ you are actually typing into, which is easier than reading it here.
 | `Address added` | Toast |
 | `Address updated` | Toast |
 | `Automatic URL switching` | Try the addresses and use whichever answers, so leaving the house needs nothing done by hand |
+| `Back online` | The toast shown when the server answers again and the app comes out of offline mode |
 | `Couldn't reach this address with your account.` | Validation message: nothing answered there, or the account was refused |
 | `Current server address` | The one being used right now, of those |
 | `Edit server address` | Title of the same dialog when changing one |
@@ -1153,6 +1224,7 @@ you are actually typing into, which is easier than reading it here.
 | `Prefer online search` | A value of `Lyrics source`: look them up on the internet first |
 | `Previous button` | What the previous button does when a song is already playing. Its values are the two lines below it |
 | `Put the ⋯ menu next to the title and the heart in the top bar, easier to reach one-handed.` |  |
+| `Queue` | The list of songs waiting to play. Not a playlist |
 | `Restart, then previous track` | A value of `Previous button`: the first press goes back to the start of this song, the second to the one before |
 | `Scroll long titles` | A title too long to fit slides sideways, over and over, instead of being cut off |
 | `Show a star rating bar to rate the current song.` | The line under “Show rating”, explaining it |
@@ -1191,6 +1263,7 @@ you are actually typing into, which is easier than reading it here.
 | `{n} cards` | How many tiles fit across the quick grid. `{n}` is a number of columns |
 | `Keep the Favorites tile first.` | The line under “Pin favorites”, explaining it |
 | `Pin favorites` | Pin favourites to the quick grid |
+| `Playlists` | A section on Home and in the library, and a folder in the car |
 | `Quick grid` | The grid of shortcut tiles on Home |
 | `Recent albums` | A source the quick grid can draw its tiles from |
 | `Show quick grid` | Whether the grid of shortcut tiles shows on Home |
@@ -1287,10 +1360,61 @@ you are actually typing into, which is easier than reading it here.
 | `Theme` | The screen where the appearance and the accent colour are chosen, and the name of the row that opens it |
 | `Use the system colors` |  |
 
+## Settings › Youtube
+
+| String | What it is |
+| --- | --- |
+| `{n} characters, kept out of sight. Clear it to paste another.` | The line under “A cookie is ready to send”, explaining it |
+| `A cookie is ready to send` | Stands in place of the pasted cookie, which is a credential and is never drawn on screen |
+| `Account number` | Which of the accounts signed in to the same browser the cookie belongs to: the value of YouTube's `X-Goog-AuthUser` header, usually 0. Not an account number on the server |
+| `Ask again` | Asks the proxy once more what it makes of its YouTube account, after it did not answer |
+| `Asking Navifind…` |  |
+| `Checking with YouTube…` |  |
+| `Clear the paste` | Throws the pasted cookie away, before anything has been sent |
+| `Cookie` | The `Cookie` header a browser sends to YouTube, pasted here so the proxy can read the account with it. The web technology, not something to eat |
+| `Forget this cookie` |  |
+| `Forgetting…` |  |
+| `Forgotten. Navifind has no YouTube account left.` |  |
+| `Forgotten. Navifind went back to the account the server was started with.` |  |
+| `Forgotten. What the server was started with is all that is left, and its session has expired too.` |  |
+| `Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself.` |  |
+| `If that request also carries an X-Goog-AuthUser header, write its number below: it says which of the accounts signed in to that browser the cookie belongs to.` |  |
+| `Navifind can be signed in to YouTube Music as you, and then the YouTube tab shows what that account has: its home page, its playlists, the songs it liked.` |  |
+| `Navifind could not be asked about its YouTube account. Either it is older than this screen and has not got the routes for it, or the address under Navifind is wrong.` |  |
+| `Navifind could not reach YouTube, so nothing was changed. Nothing is wrong with the cookie; try again in a moment.` |  |
+| `Navifind did not answer` |  |
+| `Navifind did not answer, so nothing was forgotten.` |  |
+| `Navifind did not take the cookie. It may be older than this screen, which needs the routes that let one be pasted.` |  |
+| `Navifind goes back to the value the server was started with, if it has one.` |  |
+| `Navifind has no YouTube cookie at all, so the tab shows what YouTube gives a stranger.` |  |
+| `Navifind tries it against YouTube and only keeps it if it works.` | The line under “Account number”, explaining it |
+| `No account yet` |  |
+| `Offline: nothing to ask.` |  |
+| `Open music.youtube.com in a browser signed in to the account Navifind should use, open the developer tools and reload the page. In the network list pick any request named youtubei, look at the headers it sent, and copy the whole Cookie line — all of it, about seventeen hundred characters.` |  |
+| `Paste a cookie instead` |  |
+| `Send to Navifind` | Hands the pasted cookie to the proxy, which tries it against YouTube before keeping it |
+| `Sign in` | The button that signs in. A verb |
+| `Sign in as somebody else` |  |
+| `Sign in to YouTube Music` |  |
+| `Signed in as {name}.` |  |
+| `Signed in to YouTube` |  |
+| `Signed in. Navifind can read the account again.` |  |
+| `That is not a whole YouTube cookie: the SAPISID it is signed with is not in it. Copy the Cookie line again, all of it.` |  |
+| `The session has expired` |  |
+| `The sign-in was closed before it finished, so nothing was changed.` |  |
+| `The way round when the sign-in page will not finish, or when the account is already signed in to a browser somewhere else.` |  |
+| `The whole header, as the browser sent it.` |  |
+| `The X-Goog-AuthUser value. Leave it empty for the first account.` | The line under “Account number”, explaining it |
+| `Using the cookie pasted from a phone.` |  |
+| `Using the cookie the server was started with.` |  |
+| `YouTube has ended the session Navifind was signed in with. Nothing of yours can be read until a fresh cookie takes its place.` |  |
+| `YouTube would not accept that cookie, so nothing was changed. It is usually an old one: copy it again from a page you have just loaded.` |  |
+
 ## Smart playlist
 
 | String | What it is |
 | --- | --- |
+| `By the rules` | Sort option on a smart playlist: the order its own rules produced, as opposed to sorting what they found |
 | `contains` |  |
 | `Couldn't load your songs.` |  |
 | `Couldn't save the playlist` |  |
@@ -1317,7 +1441,6 @@ you are actually typing into, which is easier than reading it here.
 | `Any rule can match` | One of the values of “Name” |
 | `At most this many songs. Empty means all of them.` | The line under “Limit”, explaining it |
 | `contains` |  |
-| `Date added` |  |
 | `Days` |  |
 | `does not contain` |  |
 | `Edit smart playlist` |  |
@@ -1384,6 +1507,23 @@ you are actually typing into, which is easier than reading it here.
 | `Top artists` |  |
 | `Top songs` |  |
 
+## Youtube
+
+| String | What it is |
+| --- | --- |
+| `Couldn't load the playlist.` | Error on the screen, with a Retry button |
+| `Liked songs` |  |
+| `Navifind can no longer read your account and needs a fresh sign-in. Everything of yours comes back once it has one.` |  |
+| `Navifind is not signed in to YouTube, so there is nothing of yours to show. What everyone else is listening to is below.` |  |
+| `No YouTube account on the proxy` |  |
+| `Nothing here yet` |  |
+| `Offline: nothing to ask.` |  |
+| `Playlist` | A list saved on the server. Not the queue |
+| `Sign in again` |  |
+| `Sign in an account` |  |
+| `The server did not answer as Navifind would. Check the address, or turn this off.` |  |
+| `Your YouTube session has expired` |  |
+
 ## Used all over the app
 
 | String | What it is |
@@ -1399,6 +1539,7 @@ you are actually typing into, which is easier than reading it here.
 | `{n} songs deleted` | Toast after deleting downloads. `{n}` is how many files went |
 | `{n} songs downloaded` | Toast: a whole album or playlist finished |
 | `{n} songs exported` | Toast when it finished |
+| `{shown} of {total}` | How much of a list one of those narrowings leaves: "12 of 240" |
 | `{songs} need about {size}, but only {free} is free. The download may stop partway.` | The same line when the phone is nearly full |
 | `{songs} will be saved to this device (about {size}).` | The same line when the size is known. `{size}` is like "340 MB" |
 | `{songs} will be saved to this device.` | The line under that title. `{songs}` is already worded and inflected, "12 songs" |
@@ -1411,13 +1552,11 @@ you are actually typing into, which is easier than reading it here.
 | `Added to favorites` | Toast |
 | `Added to queue` | The toast that says it worked |
 | `Album` | In search results, the little word under a result saying what kind of thing it is |
-| `Albums` | A heading over a list of them, never a count |
 | `All {songs} are already in “{name}”.` | The same warning when every one of the several being added is already there. `{songs}` already reads as a count ("12 songs") |
 | `Alphabetical` | Sort option: the order of a list |
 | `Already added` | Title of the dialog that warns the song is in that playlist already |
 | `Ascending` | Sort option: the order of a list |
 | `Back` | Screen reader label for the back arrow. A direction, not a verb |
-| `Back online` | The toast shown when the server answers again and the app comes out of offline mode |
 | `Cancel` | The button that closes a dialog without doing anything, and the one beside a search box |
 | `Clear` | Read out by the screen reader for the small x that empties a search box. A verb |
 | `Close` | Read out by the screen reader for a button that closes what is open. A verb |
@@ -1430,6 +1569,7 @@ you are actually typing into, which is easier than reading it here.
 | `Couldn't load songs.` | Error on the screen, with a Retry button |
 | `Couldn't play the song` | Toast: the app could not start it at all |
 | `Create` | The confirm button of the new-playlist dialog. A verb |
+| `Date added` |  |
 | `Default` | Sorting pill: what you get when nothing is sorted, which is the order the server keeps its songs in. Not alphabetical, and not Resonus deciding. On a playlist it is the order the list came in, which is the one you made by dragging the songs if it is an ordinary playlist and the one its rules produced if it is a smart one — hence a word that is true of both rather than "custom" or "pre-defined" |
 | `Delete` | The confirm button of a delete dialog, for a playlist or a radio station |
 | `Delete downloads` | Menu action: delete the downloaded files of everything here |
@@ -1439,11 +1579,13 @@ you are actually typing into, which is easier than reading it here.
 | `Download` | The confirm button of the download dialog, and what the screen reader calls the download button. A verb |
 | `Download “{name}”?` | Dialog title. `{name}` is an album, artist or playlist |
 | `Download stopped` | Toast: the download was stopped part way |
+| `Downloaded only` | Written over a list that is hiding everything not on the phone. Tapping it shows the whole list again |
 | `Downloading…` | Toast: the download has started. The songs arrive one by one after this |
 | `Drag to reorder, toggle to show or hide.` |  |
 | `Export` | Get the downloaded file itself out of the app, as a file. Not the same as `Share`, which makes a link on the server |
 | `Exporting…` | The file is being copied out |
 | `Favorites` | The songs, albums and artists you starred |
+| `Favorites only` | Written over a list that is hiding everything that is not a favorite. Tapping it shows the whole list again |
 | `Find in playlist` | Placeholder of the search box hidden above a tracklist, for finding a song within it |
 | `History` | The listening history: what was played and when |
 | `Hold to go back to {tab}` | The hint on holding the back arrow. `{tab}` is Home, Search or Library |
@@ -1456,6 +1598,7 @@ you are actually typing into, which is easier than reading it here.
 | `No results` | Nothing matched what was typed |
 | `No results for “{q}”` | Empty state. `{q}` is what was typed |
 | `Not available offline` | This one is not downloaded, so it cannot play without a connection |
+| `Nothing here is a favorite` | Shown in place of the rows when the favorites narrowing empties the list |
 | `Nothing here is downloaded` | Toast when playing something that is not downloaded, offline |
 | `Nothing to shuffle yet` | Empty state: there is nothing here to play in random order |
 | `Off` | A setting value meaning disabled (crossfade, normalization…) |
@@ -1466,8 +1609,6 @@ you are actually typing into, which is easier than reading it here.
 | `Play next` | Action: put this song right after the one playing, without clearing the rest |
 | `Playing next` | The toast that says `Play next` worked. Not the same string, and not a heading |
 | `Playlist name` | The name field when making or renaming a playlist |
-| `Playlists` | A section on Home and in the library, and a folder in the car |
-| `Queue` | The list of songs waiting to play. Not a playlist |
 | `Random` |  |
 | `Rate {n} stars` | Read out by the screen reader for each star. `{n}` is which star it is |
 | `Remove` | Take something out of a list. Deleting for good is `Delete` |
@@ -1481,7 +1622,8 @@ you are actually typing into, which is easier than reading it here.
 | `Search` | The search tab, and the action of searching |
 | `Select all` | Tick every song in the list at once |
 | `Server default` | Codec option meaning "let the server decide" what to transcode to |
-| `Show all` | Opens the full list of what the row is showing a few of |
+| `Show all` | Two places, one word: it opens the full list of what a row is showing a few of, and it is the way out of a list narrowed to the downloaded or favorite songs |
+| `Show only` | Sort sheet: the heading over the two narrowings that hide part of the list for as long as you are on the screen. A filter of the moment, not a setting and not a smart playlist |
 | `Shuffle` | Play in random order |
 | `Song downloaded` | Toast: one song finished |
 | `Songs` | Always a heading, never a count, so it wants the plain plural your language uses for a list of them ("Songs", not "of songs"). Counting songs is a different thing and goes through the plural forms |
@@ -1507,6 +1649,7 @@ These are the Diagnostics measurements. They end up in a GitHub issue, often
 as a screenshot, and whoever reads them there does not speak every language we
 ship. `pnpm i18n:status` does not count them as missing.
 
+- `Home Assistant`
 - `Measured over the last {n} min of use.`
 - `Interface freezes`
 - `Moments when the app stopped responding, longest first.`

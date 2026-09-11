@@ -23,8 +23,8 @@ const native = requireOptionalNativeModule<{
   install: (fileUri: string) => boolean;
 }>('ApkInstall');
 
-const RELEASES_API = 'https://api.github.com/repos/juananzzz/resonus/releases/latest';
-export const RELEASES_PAGE = 'https://github.com/juananzzz/resonus/releases/latest';
+const RELEASES_API = 'https://api.github.com/repos/HeLLsSs/resonus/releases/latest';
+export const RELEASES_PAGE = 'https://github.com/HeLLsSs/resonus/releases/latest';
 
 /**
  * Every six hours. It used to be a day, which sounds like plenty until you

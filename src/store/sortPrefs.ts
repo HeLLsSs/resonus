@@ -5,17 +5,19 @@
  */
 import { create } from 'zustand';
 
+import { type SongSortDir, type SongSortField } from '@/lib/songSort';
 import { getItem, setItem } from '@/lib/storage';
 
 const KEY = 'resonus.sortPrefs';
 
-/** What a list of songs can be ordered by (see `useSongSort`). */
-export type SongSortField = 'recent' | 'added' | 'alpha' | 'artist' | 'album' | 'downloaded';
+/** What a list of songs can be ordered by. The list of fields lives with the
+ *  code that knows what each one means (`lib/songSort`). */
+export type { SongSortField };
 /** And a list of albums (see `useAlbumSort`); 'alpha' means the same there. */
 export type AlbumSortField = 'year' | 'alpha';
 /** Anything this map can hold: one store keeps the choice made on every list. */
 export type SortField = SongSortField | AlbumSortField;
-export type SortDir = 'asc' | 'desc';
+export type SortDir = SongSortDir;
 
 export interface SortPref {
   field: SortField;

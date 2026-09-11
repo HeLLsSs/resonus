@@ -108,6 +108,13 @@ export default function SettingsScreen() {
     // Scrobbling is also reachable from Quality & playback, where the thresholds
     // live; the accounts to link are what people come looking for.
     ...(auth ? [{ key: 'scrobbling', title: 'Scrobbling', icon: 'radio-outline' as const }] : []),
+    // The house's speakers, through Home Assistant. Every profile: the house
+    // is the same whichever server is signed in, and a local profile's files
+    // go out through the phone the same way they do to a Cast receiver.
+    { key: 'home-assistant', title: 'Home Assistant', icon: 'home-outline' as const },
+    // And Music Assistant on its own, which reaches its players directly and
+    // plays them from the server's own library rather than through the phone.
+    { key: 'music-assistant', title: 'Music Assistant', icon: 'musical-notes-outline' as const },
     // Theme lives inside Appearance (row with chevron, like Language).
     { key: 'personalization', title: 'Appearance', icon: 'color-palette-outline' as const },
     { key: 'about', title: 'About::app', icon: 'information-circle-outline' as const },

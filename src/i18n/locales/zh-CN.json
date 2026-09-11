@@ -843,7 +843,6 @@
   "Navifind sits in front of Navidrome and answers searches with tracks it can fetch from YouTube and SoundCloud. Only turn it on if your server address points at it.": "Navifind 位于 Navidrome 前端，会用它能从 YouTube 和 SoundCloud 获取的曲目来响应搜索。仅当你的服务器地址指向 Navifind 时才开启。",
   "Use Navifind": "使用 Navifind",
   "Marks online tracks in searches and lets them be copied into the library.": "在搜索结果中标记在线曲目，并允许将其复制到音乐库。",
-  "About Navifind": "关于 Navifind",
   "Import into the library": "导入音乐库",
   "A YouTube, SoundCloud or Spotify link. A playlist or an album becomes a playlist of the same name on the server once its tracks are in.": "YouTube、SoundCloud 或 Spotify 链接。播放列表或专辑的曲目导入后，会在服务器上生成同名播放列表。",
   "Link": "链接",
