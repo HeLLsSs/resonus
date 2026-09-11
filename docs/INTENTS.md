@@ -93,18 +93,20 @@ queue is empty. These three are also the app's launcher shortcuts.
 ## When the app is not running
 
 A broadcast reaches the receiver even when Resonus is closed: Android starts
-the process for it. The command is then kept in memory and the app is started
-so that it can run it, which it does once the profile and the saved queue are
-back. A command kept for more than a minute without the app starting is
-dropped rather than played back later.
+the process for it. The command is then kept in memory while the app's
+JavaScript side is started behind it, with nothing drawn and nothing brought
+to the front, and it runs once the profile and the saved queue are back. A
+command kept for more than a minute without that happening is dropped rather
+than played back later.
 
-From Android 10 the system refuses to bring an app to the front from the
-background unless that app may **draw over other apps**. So for the command
-to work while Resonus is closed, either grant Resonus that permission
-(Settings > Apps > Resonus > Display over other apps), or send the command to
-the main activity instead of the receiver, which the system always allows from
-a shell or from an automation app that has the permission itself (Tasker
-does). The extras are the same:
+Nothing has to be granted for this. Earlier versions opened the app the way
+the launcher would, which from Android 10 the system refuses to an app with
+nothing on screen unless it may **draw over other apps**; that route is now
+only a fallback. Should a command not get through, it can still be sent to
+the main activity instead of the receiver, which the system always allows
+from a shell or from an automation app that has the permission itself (Tasker
+does), at the cost of bringing the app to the front. The extras are the
+same:
 
 ```sh
 adb shell am start -n com.juananzzz.resonus/.MainActivity --es command play_album --es id 3f2b9c0e1a5d4e7f8b6c

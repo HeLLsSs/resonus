@@ -23,10 +23,11 @@ import android.view.KeyEvent
  * played, and expo-audio's session answers those: play, pause, and its own
  * handling of next and previous. So the widget presses the same keys. No
  * session at all (the app is not running, or has played nothing yet) means
- * the key goes nowhere; for play, the app is opened on the player, which is
- * the one thing that can start music from nothing.
+ * the key goes nowhere; for play, the press goes to JS instead, started with
+ * no screen when it is not running, since starting music from nothing is
+ * its job.
  *
- * A queue row has no key to press: it goes to JS (see [HomeWidgetModule]).
+ * A queue row has no key to press: it goes to JS too (see [HomeWidgetModule]).
  */
 class HomeWidgetProvider : AppWidgetProvider() {
   override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -82,7 +83,7 @@ class HomeWidgetProvider : AppWidgetProvider() {
     val pending = goAsync()
     Handler(Looper.getMainLooper()).postDelayed({
       if (!audio.isMusicActive) {
-        Log.i(TAG, "nothing answered the play key: opening the player")
+        Log.i(TAG, "nothing answered the play key: asking JS")
         fallback(context, action)
       }
       pending.finish()
@@ -91,8 +92,9 @@ class HomeWidgetProvider : AppWidgetProvider() {
 
   /**
    * No session to talk to. Whatever the widget showed as playing is not, so
-   * it is redrawn paused; and play opens the app on the player, since starting
-   * music from nothing is JS's job. A skip with nothing playing is nothing.
+   * it is redrawn paused; and play goes to JS, since starting music from
+   * nothing is JS's job: told while it listens, noted for it and JS started
+   * when it is not. A skip with nothing playing is nothing.
    */
   private fun fallback(context: Context, action: String) {
     val shown = WidgetState.load(context)
@@ -102,24 +104,32 @@ class HomeWidgetProvider : AppWidgetProvider() {
       HomeWidgetRenderer.refresh(context, paused)
     }
     if (action != ACTION_PLAY_PAUSE) return
-    open(context, HomeWidgetRenderer.playerIntent(context, play = true))
+    if (HomeWidgetModule.instance?.emitPlay() == true) return
+    PendingPlay.save(context)
+    wake(context, HomeWidgetRenderer.playerIntent(context, play = true))
   }
 
   /**
    * A queue row. With JS up it is told which song; otherwise the song is
-   * noted for it and the app is opened on the player, which restores the
-   * queue and is where JS finds the note.
+   * noted for it and JS is started, restores the queue, and finds the note.
    */
   private fun handleJump(context: Context, index: Int, id: String?) {
     if (index < 0 || id.isNullOrEmpty()) return
     Log.i(TAG, "queue row: $index")
-    val module = HomeWidgetModule.instance
-    if (module != null) {
-      module.emitJump(index, id)
-      return
-    }
+    if (HomeWidgetModule.instance?.emitJump(index, id) == true) return
     PendingJump.save(context, index, id)
-    open(context, HomeWidgetRenderer.playerIntent(context, play = false))
+    wake(context, HomeWidgetRenderer.playerIntent(context, play = false))
+  }
+
+  /**
+   * JS with no screen, the way the car service starts it. The app is opened
+   * on the player only when there is no React host to start, which is not a
+   * thing that happens in this process; it is kept because the tap was a
+   * request to hear something and silence would be the wrong answer to it.
+   */
+  private fun wake(context: Context, fallback: Intent) {
+    if (JsRuntime.start(context, TAG)) return
+    open(context, fallback)
   }
 
   private fun open(context: Context, intent: Intent) {

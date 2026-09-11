@@ -20,6 +20,10 @@ android {
 }
 
 dependencies {
+  // React Native itself, for the host the module starts when a command
+  // arrives with no JavaScript running (see JsRuntime.kt). The version is the
+  // app's: the React Native gradle plugin resolves it for every project.
+  implementation 'com.facebook.react:react-android'
   // Media3 has to be the same version expo-audio pulls in: the car session and
   // the playback one live in the same process, and two copies of these classes
   // is how they end up disagreeing at runtime.

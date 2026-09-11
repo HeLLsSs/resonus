@@ -8,7 +8,8 @@
  * The one thing that comes back is a tap on one of the queue rows of the
  * tall widget, which the media session has no key for: a `jump` event while
  * the app is alive, or a note left for it to collect when it was not
- * (`takePendingHomeWidgetJump`).
+ * (`takePendingHomeWidgetJump`), and play pressed when no session was there
+ * to hear the key (`takePendingHomeWidgetPlay`).
  *
  * On platforms without the module (web, iOS) everything is a no-op.
  */
@@ -55,7 +56,26 @@ export function onHomeWidgetJump(cb: (e: HomeWidgetJump) => void): { remove: () 
   return native?.addListener('jump', cb);
 }
 
+/**
+ * Play pressed with no media session to hear the key. The native side only
+ * leaves a note when nothing is listening here, so this listener is what
+ * makes that test true: without it the press is sent to an emitter with no
+ * listener, dropped, and reported as delivered.
+ */
+export function onHomeWidgetPlay(cb: () => void): { remove: () => void } | undefined {
+  return native?.addListener('play', cb);
+}
+
 /** The row tapped while the app was closed, if any; read once and cleared. */
 export function takePendingHomeWidgetJump(): HomeWidgetJump | null {
   return (native?.takePendingJump() as HomeWidgetJump | null | undefined) ?? null;
+}
+
+/**
+ * Whether play was pressed with nothing to hear the key: no media session,
+ * because JS was not running or had played nothing yet. Read once and
+ * cleared, like the row above.
+ */
+export function takePendingHomeWidgetPlay(): boolean {
+  return (native?.takePendingPlay() as boolean | undefined) ?? false;
 }

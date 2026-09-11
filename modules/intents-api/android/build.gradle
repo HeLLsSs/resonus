@@ -17,5 +17,9 @@ android {
 }
 
 dependencies {
-  // Intents and broadcasts are the framework's: nothing else.
+  // Intents and broadcasts are the framework's; the one dependency is React
+  // Native itself, for the host the receiver starts when a command arrives
+  // with no JavaScript running (see JsRuntime.kt). The version is the app's:
+  // the React Native gradle plugin resolves it for every project.
+  implementation 'com.facebook.react:react-android'
 }

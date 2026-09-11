@@ -23,6 +23,16 @@ object CarAutoLog {
     if (verbose) Log.d(TAG, msg)
   }
 
+  /**
+   * Always on, for the handful of steps between a car with no JavaScript
+   * behind it and the song it asked for: a release build in a real car is the
+   * only place that path is ever walked, and the one line per step it costs
+   * is what makes a report from there readable.
+   */
+  fun i(msg: String) {
+    Log.i(TAG, msg)
+  }
+
   fun w(msg: String, t: Throwable? = null) {
     if (t != null) Log.w(TAG, msg, t) else Log.w(TAG, msg)
   }

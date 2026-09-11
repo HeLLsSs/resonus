@@ -1,6 +1,7 @@
 /** Sign in: server type selection + credentials. */
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -123,6 +124,7 @@ function ProfileRow({ profile, onTap, onRemove }: {
 const MAX_VISIBLE = 5;
 
 export default function LoginScreen() {
+  const router = useRouter();
   // Repaints on a change of appearance or accent: a stack keeps this screen
   // mounted while you are on another one, out of reach of anything else.
   useTheme();
@@ -292,6 +294,15 @@ export default function LoginScreen() {
               <Pressable style={styles.addAccount} onPress={() => setStep('server')}>
                 <Ionicons name="add" size={22} color={colors.background} />
                 <Text style={styles.addAccountText}>{t('Add profile')}</Text>
+              </Pressable>
+
+              {/* A phone with nothing on it yet is exactly where somebody
+                  arrives holding a backup, and the screen that reads one is
+                  inside Settings, which needs a profile to reach. So it is
+                  offered here too, where it is needed most. */}
+              <Pressable style={styles.restoreLink} onPress={() => router.push('/settings/backup')}>
+                <Ionicons name="cloud-download-outline" size={18} color={colors.brand} />
+                <Text style={styles.restoreLinkText}>{t('Restore from a backup')}</Text>
               </Pressable>
             </>
           ) : step === 'server' ? (
@@ -663,6 +674,14 @@ const styles = themed((colors) => ({
     backgroundColor: colors.brand,
   },
   addAccountText: { color: colors.onBrand, fontSize: fontSize.md, fontWeight: '700' },
+  restoreLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+  },
+  restoreLinkText: { color: colors.brand, fontSize: fontSize.sm, fontWeight: '600' },
   hero: { alignItems: 'center', marginBottom: spacing.xl },
   appIcon: { width: 88, height: 88, borderRadius: 22, marginBottom: spacing.md },
   topBar: { height: 32, justifyContent: 'center', marginBottom: spacing.md },

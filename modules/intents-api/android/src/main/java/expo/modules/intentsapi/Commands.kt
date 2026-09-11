@@ -9,7 +9,7 @@ import java.lang.ref.WeakReference
 /**
  * Where a command goes once an intent has been read: straight to JS through
  * the module when the runtime is up and listening, and otherwise into a queue
- * the runtime empties as it starts, with the app started so that it does.
+ * the runtime empties as it starts, with the runtime started so that it does.
  *
  * The queue lives in the process and not on disk on purpose. A command is
  * somebody pressing a button now; one found on disk after a reboot would be
@@ -100,12 +100,16 @@ object Commands {
   }
 
   /**
-   * Starts the app where it was left, the way the launcher would. From
-   * Android 10 the system refuses this to an app with nothing on screen unless
-   * it may draw over other apps, and then the command waits in the queue for
-   * whoever opens the app next, within `MAX_WAIT_MS`.
+   * Starts JS with no screen, so the command runs where it was sent from and
+   * nothing opens. It used to start the app where it was left, the way the
+   * launcher would, which from Android 10 the system refuses to an app with
+   * nothing on screen unless it may draw over other apps; that is kept only
+   * for a process with no React host to start, which is not this one. Should
+   * neither work, the command waits in the queue for whoever opens the app
+   * next, within `MAX_WAIT_MS`.
    */
   private fun wake(context: Context) {
+    if (JsRuntime.start(context, TAG)) return
     val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
     if (launch == null) {
       Log.w(TAG, "no launch intent for ${context.packageName}")

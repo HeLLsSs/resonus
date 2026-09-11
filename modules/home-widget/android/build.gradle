@@ -17,6 +17,11 @@ android {
 }
 
 dependencies {
-  // Nothing beyond the platform: the buttons press media keys through the
-  // system, and the artwork is fetched with what the SDK already has.
+  // The buttons press media keys through the system and the artwork is
+  // fetched with what the SDK already has; the one thing beyond the platform
+  // is React Native itself, for the host the provider starts when play or a
+  // queue row arrives with no JavaScript running (see JsRuntime.kt). The
+  // version is the app's: the React Native gradle plugin resolves it for
+  // every project.
+  implementation 'com.facebook.react:react-android'
 }

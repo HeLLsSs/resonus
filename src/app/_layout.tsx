@@ -14,8 +14,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppStartupTab } from '@/components/AppStartupTab';
 import { ArtistPickerSheet } from '@/components/ArtistPickerSheet';
 import { BatteryWarning } from '@/components/BatteryWarning';
-import { CarAutoSync } from '@/components/CarAutoSync';
-import { WidgetSync } from '@/components/WidgetSync';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GlobalMiniPlayer } from '@/components/GlobalMiniPlayer';
 import { GlobalTabBar } from '@/components/GlobalTabBar';
@@ -27,39 +25,15 @@ import { SongMenuSheet } from '@/components/SongMenuSheet';
 import { Toast } from '@/components/Toast';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { installAppFont, setAppFont } from '@/lib/appFont';
-import { startIntentsApi } from '@/lib/intentsApi';
-import { removeLegacyRadioCovers } from '@/lib/legacyRadioCovers';
 import { systemAccentAvailable } from '@/lib/materialYou';
-import { startNavifindWatch } from '@/lib/navifindWatch';
-import { startPerfLog } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
-import { primaryUrl } from '@/lib/serverUrls';
 import { useAuthStore } from '@/store/auth';
-import { useAutoDownloads } from '@/store/autoDownloads';
-import { checkAutoUrlNow, initAutoUrl } from '@/store/autoUrl';
 import { anyDownloads, useDownloads } from '@/store/downloads';
-import { useEqualizer } from '@/store/equalizer';
-import { useLastPlayed } from '@/store/lastPlayed';
-import { useLibraries } from '@/store/libraries';
-import { useLibraryMirror } from '@/store/libraryMirror';
-import { initNetworkType } from '@/store/networkType';
-import { useOfflineQueue } from '@/store/offlineQueue';
-import { usePins } from '@/store/pins';
-import { useSmartPlaylists } from '@/store/smartPlaylists';
-import { usePlayCounts } from '@/store/playCounts';
-import { initRemoteIntegration, usePlayerStore } from '@/store/player';
-import { usePlayHistory } from '@/store/playHistory';
-import { useRecentSearches } from '@/store/recentSearches';
 import { APP_FONT_FAMILY, useSettings } from '@/store/settings';
-import { useSortPrefs } from '@/store/sortPrefs';
 import { colors, themeMode, useTheme } from '@/theme';
 
 // Patches Text/TextInput once, before the first render.
 installAppFont();
-
-/** How long the offline copy of the library waits before being read, when the
- *  app has a server and nothing is going to ask for it yet. */
-const MIRROR_DELAY_MS = 15_000;
 
 /** Queue and lyrics are whole screens. On iOS `modal` is a sheet that stops
  *  short of the top, so there they need the full-screen one. */
@@ -116,129 +90,9 @@ export default function RootLayout() {
   const offline = useAuthStore((s) => s.offline);
   const offlineSource = useAuthStore((s) => s.offlineSource);
   const hydrating = useAuthStore((s) => s.hydrating);
-  const hydrate = useAuthStore((s) => s.hydrate);
   // With downloads, the local profile works without having chosen a music source.
   const hasDownloads = useDownloads(anyDownloads);
-  const downloadsHydrated = useDownloads((s) => s.hydrated);
-  const settingsHydrated = useSettings((s) => s.hydrated);
   const ready = !!auth || (offline && (!!offlineSource || hasDownloads));
-  // Active profile identified to reload recent searches when switching.
-  // Depends on the profile's own name, not the active URL: when switching
-  // networks that URL changes but we stay on the same profile, so it must not
-  // reinitialize.
-  const activeProfile = auth
-    ? `${primaryUrl(auth)}|${auth.username}`
-    : offline
-      ? 'offline'
-      : '';
-
-/**
-   * Once, when the app starts, and only what belongs to the phone rather than
-   * to whoever is signed in: the equaliser, the network watcher, the remote
-   * control, the measuring.
-   *
-   * All of it used to sit with the per-profile work below, in one effect keyed
-   * on the profile, so switching server ran the whole opening of the app again
-   * — on a large library, a second and a half of rehydrating downloads. What
-   * does belong to a profile stayed there, and had to: read before the session
-   * is restored, a profile's settings come back as factory defaults.
-   */
-  useEffect(() => {
-    // Before anything else, so the first seconds count too.
-    startPerfLog();
-    void removeLegacyRadioCovers();
-    // Equalizer: reads device capabilities and applies saved settings. Not the
-    // profile's: it belongs to the phone and its output.
-    void useEqualizer.getState().hydrate();
-    initNetworkType();
-    // Server URL switching on network change (profiles with multiple URLs).
-    initAutoUrl();
-    initRemoteIntegration();
-    // Control from other apps (Tasker and the like, docs/INTENTS.md): the
-    // phone's too, and its commands wait for the profile on their own.
-    startIntentsApi();
-    // Word from the Navifind proxy once what it was asked to fetch is in.
-    startNavifindWatch();
-  }, []);
-
-  /**
-   * And this much again whenever the profile changes, because it is the
-   * profile's: its downloads, its mirror, its libraries, its server.
-   */
-  useEffect(() => {
-    // Everything below is the profile's, and read under its own key: the
-    // settings, what you searched, what you played, what you pinned. Read
-    // before the session is restored they come back as factory defaults, which
-    // is what happened when they were moved up to the effect above.
-    const authReady = hydrate();
-    void authReady.then(() => {
-      useSettings.getState().hydrate();
-      useRecentSearches.getState().hydrate();
-      usePlayCounts.getState().hydrate();
-      usePlayHistory.getState().hydrate();
-      useSortPrefs.getState().hydrate();
-      void useLastPlayed.getState().hydrate();
-      void usePins.getState().hydrate();
-      void useAutoDownloads.getState().hydrate();
-      void useSmartPlaylists.getState().hydrate();
-    });
-    // After the session is restored, never before: the downloads store reads
-    // the account's own catalog, and with no account yet it falls back to
-    // reading every one of them, which is both slow and wrong (#50).
-    const downloadsReady = authReady.then(() => useDownloads.getState().hydrate());
-    // Mirror + outbox for offline. Offline it is the library, so it is opened
-    // right away: a query could otherwise resolve before it is readable and
-    // stay empty until manually reloaded. Online nothing reads it, only writes
-    // to it, so it waits.
-    //
-    // The wait was written for the mirror that was one JSON file, where opening
-    // it meant parsing tens of MB on the JS thread in the middle of the cold
-    // start, which is where the app was left showing placeholders (#50). It has
-    // been SQLite since 0.6.0 and opening it is cheap, but the first open after
-    // upgrading still migrates whatever JSON is on disk, and that one is as
-    // expensive as it ever was (see `migrateFromJson`).
-    const startMirror = () =>
-      Promise.all([
-        useLibraryMirror.getState().load(),
-        useOfflineQueue.getState().load(),
-      ]).then(() => {
-        if (useAuthStore.getState().offline) {
-          void queryClient.invalidateQueries({ queryKey: ['playlists'] });
-          void queryClient.invalidateQueries({ queryKey: ['starred'] });
-        }
-      });
-    const mirrorReady = useAuthStore.getState().offline
-      ? startMirror()
-      : new Promise<void>((resolve) => setTimeout(() => resolve(startMirror()), MIRROR_DELAY_MS));
-    // Clearing out a mirror grown before there was a rule for what belongs in
-    // it. After the downloads, never before: an album whose songs are on disk
-    // is worth keeping, and until they're hydrated it doesn't look like it.
-    void Promise.all([downloadsReady, mirrorReady]).then(() => {
-      useLibraryMirror.getState().prune(useDownloads.getState());
-    });
-    // The server may be a different one, so where it answers is asked again.
-    checkAutoUrlNow();
-    // Libraries: hydrates the saved filter and refreshes the server list.
-    void useLibraries
-      .getState()
-      .hydrate()
-      .then(() => {
-        const current = useAuthStore.getState().auth;
-        if (current) void useLibraries.getState().load(current);
-      });
-  }, [hydrate, activeProfile]);
-
-  // On entering a profile (server or local), resumes the saved queue
-  // (without playing): first the device copy, then the server copy if not.
-  // Never before the downloads are in memory: a server profile is ready as
-  // soon as the session is restored, which is earlier, and offline a queue
-  // loaded against an empty map looks like nothing in it was downloaded. Nor
-  // before the settings, which say whether a title from the proxy is read
-  // with its source or without.
-  useEffect(() => {
-    if (ready && downloadsHydrated && settingsHydrated) void usePlayerStore.getState().restoreQueue();
-  }, [ready, downloadsHydrated, settingsHydrated, activeProfile]);
-
   // The wallpaper is changed outside the app, and Android does not say when.
   // Asking again on the way back to the foreground is enough: one resource
   // read, and from here it happens wherever the app was left, not only on the
@@ -313,6 +167,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="album/[id]" />
                 <Stack.Screen name="playlist/[id]" />
+                <Stack.Screen name="youtube/[id]" />
                 <Stack.Screen name="artist/[id]" />
                 <Stack.Screen name="artist/discography/[id]" />
                 <Stack.Screen name="browse/albums" />
@@ -347,10 +202,11 @@ export default function RootLayout() {
                 <Stack.Screen name="settings/home-sections" />
                 <Stack.Screen name="settings/equalizer" />
                 <Stack.Screen name="settings/scrobbling" />
+                <Stack.Screen name="settings/home-assistant" />
+                <Stack.Screen name="settings/music-assistant" />
                 <Stack.Screen name="settings/account" />
                 <Stack.Screen name="settings/theme" />
                 <Stack.Screen name="settings/about" />
-                <Stack.Screen name="settings/backup" />
               </Stack.Protected>
               <Stack.Protected guard={offline && !offlineSource && !hasDownloads}>
                 <Stack.Screen name="offline" />
@@ -358,6 +214,14 @@ export default function RootLayout() {
               <Stack.Protected guard={!auth && !offline}>
                 <Stack.Screen name="login" />
               </Stack.Protected>
+              {/* Restoring is the one thing somebody may need before there is
+                  anything to protect: a phone whose app was reinstalled has no
+                  profile, and the file that would give it one is read here.
+                  Last, and that matters: with no session every guarded screen
+                  above is gone, and the router opens on the first one left. A
+                  phone with nothing on it must land on the profile screen, not
+                  on the file picker it sends you to. */}
+              <Stack.Screen name="settings/backup" />
               {/* Modals shared by server and offline (require active song).
                   Open from the bottom but with the short variant
                   (fade_from_bottom): native slide_from_bottom takes ~350 ms
@@ -399,8 +263,6 @@ export default function RootLayout() {
             {auth || offline ? <MediaMenuSheet /> : null}
             {auth || offline ? <GlobalPlaylistPicker /> : null}
             {auth || offline ? <GlobalShareSheet /> : null}
-            {auth || offline ? <CarAutoSync /> : null}
-            {auth || offline ? <WidgetSync /> : null}
             {auth || offline ? <BatteryWarning /> : null}
             {/* Not behind the profile guard on a whim: the check reaches
                 GitHub, not the music server, and somebody stuck on the login
