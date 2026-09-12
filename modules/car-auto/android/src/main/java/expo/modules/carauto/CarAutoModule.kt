@@ -48,8 +48,11 @@ class CarAutoModule : Module() {
 
     Function("setNodes") { json: String ->
       val context = appContext.reactContext ?: return@Function
-      BrowseTreeCache.setFromJson(context, json)
+      val changed = BrowseTreeCache.setFromJson(context, json)
       CarAutoLog.d("setNodes ${BrowseTreeCache.debugSummary()}")
+      // The car asked for all of this before any of it existed, and keeps what
+      // it was given until it is told otherwise.
+      ResonusCarBrowserService.treeChanged(changed)
     }
 
     // What the library holds for something typed in the car, whether or not

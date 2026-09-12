@@ -58,8 +58,12 @@ object BrowseTreeCache {
    * a partial tree too, and merging that would leave the car browsing the
    * albums of an account that is no longer open.
    */
-  fun setFromJson(context: Context, json: String) {
-    val incoming = parse(json) ?: return
+  /**
+   * Takes a tree pushed from JS and says which parents changed, so the caller
+   * can tell the car. Empty when the push was unreadable and nothing moved.
+   */
+  fun setFromJson(context: Context, json: String): Set<String> {
+    val incoming = parse(json) ?: return emptySet()
     // What is on disk is the last tree that had songs in it. Read it before
     // deciding what to keep, or a partial push on a cold start has nothing to
     // be laid over and the albums come back empty anyway.
@@ -80,6 +84,7 @@ object BrowseTreeCache {
         else if (!sameAccount) file.delete()
       }
     }
+    return incoming.nodes.keys
   }
 
   // For when JS has not pushed a tree into this process yet, which is what

@@ -7,6 +7,16 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.9.4] - 2026-09-12
+
+### Fixed
+
+- Android Auto showed nothing at all on a fresh install. The car asks for a folder's contents once, the moment the app is opened, and keeps the answer; nothing here ever told it the contents had changed. Until now a tree written to disk by an earlier run was always there to answer with, so the gap never showed — and the rename made every install a fresh one, with no tree on disk and nothing but an empty app to hand back. The car is told whenever a tree arrives.
+
+### Changed
+
+- The Expo packages move to the latest of SDK 57 (57.0.15 to 57.0.22 and the rest with it). No feature depends on it; it is the fixes that have gone in since. SDK 58 is not taken: it exists only as a preview.
+
 ## [0.9.3] - 2026-09-12
 
 ### Changed
@@ -2050,6 +2060,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.9.4]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.4
 [0.9.3]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.3
 [0.9.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.2
 [0.9.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.1

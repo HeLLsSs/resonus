@@ -3,6 +3,8 @@ package expo.modules.carauto
 
 import android.app.PendingIntent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
@@ -43,7 +45,7 @@ class ResonusCarBrowserService : MediaLibraryService() {
       jsPlayer = it
       activePlayer = it
     }
-    session = MediaLibrarySession.Builder(this, player, LibraryCallback())
+    val built = MediaLibrarySession.Builder(this, player, LibraryCallback())
       .setId("ResonusCarBrowserSession")
       .setMediaButtonPreferences(modeButtons(player))
       // What to open when the notification this session puts up is tapped, or
@@ -51,6 +53,8 @@ class ResonusCarBrowserService : MediaLibraryService() {
       // Without it the session has no screen to name and the tap does nothing.
       .apply { appLaunchIntent()?.let { setSessionActivity(it) } }
       .build()
+    session = built
+    activeSession = built
     // Each of those two buttons carries the state it will put the player in,
     // so its icon has to be rebuilt whenever the state changes: shuffle turned
     // on from the phone has to come out lit in the car, and pressing it there
@@ -147,6 +151,7 @@ class ResonusCarBrowserService : MediaLibraryService() {
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
 
   override fun onDestroy() {
+    if (activeSession === session) activeSession = null
     if (activePlayer === jsPlayer) activePlayer = null
     session?.run { player.release(); release() }
     session = null
@@ -512,6 +517,34 @@ class ResonusCarBrowserService : MediaLibraryService() {
   companion object {
     @Volatile var activePlayer: JsProxyPlayer? = null
       private set
+
+    @Volatile private var activeSession: MediaLibrarySession? = null
+
+    /**
+     * Tells the car that a shelf it is showing has changed underneath it.
+     *
+     * Android Auto asks for a folder's children once and keeps the answer. It
+     * asks the moment the app is opened, which on this side is the moment the
+     * service starts — before JavaScript has run, let alone fetched anything —
+     * so what it gets first is whatever tree was written to disk last time.
+     * With a tree on disk that was merely stale; on a fresh install there is
+     * none, and the car settled on an empty app and stayed there. Nothing here
+     * ever told it otherwise, which is the whole of that bug.
+     *
+     * On the main thread, which is where media3 wants its session touched, and
+     * quietly when no session is up: a push can arrive from a runtime the
+     * widget or an intent started, with no car anywhere.
+     */
+    fun treeChanged(parents: Collection<String>) {
+      val session = activeSession ?: return
+      Handler(Looper.getMainLooper()).post {
+        for (parent in parents) {
+          runCatching {
+            session.notifyChildrenChanged(parent, BrowseTreeCache.getChildren(parent).size, null)
+          }
+        }
+      }
+    }
 
     /**
      * How much cover art one page of browse results may carry. Below the
