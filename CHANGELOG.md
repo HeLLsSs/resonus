@@ -7,6 +7,24 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.9.11] - 2026-09-12
+
+### Fixed
+
+- The rows of the car's YouTube tab were bare text. The car does not go and fetch a picture from a remote address, whatever the address, so a YouTube thumbnail handed to it as a link showed nothing; the phone fetches them now and hands over the files, which is the path the server's own covers already took. Each shelf wears the cover of what it opens on.
+
+## [0.9.9] - 2026-09-12
+
+### Fixed
+
+- The car's YouTube tab disappeared for a few seconds at every start. The lists are pushed first and the songs seconds later, and whether the tab belonged in the first push was decided from the previous tree — which a runtime the car has just started does not have. It is decided from the profile and the switch now, which cost nothing to read, and the tab's contents are left where they are until the full build replaces them.
+
+## [0.9.8] - 2026-09-12
+
+### Added
+
+- The car's YouTube tab carries the whole home page, as the phone does: every shelf the account is shown, in its order, each a folder of what it holds. Nothing is fetched to draw it — the tracks arrive with the page, and a tile becomes music when it is pressed rather than a folder that had to be filled first, which is what lets twenty shelves and a hundred and thirty tiles cost the one request that drew them. Pressing a playlist or a record plays it, pressing a video plays the song, and the queue is named after the tile it came from.
+
 ## [0.9.7] - 2026-09-12
 
 ### Changed
@@ -2078,6 +2096,9 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.9.11]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.11
+[0.9.9]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.9
+[0.9.8]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.8
 [0.9.7]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.7
 [0.9.6]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.6
 [0.9.5]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.5

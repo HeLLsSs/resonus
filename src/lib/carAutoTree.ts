@@ -12,6 +12,7 @@
  *
  * Adapted from the wavio pattern (github.com/Joel-Mercier/wavio, MIT).
  */
+import { Directory, File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 
 import * as data from '@/api/data';
@@ -31,6 +32,7 @@ import { bump } from '@/lib/perfLog';
 import { playForYou } from '@/lib/forYouMix';
 import { getPlaylists as getLocalPlaylists } from '@/lib/localQueries';
 import { navifindActive } from '@/lib/navifind';
+import { cardTarget } from '@/lib/youtube';
 import { queryClient } from '@/lib/query';
 import { profileScopeId, useAuthStore } from '@/store/auth';
 import { anyDownloads, getDownloadShelf, useDownloads } from '@/store/downloads';
@@ -157,6 +159,57 @@ function art(id: string | undefined): string | undefined {
 export function carCoverUrl(url: string | undefined): string | undefined {
   if (!url || !/^https?:\/\//i.test(url)) return url;
   return data.serverImageSource(url).headers ? data.CACHED_COVER + url : url;
+}
+
+/** Where covers fetched for the car are kept. Its own folder, so clearing it
+ *  cannot take anything else with it. */
+function carArtDir() {
+  const dir = new Directory(Paths.cache, 'carart');
+  dir.create({ intermediates: true, idempotent: true });
+  return dir;
+}
+
+/**
+ * Fetches a cover to a file of our own and hands back its `file://` path, or
+ * undefined when it could not be had.
+ *
+ * Named after the address rather than after the song: two rows showing the
+ * same picture share one file, and a second build finds it already there.
+ */
+async function downloadedCover(url: string, headers?: Record<string, string>): Promise<string | undefined> {
+  try {
+    const name = `${hashUrl(url)}.img`;
+    const file = new File(carArtDir(), name);
+    if (file.exists) return file.uri;
+    const out = await File.downloadFileAsync(url, file, headers ? { headers } : undefined);
+    return out.uri;
+  } catch {
+    return undefined;
+  }
+}
+
+/** A short, stable name for an address. Not a cryptographic hash: it only has
+ *  to tell two covers apart on a filesystem. */
+function hashUrl(url: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < url.length; i++) {
+    h ^= url.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36) + url.length.toString(36);
+}
+
+/**
+ * A picture on somebody else's host — a YouTube thumbnail — marked so the
+ * phone fetches it and the car is handed the file.
+ *
+ * The car will not go and get a remote picture itself, whatever the address:
+ * the rows came out as bare text next to their titles. Marking it here puts it
+ * through the same path the server's own covers take.
+ */
+function remoteCover(url: string | undefined): string | undefined {
+  if (!url || !/^https?:\/\//i.test(url)) return url;
+  return data.CACHED_COVER + url;
 }
 
 /**
@@ -610,8 +663,13 @@ function pinnedPlaylists(playlists: Playlist[]): Playlist[] {
  * How many marked covers a build asks the image cache about. The tree walks
  * shelves first and songs last, so what the ceiling cuts is the tail of the
  * tracklists, whose rows are small tiles the driver rarely looks at.
+ *
+ * Raised when the YouTube tab arrived: its shelves carry a hundred and fifty
+ * pictures of their own, and at the old ceiling they would have been taken out
+ * of the library's share rather than added to it. They are fetched once and
+ * read from the disk cache after that.
  */
-const MAX_CACHE_LOOKUPS = 300;
+const MAX_CACHE_LOOKUPS = 500;
 /** The sizes a cover may have been seen at on the phone, tried when the size
  *  the car asks for misses. The same list as the `Cover` component's. */
 const CACHE_SIZES = [data.COVER.card, data.COVER.full, data.COVER.thumb, 500, 300, 100] as const;
@@ -642,13 +700,23 @@ async function cachedCoverPath(url: string): Promise<string | undefined> {
     const others = await Promise.all(CACHE_SIZES.map((n) => look(sized(n))));
     found = others.find(Boolean);
   }
-  // Marked online for a server that wants headers, not for being offline: the
-  // picture can be fetched, with the headers on, into the cache the car is
-  // then served from. Once per miss, and the miss is remembered like any other.
+  // Marked because the car cannot fetch it itself: a server that wants headers
+  // it does not have, or a host it will not go to at all — which is every
+  // remote picture, as far as the head unit is concerned. Either way the phone
+  // fetches it and the car is handed the file.
   const { headers } = data.serverImageSource(url);
-  if (!found && headers && !useAuthStore.getState().offline) {
-    await Image.prefetch(url, { headers, cachePolicy: 'disk' }).catch(() => false);
+  if (!found && !useAuthStore.getState().offline) {
+    await Image.prefetch(url, headers ? { headers, cachePolicy: 'disk' } : { cachePolicy: 'disk' }).catch(
+      () => false,
+    );
     found = await look(url);
+  }
+  // The image cache is asked first because it usually already holds what the
+  // app has drawn on screen. When it does not — and it did not for the YouTube
+  // thumbnails, whose rows came out bare — the picture is fetched to a file of
+  // our own. Deterministic, where the cache's own idea of a path is not.
+  if (!found && !useAuthStore.getState().offline) {
+    found = await downloadedCover(url, headers);
   }
   cachedArt.set(url, { path: found, at: Date.now() });
   return found;
@@ -727,17 +795,25 @@ const YOUTUBE_TRACKS = 50;
  * same path as playing anything else: the proxy streams it and files it into
  * the library on its own.
  */
-async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promise<CarNode[] | null> {
+/** Whether the YouTube tab could hold anything at all. Free to ask: it is
+ *  about the profile and the switch, not about what YouTube would answer. */
+function youtubeReachable(): boolean {
   const { auth, offline } = useAuthStore.getState();
-  if (!auth || offline || !navifindActive()) return null;
+  return !!auth && !offline && navifindActive();
+}
 
-  const [liked, playlists] = await Promise.all([
+async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promise<CarNode[] | null> {
+  if (!youtubeReachable()) return null;
+
+  const [liked, playlists, shelves] = await Promise.all([
     data.youtubeLikedSongs(YOUTUBE_TRACKS).catch(() => [] as Song[]),
     data.youtubePlaylistCards().catch(() => [] as { id: string; name: string; thumbnail?: string }[]),
+    data.youtubeHomeShelves().catch(() => []),
   ]);
-  if (liked.length === 0 && playlists.length === 0) return null;
+  if (liked.length === 0 && playlists.length === 0 && shelves.length === 0) return null;
 
   const rows: CarNode[] = [];
+  const shelfRows: CarNode[] = [];
   if (liked.length > 0) {
     tree['yt:liked'] = liked.map((song) => songNode(into, song, 'yt:liked'));
     into.parentTracks.set('yt:liked', tree['yt:liked'].map((n) => n.id));
@@ -757,12 +833,57 @@ async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promi
     rows.push({
       id: `yt:pl:${list.id}`,
       title: list.name,
-      artworkUrl: list.thumbnail,
+      artworkUrl: remoteCover(list.thumbnail),
       playable: false,
       contentStyle: 'list',
       mediaType: 'playlist',
     });
   }
+
+  // The home page's own shelves, in its order, each a folder of what it holds.
+  //
+  // Nothing here is fetched: the tracks arrive with the page, and a tile is a
+  // row that resolves when it is pressed rather than a folder that had to be
+  // filled first (`handleBrowsePlay`). That is what makes twenty shelves and a
+  // hundred and thirty tiles cost the one request the page already costs.
+  shelves.forEach((shelf, at) => {
+    const parent = `yt:shelf:${at}`;
+    const rows: CarNode[] = [
+      ...shelf.songs.map((song) => songNode(into, song, parent)),
+      ...shelf.items.flatMap((card) => {
+        const target = cardTarget(card);
+        if (!target) return [];
+        const id = target.kind === 'song' ? `yt:v:${target.id}` : `yt:pl:${target.id}`;
+        // Kept so the queue it starts can say which tile it came from.
+        into.nodeTitles.set(id, card.title);
+        return [
+          {
+            id,
+            title: card.title,
+            subtitle: card.subtitle,
+            artworkUrl: remoteCover(card.thumbnail ?? undefined),
+            playable: true,
+          },
+        ];
+      }),
+    ];
+    if (rows.length === 0) return;
+    tree[parent] = rows;
+    // The shelf wears the cover of what it opens on. Free: the picture came
+    // with the page, and a row of bare text in a car is a row nobody reads.
+    const cover = rows.find((n) => n.artworkUrl)?.artworkUrl;
+    into.parentTracks.set(parent, rows.filter((n) => n.id.startsWith('track|')).map((n) => n.id));
+    into.nodeTitles.set(parent, shelf.title);
+    shelfRows.push({
+      id: parent,
+      title: shelf.title,
+      subtitle: songsLabel(rows.length, useSettings.getState().language),
+      artworkUrl: cover,
+      playable: false,
+      contentStyle: 'list',
+      mediaType: 'playlist',
+    });
+  });
 
   // The first few opened ahead of time: a list with nothing in it is a row
   // that does nothing at the wheel, and the rest fill in when asked.
@@ -777,7 +898,9 @@ async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promi
     }
   });
 
-  return rows;
+  // The account's own things first — they are what somebody came for — and
+  // the home page's shelves behind them, in its order.
+  return [...rows, ...shelfRows];
 }
 
 function nothingToBrowse(): CarNode | null {
@@ -857,21 +980,23 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
       });
       tree['tab:youtube'] = youtube;
     }
-  } else {
-    // Its lists as well as the tab: keeping the tab alone would leave every
-    // playlist under it opening onto nothing until the next full build.
-    for (const parent of Object.keys(lastTree ?? {})) {
-      if (parent === 'tab:youtube' || parent.startsWith('yt:')) keep(parent);
-    }
-    if ((lastTree?.[ROOT] ?? []).some((n) => n.id === 'tab:youtube')) {
-      tree[ROOT].push({
-        id: 'tab:youtube',
-        title: 'YouTube',
-        playable: false,
-        contentStyle: 'list',
-        artworkUrl: icon('ic_car_youtube'),
-      });
-    }
+  } else if (youtubeReachable()) {
+    // The tab is put back from what it costs nothing to know — a proxy, an
+    // account, a connection — and its contents are left exactly where they
+    // are: a partial push is laid over what the car already holds rather than
+    // replacing it, so naming none of the `yt:` parents is what keeps them.
+    //
+    // Deciding this from the last tree instead was wrong in the one case that
+    // matters: a runtime the car has just started has no last tree, so the tab
+    // vanished from the moment the lists were pushed until the songs followed
+    // seconds later, which is exactly when somebody is looking at it.
+    tree[ROOT].push({
+      id: 'tab:youtube',
+      title: 'YouTube',
+      playable: false,
+      contentStyle: 'list',
+      artworkUrl: icon('ic_car_youtube'),
+    });
   }
   tree['tab:recents'] = recentNodes(into);
 
@@ -1238,6 +1363,9 @@ function sourceOf(collectionId: string | undefined): [string, string] | [] {
   // and lead back to the tab.
   if (prefix === 'yt') {
     if (id === 'liked') return [tg('Liked songs'), '/youtube'];
+    // A shelf of the home page has no screen of its own; the tab is where it
+    // is shown, and its own name is what the queue is called after.
+    if (id.startsWith('shelf:')) return [resolve.nodeTitles.get(collectionId) ?? 'YouTube', '/youtube'];
     const listId = id.startsWith('pl:') ? id.slice(3) : '';
     if (!listId) return [];
     return [resolve.nodeTitles.get(collectionId) ?? '', `/youtube/${listId}`];
@@ -1399,6 +1527,28 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
   // hold it).
   if (mediaId === RESUME_ID) {
     if (store.queue.length > 0 && !store.isPlaying) store.toggle();
+    return;
+  }
+
+  // A tile of the YouTube tab. Nothing was fetched to draw it, so this is
+  // where it turns into music: a playlist or a record becomes its tracks, a
+  // video becomes the one song. Fetched at the press rather than ahead of
+  // time, which is what lets the tab carry every shelf of the home page for
+  // the cost of the one request that drew it.
+  if (mediaId.startsWith('yt:pl:') || mediaId.startsWith('yt:v:')) {
+    const isList = mediaId.startsWith('yt:pl:');
+    const id = mediaId.slice(isList ? 'yt:pl:'.length : 'yt:v:'.length);
+    const name = resolve.nodeTitles.get(mediaId) ?? '';
+    const songs = await (isList
+      ? data.youtubePlaylistSongs(id, YOUTUBE_TRACKS)
+      : data.getSongsByIds([id])
+    ).catch(() => [] as Song[]);
+    if (songs.length === 0) {
+      bump('car · youtube tile resolved to nothing');
+      return;
+    }
+    bump(isList ? 'car · youtube list played' : 'car · youtube track played');
+    await store.playQueue(songs, 0, name || 'YouTube');
     return;
   }
 

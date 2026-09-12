@@ -1409,6 +1409,11 @@ export async function youtubePlaylistCards(): Promise<
   });
 }
 
+/** The shelves of the account's YouTube home page, as the tab shows them. */
+export function youtubeHomeShelves(): Promise<YoutubeApi.YoutubeShelf[]> {
+  return YoutubeApi.youtubeHome(auth(), true);
+}
+
 export async function youtubePlaylistSongs(id: string, count: number): Promise<Song[]> {
   const { songs } = await YoutubeApi.youtubePlaylist(auth(), id, count);
   return songs;
