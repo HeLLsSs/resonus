@@ -116,6 +116,7 @@ import { useNetworkType } from './networkType';
 import { useOfflineQueue } from './offlineQueue';
 import { usePlayCounts } from './playCounts';
 import { usePlayHistory } from './playHistory';
+import { cachedUri, KEEP_AFTER, keepIfWorthIt, touchCached } from './playCache';
 import { useQueueHistory } from './queueHistory';
 import { scrobbleThresholdSec, useSettings, type TranscodeFormat } from './settings';
 import { useToast } from './toast';
@@ -463,6 +464,15 @@ function sourceFor(song: Song, timeOffsetSec = 0): AudioSource {
   if (local) {
     bump('player · played the file on disk');
     return { uri: local, metadata, mediaId };
+  }
+  // Nothing chosen for this song, but it may have been kept from an earlier
+  // listen. A file beats a stream every time: it starts at once, costs no
+  // data, and survives a tunnel.
+  const kept = cachedUri(song.id);
+  if (kept) {
+    bump('player · played what was kept from listening');
+    touchCached(song.id);
+    return { uri: kept, metadata, mediaId };
   }
   bump(
     downloadedUri(song)
@@ -1452,8 +1462,14 @@ function rememberHowFar(positionSec: number): void {
   // was listening to most recently.
   const share = Math.min(1, furthest.sec / furthest.duration);
   if (share < furthest.written + HEARD_STEP) return;
+  const before = furthest.written;
   furthest.written = share;
   usePlayHistory.getState().markHeard(furthest.id, share);
+  // Listened through rather than sampled: worth keeping for next time. Once,
+  // at the crossing, and never for what is already on the phone.
+  if (before < KEEP_AFTER && share >= KEEP_AFTER) {
+    void keepIfWorthIt(song, !!localSourceFor(song) || !!cachedUri(song.id));
+  }
 }
 
 /** The last word on the song being left, in case it moved since the last step. */

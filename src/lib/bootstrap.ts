@@ -34,6 +34,7 @@ import { useOfflineQueue } from '@/store/offlineQueue';
 import { usePins } from '@/store/pins';
 import { usePlayCounts } from '@/store/playCounts';
 import { initRemoteIntegration, usePlayerStore } from '@/store/player';
+import { hydratePlayCache } from '@/store/playCache';
 import { usePlayHistory } from '@/store/playHistory';
 import { useRecentSearches } from '@/store/recentSearches';
 import { useSettings } from '@/store/settings';
@@ -113,6 +114,9 @@ function loadProfile(): void {
     void usePins.getState().hydrate();
     void useAutoDownloads.getState().hydrate();
     void useSmartPlaylists.getState().hydrate();
+    // What earlier listening kept, so the player can reach for it instead of
+    // the network from the first song.
+    void hydratePlayCache();
   });
   // After the session is restored, never before: the downloads store reads
   // the account's own catalog, and with no account yet it falls back to

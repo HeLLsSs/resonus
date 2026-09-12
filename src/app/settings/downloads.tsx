@@ -24,6 +24,7 @@ import { appStorageParts, appStorageTotal, type StorageParts } from '@/lib/appSt
 import { formatBytes } from '@/lib/format';
 import { useAuthStore } from '@/store/auth';
 import { useDownloads } from '@/store/downloads';
+import { cacheBytes, clearPlayCache } from '@/store/playCache';
 import { useLibraryMirror, type MirrorStats } from '@/store/libraryMirror';
 import {
   BITRATE_OPTIONS,
@@ -85,6 +86,11 @@ export default function DownloadsSettings() {
   const setDownloadFormat = useSettings((s) => s.setDownloadFormat);
   const downloadConcurrency = useSettings((s) => s.downloadConcurrency);
   const setDownloadConcurrency = useSettings((s) => s.setDownloadConcurrency);
+  const playCache = useSettings((s) => s.playCache);
+  const setPlayCache = useSettings((s) => s.setPlayCache);
+  // Read once per visit rather than watched: it changes as songs play, and a
+  // number that ticks under somebody reading a screen is noise.
+  const [kept, setKept] = useState(() => cacheBytes());
   const downloadWifiOnly = useSettings((s) => s.downloadWifiOnly);
   const setDownloadWifiOnly = useSettings((s) => s.setDownloadWifiOnly);
   const autoOfflineSwitch = useSettings((s) => s.autoOfflineSwitch);
@@ -198,6 +204,35 @@ export default function DownloadsSettings() {
             },
           ]}
         />
+        <Text style={settingsStyles.sectionTitle}>{t('Kept while listening')}</Text>
+        <Text style={settingsStyles.sectionDescription}>
+          {t(
+            'A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. Its own space, which never touches what you downloaded on purpose, and it empties from the oldest listen when it is full. Over Wi-Fi only.',
+          )}
+        </Text>
+        <SwitchList
+          options={[
+            {
+              label: t('Keep what I listen to'),
+              value: playCache,
+              onChange: setPlayCache,
+            },
+          ]}
+        />
+        <SettingRow
+          icon="trash-outline"
+          label={t('Empty what was kept')}
+          description={kept > 0 ? formatBytes(kept) : t('Nothing kept yet')}
+          destructive
+          onPress={
+            kept > 0
+              ? () => {
+                  void clearPlayCache().then(() => setKept(0));
+                }
+              : undefined
+          }
+        />
+
         {/* Not greyed out offline: a queue that stopped with the connection is
             exactly what somebody comes here to look at. */}
         <SettingRow

@@ -1136,5 +1136,10 @@
   "Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself. A second account can be signed in beside the first before you finish, and you can then switch between them here.": "Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself. A second account can be signed in beside the first before you finish, and you can then switch between them here.",
   "The session Navifind holds opens this one alone. To add another, sign in again and use \"Add another account\" before finishing.": "The session Navifind holds opens this one alone. To add another, sign in again and use \"Add another account\" before finishing.",
   "Switch account": "Switch account",
-  "This speaker is fed one continuous stream, so it cannot move within a track.": "This speaker is fed one continuous stream, so it cannot move within a track."
+  "This speaker is fed one continuous stream, so it cannot move within a track.": "This speaker is fed one continuous stream, so it cannot move within a track.",
+  "Kept while listening": "Kept while listening",
+  "A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. Its own space, which never touches what you downloaded on purpose, and it empties from the oldest listen when it is full. Over Wi-Fi only.": "A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. Its own space, which never touches what you downloaded on purpose, and it empties from the oldest listen when it is full. Over Wi-Fi only.",
+  "Keep what I listen to": "Keep what I listen to",
+  "Empty what was kept": "Empty what was kept",
+  "Nothing kept yet": "Nothing kept yet"
 }

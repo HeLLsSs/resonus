@@ -649,6 +649,12 @@ interface SettingsState {
   downloadFormat: TranscodeFormat;
   /** Download only over Wi-Fi (blocks downloads on cellular). */
   downloadWifiOnly: boolean;
+  /**
+   * Keep a song after listening to it, so the next time is a file rather than
+   * a stream. Its own space, never touching what was downloaded on purpose
+   * (see `store/playCache`). On over Wi-Fi only, always.
+   */
+  playCache: boolean;
   language: Language;
   /** Show format/bitrate/Hi-Res label (player only). */
   showAudioQuality: boolean;
@@ -987,6 +993,7 @@ interface SettingsState {
   setStreamFormatCellular: (value: TranscodeFormat) => void;
   setDownloadFormat: (value: TranscodeFormat) => void;
   setDownloadWifiOnly: (value: boolean) => void;
+  setPlayCache: (value: boolean) => void;
   setLanguage: (language: Language) => void;
   setShowAudioQuality: (value: boolean) => void;
   setShowRating: (value: boolean) => void;
@@ -1127,6 +1134,7 @@ function snapshot(get: () => SettingsState) {
     streamFormatCellular: s.streamFormatCellular,
     downloadFormat: s.downloadFormat,
     downloadWifiOnly: s.downloadWifiOnly,
+    playCache: s.playCache,
     // `language` is not in the profile blob: it's global (see LANG_KEY).
     showAudioQuality: s.showAudioQuality,
     showRating: s.showRating,
@@ -1247,6 +1255,7 @@ const DEFAULTS = {
   streamFormatCellular: '' as TranscodeFormat,
   downloadFormat: '' as TranscodeFormat,
   downloadWifiOnly: false,
+  playCache: true,
   language: 'en' as Language,
   showAudioQuality: false,
   showRating: false,
@@ -1423,6 +1432,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setDownloadWifiOnly: (downloadWifiOnly) => {
     set({ downloadWifiOnly });
+    persist(snapshot(get));
+  },
+
+  setPlayCache: (playCache) => {
+    set({ playCache });
     persist(snapshot(get));
   },
 
@@ -1983,6 +1997,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           streamFormatCellular: TranscodeFormat;
           downloadFormat: TranscodeFormat;
           downloadWifiOnly: boolean;
+          playCache: boolean;
           language: Language;
           showAudioQuality: string | boolean;
           showRating: boolean;
@@ -2116,6 +2131,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         }
         if (TRANSCODE_FORMATS.includes(parsed.downloadFormat as TranscodeFormat)) {
           set({ downloadFormat: parsed.downloadFormat as TranscodeFormat });
+        }
+        if (typeof parsed.playCache === 'boolean') {
+          set({ playCache: parsed.playCache });
         }
         if (typeof parsed.downloadWifiOnly === 'boolean') {
           set({ downloadWifiOnly: parsed.downloadWifiOnly });

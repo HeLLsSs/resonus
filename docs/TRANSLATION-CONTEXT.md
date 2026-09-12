@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1131 of them.
+Every string the app can show, under the screen it shows up on. 1136 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -843,6 +843,7 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `{n} downloading · {m} waiting` |  |
+| `A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. Its own space, which never touches what you downloaded on purpose, and it empties from the oldest listen when it is full. Over Wi-Fi only.` |  |
 | `All downloaded music will be removed from this device.` |  |
 | `Applies to new downloads only.` | The line under “Download quality”, explaining it |
 | `Automatic offline mode` | Fall into offline mode by itself when the server cannot be reached, and come back when it can |
@@ -860,12 +861,16 @@ you are actually typing into, which is easier than reading it here.
 | `Downloads` | In the storage bar: the room the downloaded songs take |
 | `Downloads & offline` |  |
 | `Downloads deleted` |  |
+| `Empty what was kept` |  |
 | `Free` | Free disk space in the storage bar (Other / Downloads / Free). Not "free of charge" |
 | `Hide unavailable songs` |  |
 | `In offline mode, hide songs that aren't downloaded instead of showing them greyed out.` |  |
+| `Keep what I listen to` |  |
+| `Kept while listening` |  |
 | `Library metadata copy` | The offline copy of the library: the album, artist and playlist lists kept so the app works with no connection. Not the songs themselves, which are the downloads |
 | `Local library index` | A line of the storage breakdown: what the app remembers about the phone's own music files. A size, not a setting |
 | `Not used` | Replaces the codec's value when that network's quality is `Original`. Nothing is transcoded then, so the codec setting has nothing to do and the row is greyed out |
+| `Nothing kept yet` |  |
 | `Offline library` | In the storage bar: the room the offline copy of the library takes. The same thing the line under it calls `Library metadata copy`, so the two should agree |
 | `Original` | Quality option: the file exactly as it is on the server, nothing transcoded. It also appears in quotes inside two descriptions on those screens, so use the same wording in all three |
 | `Other` | Two places, and the same word does for both: in that storage bar, the space used by things other than downloads; and on an artist's page, the last shelf of the discography, holding the records that fit none of the kinds above it |

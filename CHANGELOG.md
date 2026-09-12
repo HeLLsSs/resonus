@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.10.0] - 2026-09-12
+
+### Added
+
+- A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. It has its own space and never touches what you downloaded on purpose — a download is a promise somebody made to themselves, and nothing here may delete one. It fills while you listen, empties from the oldest listen when it reaches two gigabytes, and only ever over Wi-Fi: the point is to spend less data, not to spend it twice. Under Settings > Downloads and offline, where it can also be emptied.
+
 ## [0.9.11] - 2026-09-12
 
 ### Fixed
@@ -2096,6 +2102,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.10.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.10.0
 [0.9.11]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.11
 [0.9.9]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.9
 [0.9.8]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.8
