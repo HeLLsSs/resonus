@@ -1,10 +1,14 @@
 /**
  * Browsing a WebDAV share: folders, and the music in them.
  *
- * The folders are the library. Nothing was scanned, so a song is named by its
- * filename and nothing else — no album, no artist, no cover — and that is the
- * bargain: it works on a share of ten thousand files the moment it is added,
- * where reading the tags of all of them over a network would take an evening.
+ * The folders are the library: nothing is scanned before a share can be used,
+ * which is what makes one of ten thousand files work the moment it is added.
+ *
+ * A song therefore arrives as its filename, and its tags are read behind the
+ * list — a few hundred bytes per file rather than the file (`webdavTags`) —
+ * so the names and artists fill themselves in while somebody is already
+ * reading the folder. What has no ID3 tag keeps its filename, which today
+ * means anything that is not an MP3.
  *
  * Opening a folder of music plays it as a queue, starting where you pressed,
  * so a folder behaves like an album without pretending to be one.
@@ -19,9 +23,11 @@ import { EmptyState } from '@/components/EmptyState';
 import { Message } from '@/components/Message';
 import { ScreenHeader, SettingsSafeArea } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
+import { type ID3Tags } from '@/lib/id3';
 import { isAudio, nameFromHref, type DavEntry } from '@/lib/webdav';
+import { inBatches, readRemoteTags } from '@/lib/webdavTags';
 import { usePlayerStore } from '@/store/player';
-import { davSongId, listFolder, useWebdav } from '@/store/webdav';
+import { authHeaderFor, davSongId, listFolder, urlFor, useWebdav } from '@/store/webdav';
 import { colors, fontSize, spacing, themed, useTheme } from '@/theme';
 
 /** The name without its extension, which is what somebody reads. */
@@ -40,6 +46,12 @@ export default function WebdavBrowse() {
 
   const [entries, setEntries] = useState<DavEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
+  /**
+   * What the tags said, by href, as they come in. The list is shown at once
+   * from the filenames and each row is replaced as its tag arrives, so a
+   * folder is usable while this is still running and nothing waits on it.
+   */
+  const [tags, setTags] = useState<Record<string, ID3Tags>>({});
 
   useEffect(() => {
     let live = true;
@@ -58,6 +70,29 @@ export default function WebdavBrowse() {
     };
   }, [source, here]);
 
+  // The tags, behind the list. A few at a time: a folder of fifty songs fired
+  // at once is how a phone times out its own connections.
+  useEffect(() => {
+    let live = true;
+    if (!source || !entries) return;
+    const files = entries.filter(isAudio);
+    if (files.length === 0) return;
+    void (async () => {
+      const headers = await authHeaderFor(source.id);
+      await inBatches(files, 4, async (file) => {
+        if (!live) return;
+        const found = await readRemoteTags(urlFor(source, `${here ? `${here}/` : ''}${nameFromHref(file.href)}`), headers);
+        if (!live || !found) return;
+        // One at a time rather than all at the end: the names appear as they
+        // are read, which is what makes the wait bearable on a slow share.
+        setTags((had) => ({ ...had, [file.href]: found }));
+      });
+    })();
+    return () => {
+      live = false;
+    };
+  }, [source, here, entries]);
+
   if (!source) {
     return (
       <SettingsSafeArea>
@@ -71,14 +106,20 @@ export default function WebdavBrowse() {
 
   /** Plays the folder from the song pressed: what is around it is the queue. */
   async function play(entry: DavEntry) {
-    const songs: Song[] = music.map((file) => ({
-      id: davSongId(source!.id, `${here ? `${here}/` : ''}${nameFromHref(file.href)}`),
-      title: songTitle(file.name),
-      // Where it came from, which is the only thing known about it.
-      album: source!.name,
-      artist: here.split('/').filter(Boolean).slice(-1)[0] || source!.name,
-      size: file.size,
-    }));
+    const songs: Song[] = music.map((file) => {
+      const tag = tags[file.href];
+      return {
+        id: davSongId(source!.id, `${here ? `${here}/` : ''}${nameFromHref(file.href)}`),
+        title: tag?.title || songTitle(file.name),
+        // What the tag says, and where it came from when it says nothing: a
+        // folder is a poor album name, but it beats no name at all.
+        album: tag?.album || source!.name,
+        artist: tag?.artist || here.split('/').filter(Boolean).slice(-1)[0] || source!.name,
+        track: tag?.track,
+        year: tag?.year,
+        size: file.size,
+      };
+    });
     const at = music.findIndex((m) => m.href === entry.href);
     await usePlayerStore.getState().playQueue(songs, Math.max(0, at), source!.name);
   }
@@ -118,9 +159,16 @@ export default function WebdavBrowse() {
                 size={22}
                 color={item.isFolder ? colors.textSecondary : colors.accent}
               />
-              <Text style={styles.name} numberOfLines={1}>
-                {item.isFolder ? item.name : songTitle(item.name)}
-              </Text>
+              <View style={styles.labels}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {item.isFolder ? item.name : tags[item.href]?.title || songTitle(item.name)}
+                </Text>
+                {!item.isFolder && tags[item.href]?.artist ? (
+                  <Text style={styles.artist} numberOfLines={1}>
+                    {tags[item.href]?.artist}
+                  </Text>
+                ) : null}
+              </View>
             </Pressable>
           )}
         />
@@ -138,5 +186,7 @@ const styles = themed((colors) => ({
     gap: spacing.md,
     paddingVertical: spacing.md,
   },
-  name: { color: colors.text, fontSize: fontSize.md, flexShrink: 1 },
+  labels: { flexShrink: 1 },
+  name: { color: colors.text, fontSize: fontSize.md },
+  artist: { color: colors.textSecondary, fontSize: fontSize.sm },
 }));

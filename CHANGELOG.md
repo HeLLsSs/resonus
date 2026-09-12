@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.11.2] - 2026-09-12
+
+### Added
+
+- A share's songs fill in their own names. The tags are read behind the list, a few hundred bytes per file rather than the file — on a real share that is two hundred bytes against a megabyte and a half — so a folder is usable at once and the titles, artists and albums appear as they arrive. Playing one takes the tag's name over the filename. Only ID3, which means MP3: a FLAC or an M4A keeps its filename, the same thing that happens to it in the local library.
+
 ## [0.11.1] - 2026-09-12
 
 ### Fixed
@@ -2115,6 +2121,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.11.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.2
 [0.11.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.1
 [0.11.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.0
 [0.10.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.10.0
