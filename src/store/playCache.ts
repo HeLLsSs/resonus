@@ -38,11 +38,17 @@ interface PlayCacheState {
 }
 
 /**
- * How much the cache may hold. Two gigabytes is a few hundred songs at the
- * bitrates a server streams, which covers the records somebody actually
- * returns to without taking a noticeable share of a phone.
+ * How much the cache may hold, from the setting. Two gigabytes by default: a
+ * few hundred songs at the bitrates a server streams, which covers the records
+ * somebody actually returns to without taking a noticeable share of a phone.
  */
-export const PLAY_CACHE_BYTES = 2 * 1024 * 1024 * 1024;
+export function cacheCeilingBytes(): number {
+  return Math.max(1, useSettings.getState().playCacheGB) * 1024 * 1024 * 1024;
+}
+
+/** The sizes offered. Beyond ten, a phone is better served by downloading the
+ *  records on purpose. */
+export const PLAY_CACHE_SIZES = [1, 2, 5, 10, 20];
 
 /** How much of a song has to be heard before it is worth keeping. Half: enough
  *  that it was not a skip, early enough that the file is there next time. */
@@ -112,10 +118,11 @@ async function makeRoom(incoming: number): Promise<void> {
   const entries = { ...usePlayCache.getState().entries };
   let total = incoming;
   for (const kept of Object.values(entries)) total += kept.bytes;
-  if (total <= PLAY_CACHE_BYTES) return;
+  const ceiling = cacheCeilingBytes();
+  if (total <= ceiling) return;
   const oldest = Object.entries(entries).sort((a, b) => a[1].at - b[1].at);
   for (const [id, kept] of oldest) {
-    if (total <= PLAY_CACHE_BYTES) break;
+    if (total <= ceiling) break;
     await remove(kept);
     delete entries[id];
     total -= kept.bytes;

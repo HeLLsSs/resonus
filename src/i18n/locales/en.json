@@ -1141,5 +1141,7 @@
   "A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. Its own space, which never touches what you downloaded on purpose, and it empties from the oldest listen when it is full. Over Wi-Fi only.": "A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. Its own space, which never touches what you downloaded on purpose, and it empties from the oldest listen when it is full. Over Wi-Fi only.",
   "Keep what I listen to": "Keep what I listen to",
   "Empty what was kept": "Empty what was kept",
-  "Nothing kept yet": "Nothing kept yet"
+  "Nothing kept yet": "Nothing kept yet",
+  "How much to keep": "How much to keep",
+  "The oldest listens go when it is full.": "The oldest listens go when it is full."
 }

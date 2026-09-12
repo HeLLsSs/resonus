@@ -24,7 +24,7 @@ import { appStorageParts, appStorageTotal, type StorageParts } from '@/lib/appSt
 import { formatBytes } from '@/lib/format';
 import { useAuthStore } from '@/store/auth';
 import { useDownloads } from '@/store/downloads';
-import { cacheBytes, clearPlayCache } from '@/store/playCache';
+import { cacheBytes, clearPlayCache, PLAY_CACHE_SIZES } from '@/store/playCache';
 import { useLibraryMirror, type MirrorStats } from '@/store/libraryMirror';
 import {
   BITRATE_OPTIONS,
@@ -88,6 +88,8 @@ export default function DownloadsSettings() {
   const setDownloadConcurrency = useSettings((s) => s.setDownloadConcurrency);
   const playCache = useSettings((s) => s.playCache);
   const setPlayCache = useSettings((s) => s.setPlayCache);
+  const playCacheGB = useSettings((s) => s.playCacheGB);
+  const setPlayCacheGB = useSettings((s) => s.setPlayCacheGB);
   // Read once per visit rather than watched: it changes as songs play, and a
   // number that ticks under somebody reading a screen is noise.
   const [kept, setKept] = useState(() => cacheBytes());
@@ -218,6 +220,14 @@ export default function DownloadsSettings() {
               onChange: setPlayCache,
             },
           ]}
+        />
+        <SelectList
+          label={t('How much to keep')}
+          description={t('The oldest listens go when it is full.')}
+          options={PLAY_CACHE_SIZES.map((n) => ({ value: n, label: `${n} GB` }))}
+          value={playCacheGB}
+          onChange={setPlayCacheGB}
+          disabled={!playCache}
         />
         <SettingRow
           icon="trash-outline"

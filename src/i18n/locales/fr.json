@@ -1143,5 +1143,7 @@
   "A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. Its own space, which never touches what you downloaded on purpose, and it empties from the oldest listen when it is full. Over Wi-Fi only.": "Un morceau écouté jusqu'au bout est gardé : la fois suivante il vient du téléphone, sans attente, sans données, et il passe les tunnels. Un espace à part, qui ne touche jamais à ce que tu as téléchargé exprès, et qui se vide par les écoutes les plus anciennes quand il est plein. En Wi-Fi seulement.",
   "Keep what I listen to": "Garder ce que j'écoute",
   "Empty what was kept": "Vider ce qui a été gardé",
-  "Nothing kept yet": "Rien de gardé pour l'instant"
+  "Nothing kept yet": "Rien de gardé pour l'instant",
+  "How much to keep": "Quantité à garder",
+  "The oldest listens go when it is full.": "Les écoutes les plus anciennes partent quand c'est plein."
 }

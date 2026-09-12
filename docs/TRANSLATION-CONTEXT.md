@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1136 of them.
+Every string the app can show, under the screen it shows up on. 1138 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -864,6 +864,7 @@ you are actually typing into, which is easier than reading it here.
 | `Empty what was kept` |  |
 | `Free` | Free disk space in the storage bar (Other / Downloads / Free). Not "free of charge" |
 | `Hide unavailable songs` |  |
+| `How much to keep` |  |
 | `In offline mode, hide songs that aren't downloaded instead of showing them greyed out.` |  |
 | `Keep what I listen to` |  |
 | `Kept while listening` |  |
@@ -881,6 +882,7 @@ you are actually typing into, which is easier than reading it here.
 | `Songs fetched at the same time. Fewer is gentler on the server, network and your phone.` | The line under “Simultaneous downloads”, explaining it |
 | `Storage used` | Section header over the bar showing what is taking up room on the phone |
 | `Switch to your downloads when the server is unreachable, and back when it returns.` |  |
+| `The oldest listens go when it is full.` | The line under “How much to keep”, explaining it |
 
 ## Settings › Equalizer
 

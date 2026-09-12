@@ -11,7 +11,7 @@ Releases before 0.2.1 are only listed on the
 
 ### Added
 
-- A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. It has its own space and never touches what you downloaded on purpose — a download is a promise somebody made to themselves, and nothing here may delete one. It fills while you listen, empties from the oldest listen when it reaches two gigabytes, and only ever over Wi-Fi: the point is to spend less data, not to spend it twice. Under Settings > Downloads and offline, where it can also be emptied.
+- A song you listen through is kept, so the next time it plays from the phone: no wait, no data, and it survives a tunnel. It has its own space and never touches what you downloaded on purpose — a download is a promise somebody made to themselves, and nothing here may delete one. It fills while you listen, empties from the oldest listen when it reaches two gigabytes, and only ever over Wi-Fi: the point is to spend less data, not to spend it twice. How much it may hold is yours to set, from one gigabyte to twenty, under Settings > Downloads and offline — where it can also be emptied.
 
 ## [0.9.11] - 2026-09-12
 

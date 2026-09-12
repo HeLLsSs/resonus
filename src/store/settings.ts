@@ -655,6 +655,8 @@ interface SettingsState {
    * (see `store/playCache`). On over Wi-Fi only, always.
    */
   playCache: boolean;
+  /** How much the listening cache may hold, in gigabytes. */
+  playCacheGB: number;
   language: Language;
   /** Show format/bitrate/Hi-Res label (player only). */
   showAudioQuality: boolean;
@@ -994,6 +996,7 @@ interface SettingsState {
   setDownloadFormat: (value: TranscodeFormat) => void;
   setDownloadWifiOnly: (value: boolean) => void;
   setPlayCache: (value: boolean) => void;
+  setPlayCacheGB: (value: number) => void;
   setLanguage: (language: Language) => void;
   setShowAudioQuality: (value: boolean) => void;
   setShowRating: (value: boolean) => void;
@@ -1135,6 +1138,7 @@ function snapshot(get: () => SettingsState) {
     downloadFormat: s.downloadFormat,
     downloadWifiOnly: s.downloadWifiOnly,
     playCache: s.playCache,
+    playCacheGB: s.playCacheGB,
     // `language` is not in the profile blob: it's global (see LANG_KEY).
     showAudioQuality: s.showAudioQuality,
     showRating: s.showRating,
@@ -1256,6 +1260,7 @@ const DEFAULTS = {
   downloadFormat: '' as TranscodeFormat,
   downloadWifiOnly: false,
   playCache: true,
+  playCacheGB: 2,
   language: 'en' as Language,
   showAudioQuality: false,
   showRating: false,
@@ -1437,6 +1442,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setPlayCache: (playCache) => {
     set({ playCache });
+    persist(snapshot(get));
+  },
+
+  setPlayCacheGB: (playCacheGB) => {
+    set({ playCacheGB });
     persist(snapshot(get));
   },
 
@@ -1998,6 +2008,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           downloadFormat: TranscodeFormat;
           downloadWifiOnly: boolean;
           playCache: boolean;
+          playCacheGB: number;
           language: Language;
           showAudioQuality: string | boolean;
           showRating: boolean;
@@ -2134,6 +2145,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         }
         if (typeof parsed.playCache === 'boolean') {
           set({ playCache: parsed.playCache });
+        }
+        if (typeof parsed.playCacheGB === 'number' && parsed.playCacheGB > 0) {
+          set({ playCacheGB: parsed.playCacheGB });
         }
         if (typeof parsed.downloadWifiOnly === 'boolean') {
           set({ downloadWifiOnly: parsed.downloadWifiOnly });
