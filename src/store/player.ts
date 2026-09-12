@@ -1487,7 +1487,16 @@ function rememberHowFar(positionSec: number): void {
   // Listened through rather than sampled: worth keeping for next time. Once,
   // at the crossing, and never for what is already on the phone.
   if (before < KEEP_AFTER && share >= KEEP_AFTER) {
-    void keepIfWorthIt(song, !!localSourceFor(song) || !!cachedUri(song.id));
+    // The same address the player would stream, so what is kept is what the
+    // quality setting asks for, and the profile's own headers ride with it.
+    const { auth } = useAuthStore.getState();
+    if (auth && !song.url && !parseDavId(song.id)) {
+      const headers = authHeaders(auth);
+      void keepIfWorthIt(song, !!localSourceFor(song) || !!cachedUri(song.id), {
+        uri: streamUrl(auth, song.id, effectiveMaxBitRate(), 0, effectiveStreamFormat()),
+        ...(Object.keys(headers).length > 0 ? { headers } : {}),
+      });
+    }
   }
 }
 

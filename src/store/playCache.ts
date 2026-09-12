@@ -19,7 +19,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as Network from 'expo-network';
 import { create } from 'zustand';
 
-import { streamUrl, type Song, type SubsonicAuth } from '@/api/subsonic';
+import { type Song } from '@/api/subsonic';
 import { getItem, setItem } from '@/lib/storage';
 import { useAuthStore } from './auth';
 import { useSettings } from './settings';
@@ -93,7 +93,22 @@ export async function hydratePlayCache(): Promise<void> {
 
 /** The file kept for a song, if there is one. */
 export function cachedUri(songId: string): string | undefined {
-  return usePlayCache.getState().entries[songId]?.uri;
+  const kept = usePlayCache.getState().entries[songId];
+  if (!kept) return undefined;
+  // The files live in the system cache, which Android empties on its own when
+  // storage runs short. An index that outlived its files would hand the player
+  // an address that plays nothing, so the file is asked about rather than
+  // assumed, and a missing one is forgotten here and now.
+  try {
+    if (new File(kept.uri).exists) return kept.uri;
+  } catch {
+    // Unreadable counts as gone.
+  }
+  const entries = { ...usePlayCache.getState().entries };
+  delete entries[songId];
+  usePlayCache.setState({ entries });
+  save(entries);
+  return undefined;
 }
 
 /** Says a song was heard again, so the ceiling takes the others first. */
@@ -163,7 +178,20 @@ function worthKeeping(song: Song, alreadyOnDisk: boolean): boolean {
  * twice — and never twice for the same song. Failures are silent: this is a
  * convenience, and nothing that happens here should reach somebody's evening.
  */
-export async function keepIfWorthIt(song: Song, alreadyOnDisk: boolean): Promise<void> {
+export async function keepIfWorthIt(
+  song: Song,
+  alreadyOnDisk: boolean,
+  /**
+   * The very address the player would stream, and what opens it.
+   *
+   * Handed in rather than built here, and that is the point: the player knows
+   * the quality somebody asked for and this does not. Built here it fetched
+   * the original every time, so a phone set to stream at 192 kbps was quietly
+   * filling up with lossless files — the setting ignored, and the ceiling
+   * reached several times faster than anybody expected.
+   */
+  stream: { uri: string; headers?: Record<string, string> },
+): Promise<void> {
   if (!useSettings.getState().playCache) return;
   if (!worthKeeping(song, alreadyOnDisk)) return;
   if (usePlayCache.getState().entries[song.id]) return;
@@ -176,7 +204,9 @@ export async function keepIfWorthIt(song: Song, alreadyOnDisk: boolean): Promise
   try {
     const file = new File(folder(), `${song.id}`);
     if (file.exists) file.delete();
-    const out = await File.downloadFileAsync(streamUrl(auth as SubsonicAuth, song.id), file);
+    const out = await File.downloadFileAsync(stream.uri, file, {
+      headers: stream.headers,
+    });
     const bytes = out.size ?? 0;
     if (bytes <= 0) return;
     await makeRoom(bytes);

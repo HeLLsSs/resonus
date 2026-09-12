@@ -7,6 +7,13 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.11.1] - 2026-09-12
+
+### Fixed
+
+- What the listening cache kept ignored the streaming quality. It asked the server for the original every time, so a phone set to stream at a lower bitrate was quietly filling with lossless files: the setting had no effect and the ceiling came several times sooner than anybody expected. It now keeps exactly what the player would have streamed, headers included, so a server behind an authenticating proxy is cached too.
+- A kept song whose file Android had cleared away — it lives in the system cache, which the phone empties on its own when storage runs short — was still offered to the player, which then had nothing to play. The file is asked about rather than assumed, and a missing one is forgotten on the spot.
+
 ## [0.11.0] - 2026-09-12
 
 ### Added
@@ -2108,6 +2115,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.11.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.1
 [0.11.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.0
 [0.10.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.10.0
 [0.9.11]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.11
