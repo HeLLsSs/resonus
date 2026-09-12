@@ -266,12 +266,13 @@ export function startCarAutoSync(): void {
     });
   };
   const pushQueue = () => {
-    const { queue, index } = usePlayerStore.getState();
+    const { queue, index, source } = usePlayerStore.getState();
     // The queue holds the station, not what it happens to be playing.
     const favorites = favoriteIds();
     setQueue(
       queue.map((s) => toCarTrack(s, null, favorites)),
       index,
+      source ?? undefined,
     );
   };
   // What the car was last told, and when: it runs the position forward on
@@ -289,7 +290,9 @@ export function startCarAutoSync(): void {
       positionMs: Math.round(positionSec * 1000),
       shuffle,
       repeatMode: repeat,
-      error: playbackError,
+      // Left out rather than sent as null: a null crosses as the four letters
+      // of "null" on the other side (see `setPlaybackState` in CarAutoModule).
+      error: playbackError ?? undefined,
     });
   };
   const positionDrifted = () => {

@@ -7,6 +7,24 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.9.7] - 2026-09-12
+
+### Changed
+
+- The car's queue screen says where the queue came from — the album, the playlist, "For you" — instead of heading a list of songs with nothing at all.
+
+## [0.9.6] - 2026-09-12
+
+### Fixed
+
+- Choosing a song in the car did nothing, now and then. The car can start the app itself and browse the tree written to disk by an earlier run, while the table that turns a row back into a song is built fresh every time and is not always ready. A tap it could not answer was dropped in silence; it now asks the server for that song and plays it.
+
+## [0.9.5] - 2026-09-12
+
+### Fixed
+
+- Tapping a song in the car showed "null" beside a warning sign, with nothing about the track, and the split screen beside a map offered only "Tap to open". The app tells the car what went wrong when a song will not play, and sends nothing at all when nothing has; but nothing crossed as a JSON null, and on the other side a null is read back as the four letters of the word. The car was told the reason playback had stopped was "null", believed it, and stopped. Nothing is sent now when there is nothing to say, and a null is understood as silence on the way in.
+
 ## [0.9.4] - 2026-09-12
 
 ### Fixed
@@ -2060,6 +2078,9 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.9.7]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.7
+[0.9.6]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.6
+[0.9.5]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.5
 [0.9.4]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.4
 [0.9.3]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.3
 [0.9.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.2

@@ -48,6 +48,9 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
   // a more refined version of queue[index].
   @Volatile private var queue: List<NowPlaying> = emptyList()
   @Volatile private var currentIndex: Int = 0
+  /** What the queue came from — an album, a playlist, "For you". It heads the
+   *  car's queue screen, which is otherwise a list from nowhere. */
+  @Volatile private var queueTitle: String? = null
   @Volatile private var playing: Boolean = false
   @Volatile private var positionMs: Long = 0L
   @Volatile private var positionUpdatedAt: Long = System.currentTimeMillis()
@@ -109,8 +112,9 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
     invalidateState()
   }
 
-  fun applyQueue(items: List<NowPlaying>, index: Int) = runOnMain {
+  fun applyQueue(items: List<NowPlaying>, index: Int, title: String? = null) = runOnMain {
     val was = nowPlaying
+    queueTitle = title
     queue = items
     currentIndex = index.coerceIn(0, (items.size - 1).coerceAtLeast(0))
     if (items.isNotEmpty()) {
@@ -224,6 +228,7 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
       .setPlayerError(failure)
       .setPlaybackState(if (np != null && failure == null) Player.STATE_READY else Player.STATE_IDLE)
       .setPlaylist(items)
+      .setPlaylistMetadata(MediaMetadata.Builder().setTitle(queueTitle).build())
       .setCurrentMediaItemIndex(if (items.isEmpty()) 0 else activeIndex)
       .setContentPositionMs(extrapolated.coerceAtLeast(0L))
       .setShuffleModeEnabled(shuffle)

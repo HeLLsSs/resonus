@@ -91,7 +91,8 @@ class CarAutoModule : Module() {
           ),
         )
       }
-      player.applyQueue(items, o.optInt("currentIndex", 0))
+      val title = if (o.isNull("title")) null else o.optString("title").takeIf { it.isNotEmpty() }
+      player.applyQueue(items, o.optInt("currentIndex", 0), title)
     }
 
     Function("setQueueIndex") { index: Int ->
@@ -110,8 +111,11 @@ class CarAutoModule : Module() {
         "all" -> Player.REPEAT_MODE_ALL
         else -> Player.REPEAT_MODE_OFF
       }
-      // Empty and absent mean the same thing here: nothing is wrong.
-      val error = o.optString("error").takeIf { it.isNotEmpty() }
+      // Absent, empty, and JSON null all mean the same thing here: nothing is
+      // wrong. The null has to be asked about on its own — `optString` hands
+      // back the four letters of "null" for it rather than nothing, which is
+      // exactly what the car ended up showing as the reason it had stopped.
+      val error = if (o.isNull("error")) null else o.optString("error").takeIf { it.isNotEmpty() }
       player.applyPlaybackState(isPlaying, posMs, shuf, repeat, error)
     }
   }

@@ -107,8 +107,12 @@ export function setNowPlaying(track: CarTrack | null): void {
   native?.setNowPlaying(track ? JSON.stringify(track) : null);
 }
 
-export function setQueue(tracks: CarTrack[], currentIndex: number): void {
-  native?.setQueue(JSON.stringify({ tracks, currentIndex }));
+/**
+ * The queue, and what it came from. The name heads the car's queue screen,
+ * which without it is a list of songs with nothing saying where they are from.
+ */
+export function setQueue(tracks: CarTrack[], currentIndex: number, title?: string): void {
+  native?.setQueue(JSON.stringify({ tracks, currentIndex, title }));
 }
 
 export function setPlaybackState(state: {
@@ -117,8 +121,9 @@ export function setPlaybackState(state: {
   shuffle: boolean;
   repeatMode: 'off' | 'all' | 'one';
   /** What the player gave up on, for the car to put on its screen. A phone in
-   *  a pocket shows its toast to nobody. */
-  error?: string | null;
+   *  a pocket shows its toast to nobody. Left out when nothing is wrong; never
+   *  null, which does not survive the crossing (see `CarAutoModule`). */
+  error?: string;
 }): void {
   native?.setPlaybackState(JSON.stringify(state));
 }

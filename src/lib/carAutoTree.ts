@@ -27,6 +27,7 @@ import { songsLabel, tg } from '@/i18n';
 import { greetingHours } from '@/i18n/languages';
 import { bookmarksAvailable, loadBookmarks, useBookmarks } from '@/lib/bookmarks';
 import { formatDuration } from '@/lib/format';
+import { bump } from '@/lib/perfLog';
 import { playForYou } from '@/lib/forYouMix';
 import { getPlaylists as getLocalPlaylists } from '@/lib/localQueries';
 import { navifindActive } from '@/lib/navifind';
@@ -1427,8 +1428,23 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
         return;
       }
     }
-    const single = resolve.songById.get(songId);
-    if (single) await store.playQueue([single], 0);
+    // Nothing in the maps for it. That is not a strange case: the car can
+    // start this runtime itself and browse the tree written to disk by an
+    // earlier one, while the maps that turn a row back into a song are built
+    // fresh each time and may not be ready yet. Giving up here is how a tap
+    // came to do nothing at all, now and then, with no way to tell why.
+    const single =
+      resolve.songById.get(songId) ??
+      (await data
+        .getSongsByIds([songId])
+        .then((found) => found[0])
+        .catch(() => undefined));
+    if (single) {
+      bump('car · played by asking the server');
+      await store.playQueue([single], 0);
+    } else {
+      bump('car · tap resolved to nothing');
+    }
     return;
   }
 
