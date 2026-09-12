@@ -11,7 +11,7 @@ import { useTheme } from '@/theme';
 // guide explains what to do with them. The help block is in English on purpose:
 // it's mostly read by those who don't find their language, so English is the
 // most universal.
-const TRANSLATIONS_URL = 'https://github.com/juananzzz/resonus/blob/main/TRANSLATING.md';
+const TRANSLATIONS_URL = 'https://github.com/HeLLsSs/resonus/blob/main/TRANSLATING.md';
 
 // Derived from the single source: a row added there appears here by itself.
 const LANGUAGE_OPTIONS = LANGUAGES.map((l) => ({ value: l.code, label: l.name }));

@@ -564,7 +564,6 @@
     // ── Settings › About ─────────────────────────────────────────────────────
     "Version": "Which version of Resonus this is. Tapping it five times opens Diagnostics",
     "What's new": "Opens what changed in this version",
-    "Support Resonus": "The row for whoever wants to give something. The app needs nothing to work",
 
     // ── Radio ────────────────────────────────────────────────────────────────
     "Station name": "The name field when adding an internet radio station",

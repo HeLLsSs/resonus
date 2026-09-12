@@ -13,7 +13,7 @@ import { useToast } from '@/store/toast';
 import { useUpdate } from '@/store/update';
 import { useTheme } from '@/theme';
 
-const REPO_URL = 'https://github.com/juananzzz/resonus';
+const REPO_URL = 'https://github.com/HeLLsSs/resonus';
 /**
  * The bug form itself, not the page that asks which kind of issue this is:
  * whoever pressed a button called "Report a bug" has already answered that.
@@ -39,8 +39,6 @@ function bugReportUrl(version: string | undefined): string {
  * the screen each question is about rather than only this one.
  */
 const FAQ_URL = `${REPO_URL}/blob/main/docs/FAQ.md`;
-const DISCORD_URL = 'https://discord.gg/pecE8MTPVr';
-const KOFI_URL = 'https://ko-fi.com/juananzzz';
 
 export default function AboutSettings() {
   // Repaints on a change of appearance or accent: a stack keeps this screen
@@ -88,7 +86,7 @@ export default function AboutSettings() {
           label={t("What's new")}
           onPress={() => Linking.openURL(`${REPO_URL}/releases`)}
         />
-        {/* Everything from here to Ko-fi leaves the app. */}
+        {/* Everything from here to the bug report leaves the app. */}
         {/* Above the bug report because half of what arrives there is a
             question, and this is where the answer already is. */}
         <SettingRow
@@ -99,26 +97,13 @@ export default function AboutSettings() {
         <SettingRow
           icon="logo-github"
           label="GitHub"
-          description="juananzzz/resonus"
+          description="HeLLsSs/resonus"
           onPress={() => Linking.openURL(REPO_URL)}
         />
         <SettingRow
           icon="bug-outline"
           label={t('Report a bug')}
           onPress={() => Linking.openURL(bugReportUrl(version))}
-        />
-        <SettingRow
-          icon="logo-discord"
-          label="Discord"
-          onPress={() => Linking.openURL(DISCORD_URL)}
-        />
-        {/* Last of the links and never in the way: the app asks for nothing to
-            work, and this is the one place where it is fair to mention that
-            somebody is paying for the time it takes. */}
-        <SettingRow
-          icon="cafe-outline"
-          label={t('Support Resonus')}
-          onPress={() => Linking.openURL(KOFI_URL)}
         />
         {/* Asking now sits against the switch that asks by itself: same
             question, one of them answered on the spot and the other left

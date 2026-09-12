@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.9.2] - 2026-09-12
+
+### Changed
+
+- Settings > About points at this fork: what's new, the FAQ, the repository, the bug report and the translating guide. The Discord and the Ko-fi are gone from it, both being the upstream project's; the README is where that project is credited.
+
 ## [0.9.1] - 2026-09-12
 
 ### Fixed
@@ -2038,6 +2044,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.9.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.2
 [0.9.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.1
 [0.9.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.0
 [0.8.8]: https://github.com/HeLLsSs/resonus/releases/tag/v0.8.8
