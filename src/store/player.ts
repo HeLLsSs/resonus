@@ -117,6 +117,7 @@ import { useOfflineQueue } from './offlineQueue';
 import { usePlayCounts } from './playCounts';
 import { usePlayHistory } from './playHistory';
 import { cachedUri, KEEP_AFTER, keepIfWorthIt, touchCached } from './playCache';
+import { davHeaders, davUrlFor, parseDavId } from './webdav';
 import { useQueueHistory } from './queueHistory';
 import { scrobbleThresholdSec, useSettings, type TranscodeFormat } from './settings';
 import { useToast } from './toast';
@@ -369,6 +370,9 @@ function downloadedUri(song: Song): string | undefined {
  * stream cannot be played and must be skipped.
  */
 function playableOffline(song: Song | null | undefined): boolean {
+  // A share needs the network as much as a server does, whatever its song
+  // looks like otherwise.
+  if (song && parseDavId(song.id)) return !!downloadedUri(song);
   return !!song && (!!song.url || !!song.localUri || !!downloadedUri(song));
 }
 
@@ -454,6 +458,21 @@ function sourceFor(song: Song, timeOffsetSec = 0): AudioSource {
   // and not the stream URL: this reaches every connected controller, and the
   // URL carries the credentials.
   const mediaId = song.id;
+  // A file on a WebDAV share. Its address is built from the share rather than
+  // carried on the song, and what opens it rides in a header: the uri reaches
+  // the media session, and from there every app that can read one, so it must
+  // not carry a password.
+  const dav = davUrlFor(song.id);
+  if (dav) {
+    const parsed = parseDavId(song.id);
+    bump('player · played from a share');
+    return {
+      uri: dav,
+      metadata,
+      mediaId,
+      ...(parsed ? { headers: davHeaders(parsed.sourceId) } : {}),
+    };
+  }
   if (song.url) return { uri: song.url, metadata, mediaId };
   const local = localSourceFor(song);
   // Counted where the decision is acted on, once per install, and not inside

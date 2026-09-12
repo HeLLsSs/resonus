@@ -2,7 +2,7 @@
   "expo": {
     "name": "Resonuls",
     "slug": "resonuls",
-    "version": "0.10.0",
+    "version": "0.11.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "resonuls",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.hellsss.resonuls",
-      "versionCode": 70,
+      "versionCode": 71,
       "adaptiveIcon": {
         "backgroundColor": "#0D0E0F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

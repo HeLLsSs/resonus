@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1138 of them.
+Every string the app can show, under the screen it shows up on. 1154 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -89,7 +89,6 @@ you are actually typing into, which is easier than reading it here.
 | `Send to another app` | A value of `Export`: hand the file to another app |
 | `Sending to another app isn't available on this device` | Toast: this phone has nothing that takes a shared file |
 | `Server didn't allow downloads` | Warning after sharing: the link was made and works, but the call that turns downloading on did not go through |
-| `Share` | Make a link on the server that others can open. Getting the file itself out is `Export` |
 | `Share “{name}”` | The sheet's title, with what is being shared |
 | `Size` | The size of the quick grid tiles |
 | `Sleep timer` | Stop playing after a while, for falling asleep to |
@@ -484,7 +483,6 @@ you are actually typing into, which is easier than reading it here.
 | `Subsonic server` | The type subtitle under Navidrome's logo, the same kind of line as `Media server` |
 | `Subsonic-compatible` | The subtitle under OpenSubsonic / Ampache |
 | `The music on your device is not touched.` | The rest of that warning: only the account's own downloads go |
-| `Username` | The username field |
 | `We need permission to read your device music.` | Android has not granted access to the phone's files yet |
 
 ## Lyrics
@@ -591,7 +589,6 @@ you are actually typing into, which is easier than reading it here.
 | `Description` | The playlist's own description: what whoever made it wrote about it |
 | `Edit playlist` | Menu action, and the title of the sheet it opens |
 | `Export as M3U` |  |
-| `Name` | The Name field when editing a playlist or a station |
 | `Playlist` | A list saved on the server. Not the queue |
 | `Playlist deleted` | Toast, with an undo button |
 | `Playlist updated` | Toast after saving a change |
@@ -601,7 +598,6 @@ you are actually typing into, which is easier than reading it here.
 | `Remove cover` | Screen reader label for the small x on a chosen picture |
 | `Removed from playlist` | Toast, with an undo button next to it |
 | `Sending to another app isn't available on this device` | Toast: this phone has nothing that takes a shared file |
-| `Share` | Make a link on the server that others can open. Getting the file itself out is `Export` |
 | `That file is too big to be a playlist.` |  |
 | `This playlist is empty` | Empty state heading |
 | `Turn on` | The confirm button of that question |
@@ -657,7 +653,6 @@ you are actually typing into, which is easier than reading it here.
 | `Delete station` | Menu action, in red |
 | `Edit station` | Title of the same sheet when changing one |
 | `Find a station` | The search box's placeholder on the radio screen |
-| `Name` | The Name field when editing a playlist or a station |
 | `No radio stations` | Empty state heading |
 | `Pin to top` | Keep this at the top of its list, above everything else. `Unpin` undoes it |
 | `Radio` | Internet radio stations. Most languages keep the word |
@@ -749,7 +744,6 @@ you are actually typing into, which is easier than reading it here.
 | `Nothing shared yet. Share a song, an album or a playlist and it shows up here.` |  |
 | `Password changed` |  |
 | `Server` |  |
-| `Share` | Make a link on the server that others can open. Getting the file itself out is `Export` |
 | `Share links` |  |
 | `Share links live on the server: come back online to see them.` |  |
 | `Sharing is turned off on this server, or not allowed for this account.` |  |
@@ -758,7 +752,6 @@ you are actually typing into, which is easier than reading it here.
 | `The link stops working for everyone who has it.` |  |
 | `The new passwords don't match` |  |
 | `This server doesn't let you edit your own account` |  |
-| `Username` | The username field |
 | `Your password is changed on the server, not from here.` |  |
 
 ## Settings › Backup
@@ -1039,7 +1032,6 @@ you are actually typing into, which is easier than reading it here.
 | `Testing…` | While the check above runs |
 | `This speaker is fed one continuous stream, so it cannot move within a track.` |  |
 | `Use Music Assistant` |  |
-| `Username` | The username field |
 | `Your Music Assistant account. It is kept on the phone and sent only to sign in.` |  |
 
 ## Settings › Navifind
@@ -1367,6 +1359,25 @@ you are actually typing into, which is easier than reading it here.
 | `Theme` | The screen where the appearance and the accent colour are chosen, and the name of the row that opens it |
 | `Use the system colors` |  |
 
+## Settings › Webdav
+
+| String | What it is |
+| --- | --- |
+| `A WebDAV share — Nextcloud, ownCloud, a NAS — browsed as folders. Nothing is scanned and nothing is copied: what you open plays straight from it, so a share works the moment it is added.` |  |
+| `Add a share` |  |
+| `Add this share` |  |
+| `Address` | The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box |
+| `An app password rather than your account one, where the server offers them.` | The line under “Password”, explaining it |
+| `Forget this share` |  |
+| `Forgetting a share takes its password with it. Nothing on the server is touched.` |  |
+| `Network shares` |  |
+| `On Nextcloud, make an app password under Settings › Security rather than using your account password: it opens the files and nothing else, and you can revoke it on its own.` |  |
+| `Share added.` |  |
+| `That address could not be reached. Nothing was saved.` |  |
+| `That address did not answer, or the password was refused. Nothing was saved.` |  |
+| `Trying…` |  |
+| `Your shares` |  |
+
 ## Settings › Youtube
 
 | String | What it is |
@@ -1468,7 +1479,6 @@ you are actually typing into, which is easier than reading it here.
 | `is not` |  |
 | `Last played` |  |
 | `Limit` |  |
-| `Name` | The Name field when editing a playlist or a station |
 | `New smart playlist` |  |
 | `No` | A setting value meaning none or zero, not the answer to a question: no crossfade, no seek buttons |
 | `No limit` |  |
@@ -1519,6 +1529,15 @@ you are actually typing into, which is easier than reading it here.
 | `Top albums` |  |
 | `Top artists` |  |
 | `Top songs` |  |
+
+## Webdav
+
+| String | What it is |
+| --- | --- |
+| `Network shares` |  |
+| `Nothing here` |  |
+| `That folder could not be read. The share may be offline.` |  |
+| `That share is gone` |  |
 
 ## Youtube
 
@@ -1608,6 +1627,7 @@ you are actually typing into, which is easier than reading it here.
 | `Mix of “{name}”` | What the player calls the queue once it has grown past its album into songs the app picked itself. `{name}` is the song it was grown from |
 | `More` | A "see more" action, and the third button of the selection bar, the one that opens the rest of what it can do |
 | `More options` | Read out by the screen reader for the three-dot button, which is ⋮ on a song row and in the player and ⋯ in a screen's header |
+| `Name` | The Name field when editing a playlist or a station |
 | `New playlist` | Row at the top of the playlist picker, and the button on an empty library: make one |
 | `No results` | Nothing matched what was typed |
 | `No results for “{q}”` | Empty state. `{q}` is what was typed |
@@ -1636,6 +1656,7 @@ you are actually typing into, which is easier than reading it here.
 | `Search` | The search tab, and the action of searching |
 | `Select all` | Tick every song in the list at once |
 | `Server default` | Codec option meaning "let the server decide" what to transcode to |
+| `Share` | Make a link on the server that others can open. Getting the file itself out is `Export` |
 | `Show all` | Two places, one word: it opens the full list of what a row is showing a few of, and it is the way out of a list narrowed to the downloaded or favorite songs |
 | `Show only` | Sort sheet: the heading over the two narrowings that hide part of the list for as long as you are on the screen. A filter of the moment, not a setting and not a smart playlist |
 | `Shuffle` | Play in random order |
@@ -1654,6 +1675,7 @@ you are actually typing into, which is easier than reading it here.
 | `Undo` | The button in a toast that takes back what just happened. It is there for a few seconds |
 | `Unknown album` | Fallback when the file and the server have no album |
 | `Unknown artist` | Fallback when the file and the server have no artist |
+| `Username` | The username field |
 | `View` | Title of the menu that chooses how a collection is drawn, and the label of the button that opens it. A noun: what you are looking at, not the verb |
 | `View cover` | The same as `View image`, for album and playlist artwork |
 

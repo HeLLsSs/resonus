@@ -34,6 +34,8 @@ interface WebdavState {
 }
 
 const KEY = 'resonus.webdav';
+/** What marks a song as living on a share. */
+const DAV_PREFIX = 'dav:';
 const secretKey = (id: string) => `resonus.webdav.${id}`;
 
 export const useWebdav = create<WebdavState>(() => ({ sources: [], hydrated: false }));
@@ -42,7 +44,16 @@ export async function hydrateWebdav(): Promise<void> {
   try {
     const raw = await getItem(KEY);
     const sources = raw ? (JSON.parse(raw) as DavSource[]) : [];
-    useWebdav.setState({ sources: Array.isArray(sources) ? sources : [], hydrated: true });
+    const kept = Array.isArray(sources) ? sources : [];
+    useWebdav.setState({ sources: kept, hydrated: true });
+    // The passwords come out of the secure store once, so that starting a song
+    // never has to wait for it.
+    await Promise.all(
+      kept.map(async (source) => {
+        const password = await passwordFor(source.id);
+        if (password) headerCache.set(source.id, { Authorization: `Basic ${basic(source.user, password)}` });
+      }),
+    );
   } catch {
     useWebdav.setState({ sources: [], hydrated: true });
   }
@@ -79,10 +90,50 @@ export function basic(user: string, password: string): string {
   return globalThis.btoa(utf8);
 }
 
+/**
+ * The headers each share needs, kept in memory for the one caller that cannot
+ * wait for them: the player builds its source synchronously, and reading the
+ * secure store is not. Filled when the shares are read and whenever one is
+ * saved, so it is there before anything can be played.
+ */
+const headerCache = new Map<string, Record<string, string>>();
+
+/** What a request to this share has to carry, for a caller that cannot await.
+ *  Empty until the share has been read in, which is before any screen. */
+export function davHeaders(sourceId: string): Record<string, string> {
+  return headerCache.get(sourceId) ?? {};
+}
+
+/**
+ * How a file on a share is named as a song: the share it is on and the path
+ * within it. Both are needed later, and neither is a secret.
+ */
+export function davSongId(sourceId: string, path: string): string {
+  return `${DAV_PREFIX}${sourceId}|${path}`;
+}
+
+/** The share and path behind a song id, or null for a song of anything else. */
+export function parseDavId(id: string | undefined): { sourceId: string; path: string } | null {
+  if (!id?.startsWith(DAV_PREFIX)) return null;
+  const rest = id.slice(DAV_PREFIX.length);
+  const at = rest.indexOf('|');
+  if (at < 0) return null;
+  return { sourceId: rest.slice(0, at), path: rest.slice(at + 1) };
+}
+
+/** Where to fetch a song of a share, or undefined if its share is gone. */
+export function davUrlFor(id: string): string | undefined {
+  const parsed = parseDavId(id);
+  if (!parsed) return undefined;
+  const source = useWebdav.getState().sources.find((s) => s.id === parsed.sourceId);
+  return source ? urlFor(source, parsed.path) : undefined;
+}
+
 /** Adds a share, or replaces one of the same id. The password goes to the
  *  secure store and nowhere else. */
 export async function saveSource(source: DavSource, password: string): Promise<void> {
   await SecureStore.setItemAsync(secretKey(source.id), password);
+  headerCache.set(source.id, { Authorization: `Basic ${basic(source.user, password)}` });
   const rest = useWebdav.getState().sources.filter((s) => s.id !== source.id);
   const sources = [...rest, source];
   useWebdav.setState({ sources });
@@ -92,6 +143,7 @@ export async function saveSource(source: DavSource, password: string): Promise<v
 /** Forgets a share, password included. */
 export async function forgetSource(id: string): Promise<void> {
   await SecureStore.deleteItemAsync(secretKey(id)).catch(() => {});
+  headerCache.delete(id);
   const sources = useWebdav.getState().sources.filter((s) => s.id !== id);
   useWebdav.setState({ sources });
   await setItem(KEY, JSON.stringify(sources)).catch(() => {});

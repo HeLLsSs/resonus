@@ -116,6 +116,7 @@ export default function SettingsScreen() {
     // plays them from the server's own library rather than through the phone.
     { key: 'music-assistant', title: 'Music Assistant', icon: 'musical-notes-outline' as const },
     // Theme lives inside Appearance (row with chevron, like Language).
+    { key: 'webdav', title: 'Network shares', icon: 'folder-outline' as const },
     { key: 'personalization', title: 'Appearance', icon: 'color-palette-outline' as const },
     { key: 'about', title: 'About::app', icon: 'information-circle-outline' as const },
     { key: 'backup', title: 'Backup & restore', icon: 'archive-outline' as const },

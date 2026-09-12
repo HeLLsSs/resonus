@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.11.0] - 2026-09-12
+
+### Added
+
+- Network shares. A WebDAV share — Nextcloud, ownCloud, a NAS — is added under Settings > Network shares and browsed as folders: open one, press a song, and the folder plays as a queue from there. Nothing is scanned and nothing is copied, which is the bargain: a song is named by its filename and has no album, artist or cover, and in exchange a share of ten thousand files works the moment it is added rather than after an evening of reading tags over a network. Seeking works, because the servers serve a byte range. The password goes to the phone's secure store and never into an address: what opens the file rides in a header, so the address that reaches the media session — and every app that can read one — carries nothing.
+
 ## [0.10.0] - 2026-09-12
 
 ### Added
@@ -2102,6 +2108,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.11.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.0
 [0.10.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.10.0
 [0.9.11]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.11
 [0.9.9]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.9

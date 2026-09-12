@@ -35,6 +35,7 @@ import { usePins } from '@/store/pins';
 import { usePlayCounts } from '@/store/playCounts';
 import { initRemoteIntegration, usePlayerStore } from '@/store/player';
 import { hydratePlayCache } from '@/store/playCache';
+import { hydrateWebdav } from '@/store/webdav';
 import { usePlayHistory } from '@/store/playHistory';
 import { useRecentSearches } from '@/store/recentSearches';
 import { useSettings } from '@/store/settings';
@@ -117,6 +118,9 @@ function loadProfile(): void {
     // What earlier listening kept, so the player can reach for it instead of
     // the network from the first song.
     void hydratePlayCache();
+    // The shares, and the credentials that open them, before anything can be
+    // asked to play from one.
+    void hydrateWebdav();
   });
   // After the session is restored, never before: the downloads store reads
   // the account's own catalog, and with no account yet it falls back to

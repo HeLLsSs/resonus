@@ -1145,5 +1145,21 @@
   "Empty what was kept": "Vider ce qui a été gardé",
   "Nothing kept yet": "Rien de gardé pour l'instant",
   "How much to keep": "Quantité à garder",
-  "The oldest listens go when it is full.": "Les écoutes les plus anciennes partent quand c'est plein."
+  "The oldest listens go when it is full.": "Les écoutes les plus anciennes partent quand c'est plein.",
+  "That address did not answer, or the password was refused. Nothing was saved.": "Cette adresse n'a pas répondu, ou le mot de passe a été refusé. Rien n'a été enregistré.",
+  "Share added.": "Partage ajouté.",
+  "That address could not be reached. Nothing was saved.": "Cette adresse est injoignable. Rien n'a été enregistré.",
+  "Network shares": "Partages réseau",
+  "A WebDAV share — Nextcloud, ownCloud, a NAS — browsed as folders. Nothing is scanned and nothing is copied: what you open plays straight from it, so a share works the moment it is added.": "Un partage WebDAV — Nextcloud, ownCloud, un NAS — parcouru par dossiers. Rien n'est analysé ni copié : ce que tu ouvres se lit directement depuis lui, si bien qu'un partage fonctionne dès qu'il est ajouté.",
+  "Your shares": "Tes partages",
+  "Forget this share": "Oublier ce partage",
+  "Forgetting a share takes its password with it. Nothing on the server is touched.": "Oublier un partage emporte son mot de passe. Rien n'est touché sur le serveur.",
+  "Add a share": "Ajouter un partage",
+  "An app password rather than your account one, where the server offers them.": "Un mot de passe d'application plutôt que celui de ton compte, si le serveur en propose.",
+  "On Nextcloud, make an app password under Settings › Security rather than using your account password: it opens the files and nothing else, and you can revoke it on its own.": "Sur Nextcloud, crée un mot de passe d'application dans Paramètres › Sécurité plutôt que d'utiliser celui de ton compte : il n'ouvre que les fichiers, et tu peux le révoquer seul.",
+  "Trying…": "Essai en cours…",
+  "Add this share": "Ajouter ce partage",
+  "That share is gone": "Ce partage n'existe plus",
+  "That folder could not be read. The share may be offline.": "Ce dossier n'a pas pu être lu. Le partage est peut-être hors ligne.",
+  "Nothing here": "Rien ici"
 }

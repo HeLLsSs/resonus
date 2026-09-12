@@ -1143,5 +1143,21 @@
   "Empty what was kept": "Empty what was kept",
   "Nothing kept yet": "Nothing kept yet",
   "How much to keep": "How much to keep",
-  "The oldest listens go when it is full.": "The oldest listens go when it is full."
+  "The oldest listens go when it is full.": "The oldest listens go when it is full.",
+  "That address did not answer, or the password was refused. Nothing was saved.": "That address did not answer, or the password was refused. Nothing was saved.",
+  "Share added.": "Share added.",
+  "That address could not be reached. Nothing was saved.": "That address could not be reached. Nothing was saved.",
+  "Network shares": "Network shares",
+  "A WebDAV share — Nextcloud, ownCloud, a NAS — browsed as folders. Nothing is scanned and nothing is copied: what you open plays straight from it, so a share works the moment it is added.": "A WebDAV share — Nextcloud, ownCloud, a NAS — browsed as folders. Nothing is scanned and nothing is copied: what you open plays straight from it, so a share works the moment it is added.",
+  "Your shares": "Your shares",
+  "Forget this share": "Forget this share",
+  "Forgetting a share takes its password with it. Nothing on the server is touched.": "Forgetting a share takes its password with it. Nothing on the server is touched.",
+  "Add a share": "Add a share",
+  "An app password rather than your account one, where the server offers them.": "An app password rather than your account one, where the server offers them.",
+  "On Nextcloud, make an app password under Settings › Security rather than using your account password: it opens the files and nothing else, and you can revoke it on its own.": "On Nextcloud, make an app password under Settings › Security rather than using your account password: it opens the files and nothing else, and you can revoke it on its own.",
+  "Trying…": "Trying…",
+  "Add this share": "Add this share",
+  "That share is gone": "That share is gone",
+  "That folder could not be read. The share may be offline.": "That folder could not be read. The share may be offline.",
+  "Nothing here": "Nothing here"
 }
