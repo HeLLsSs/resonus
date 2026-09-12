@@ -93,8 +93,34 @@ const THIS_HOUR = 2;
  *  this file knows nothing of clocks or of how a day is cut up. */
 export type AtThisHour = (playedAt: number) => boolean;
 
-/** Counts each name, the plays of this hour counting double, and keeps how
- *  many plays there really were beside it. */
+/**
+ * How little of a song has to be heard for the play to mean the opposite of a
+ * taste.
+ *
+ * A song is written into the history the moment it starts, so the one skipped
+ * after three seconds used to count exactly like the one heard through. A
+ * fifth of the way in is generous — nobody reaches it by accident, and past it
+ * somebody was listening.
+ */
+const SKIPPED = 0.2;
+
+/**
+ * What one play is worth: nothing at all if it was skipped, and otherwise the
+ * share of the song that was heard, so half a song counts for half a taste.
+ *
+ * A play with no share recorded counts in full. Those are the entries written
+ * before any of this existed, and the songs a server gave no duration for:
+ * not knowing how much was heard is not evidence that it was rejected.
+ */
+function worth(entry: HistoryEntry): number {
+  if (entry.heard === undefined) return 1;
+  if (entry.heard < SKIPPED) return 0;
+  return Math.min(1, entry.heard);
+}
+
+/** Counts each name, weighted by how much of each song was actually heard and
+ *  doubled for the plays of this hour, and keeps the count of the plays that
+ *  were not skipped beside it. */
 function tally(
   history: HistoryEntry[],
   nameOf: (entry: HistoryEntry) => string | undefined,
@@ -104,8 +130,10 @@ function tally(
   for (const entry of history) {
     const name = nameOf(entry)?.trim();
     if (!name) continue;
+    const heard = worth(entry);
+    if (heard === 0) continue;
     const now = counts.get(name) ?? { weight: 0, plays: 0 };
-    now.weight += atThisHour?.(entry.playedAt) ? THIS_HOUR : 1;
+    now.weight += heard * (atThisHour?.(entry.playedAt) ? THIS_HOUR : 1);
     now.plays += 1;
     counts.set(name, now);
   }

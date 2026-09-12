@@ -44,12 +44,27 @@ export interface HistoryEntry {
   song: Song;
   /** Time of last play (ms). */
   playedAt: number;
+  /**
+   * How much of it was actually heard, 0 to 1, or undefined for an entry
+   * written before this was recorded.
+   *
+   * A play is written down the moment a track starts, because that is when the
+   * history is worth showing. But a song skipped after three seconds went into
+   * it exactly like one heard to the end, and everything built on this — the
+   * mixes, "For you", what counts as a favourite artist — was reading a taste
+   * out of what somebody had rejected. This is closed off when the track is
+   * left, so the entry says which of the two it was.
+   */
+  heard?: number;
 }
 
 interface PlayHistoryState {
   entries: HistoryEntry[];
   hydrated: boolean;
   record: (song: Song) => void;
+  /** Closes off the entry for a song that has just been left, with the share of
+   *  it that was heard. Ignored for a song that is not the one at the top. */
+  markHeard: (songId: string, heard: number) => void;
   /** Clears the history. Returns the function that restores it (for the «Undo»
    *  toast), or nothing if it was already empty. */
   clear: () => (() => void) | undefined;
@@ -84,6 +99,20 @@ export const usePlayHistory = create<PlayHistoryState>((set, get) => ({
     const entries = [{ song, playedAt: Date.now() }, ...rest].slice(0, MAX);
     set({ entries });
     scheduleSave(key, entries);
+  },
+
+  markHeard: (songId, heard) => {
+    const entries = get().entries;
+    const top = entries[0];
+    // Only the one just left, and only upward: a song played twice in a row
+    // keeps the better of the two listens, and a pause near the start does not
+    // erase the fact that it was heard through the first time.
+    if (!top || top.song.id !== songId) return;
+    const share = Math.min(1, Math.max(0, heard));
+    if (share <= (top.heard ?? 0)) return;
+    const next = [{ ...top, heard: share }, ...entries.slice(1)];
+    set({ entries: next });
+    scheduleSave(storageKey(), next);
   },
 
   clear: () => {

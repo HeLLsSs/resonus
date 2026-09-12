@@ -40,6 +40,27 @@ describe('daySlot', () => {
   });
 });
 
+describe('timeOfDayMix, against what was actually heard', () => {
+  it('builds on the songs that were listened to, not the ones skipped past', () => {
+    const kept = song({ id: 'kept', artist: 'Kept', artistId: 'ar-kept' });
+    const skipped = song({ id: 'skipped', artist: 'Skipped', artistId: 'ar-skipped' });
+    const history: HistoryEntry[] = [
+      { ...play(13, skipped), heard: 0.02 },
+      { ...play(13, skipped), heard: 0.01 },
+      { ...play(13, skipped), heard: 0.03 },
+      { ...play(13, kept), heard: 1 },
+      { ...play(13, kept), heard: 0.9 },
+      { ...play(13, kept), heard: 0.8 },
+    ];
+    const mix = timeOfDayMix(history, 'afternoon', HOURS);
+    assert.ok(mix);
+    assert.ok(
+      mix.covers.length === 0 || !JSON.stringify(mix).includes('ar-skipped'),
+      'a skipped artist should not seed the mix',
+    );
+  });
+});
+
 describe('timeOfDayMix', () => {
   const jazz = song({ id: 'j1', artistId: 'nina', genre: 'Jazz', coverArt: 'c-j1' });
   const jazz2 = song({ id: 'j2', artistId: 'nina', genre: 'Jazz', albumId: 'al-j2' });

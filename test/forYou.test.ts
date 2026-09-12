@@ -57,6 +57,51 @@ describe('topArtists', () => {
   });
 });
 
+describe('topArtists, against what was actually heard', () => {
+  const heard = (s: Song, msAgo: number, share: number) => ({
+    ...play(s, msAgo),
+    heard: share,
+  });
+
+  it('ignores a song that was skipped', () => {
+    const history = [
+      heard(song('a', { artist: 'Skipped' }), 1, 0.02),
+      heard(song('b', { artist: 'Skipped' }), 2, 0.05),
+      heard(song('c', { artist: 'Heard' }), 3, 1),
+      heard(song('d', { artist: 'Heard' }), 4, 1),
+    ];
+    assert.deepEqual(topArtists(history), ['Heard']);
+  });
+
+  it('counts half a song as half a taste', () => {
+    const history = [
+      heard(song('a', { artist: 'Half' }), 1, 0.5),
+      heard(song('b', { artist: 'Half' }), 2, 0.5),
+      heard(song('c', { artist: 'Whole' }), 3, 1),
+      heard(song('d', { artist: 'Whole' }), 4, 1),
+    ];
+    assert.deepEqual(topArtists(history), ['Whole', 'Half']);
+  });
+
+  it('counts a play in full when nothing says how much was heard', () => {
+    // Everything written before this existed, and anything the server gave no
+    // duration for: unknown is not the same as rejected.
+    const history = [
+      play(song('a', { artist: 'Old' }), 1),
+      play(song('b', { artist: 'Old' }), 2),
+    ];
+    assert.deepEqual(topArtists(history), ['Old']);
+  });
+
+  it('leaves out an artist whose only two plays were skipped', () => {
+    const history = [
+      heard(song('a', { artist: 'Skipped' }), 1, 0.01),
+      heard(song('b', { artist: 'Skipped' }), 2, 0.01),
+    ];
+    assert.deepEqual(topArtists(history), []);
+  });
+});
+
 describe('topArtists, weighted by the hour', () => {
   /** Plays made "now", against plays made at some other time. */
   const nowish = (playedAt: number) => playedAt >= NOW - 3600_000;

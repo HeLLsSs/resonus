@@ -1419,6 +1419,51 @@ function endBootQuiet(catchUp = false) {
 }
 
 /** Now playing / history + syncs the queue on track change. */
+/**
+ * The furthest the song being played has got, kept so that leaving it can say
+ * how much of it was heard.
+ *
+ * The store's own position is no use by then: it is back at zero for the song
+ * arriving, and it is the one leaving we have something to say about. The
+ * furthest rather than the last, so that a seek back to the chorus does not
+ * make a song heard through look like one abandoned early.
+ */
+let furthest: { id: string; sec: number; duration: number; written: number } | null = null;
+
+/** How much further the song has to get before the history is told again. One
+ *  twentieth: fine enough to be true, coarse enough not to write on every
+ *  heartbeat. */
+const HEARD_STEP = 0.05;
+
+function rememberHowFar(positionSec: number): void {
+  const { queue, index, durationSec } = usePlayerStore.getState();
+  const song = queue[index];
+  if (!song) return;
+  if (furthest?.id !== song.id) furthest = { id: song.id, sec: 0, duration: 0, written: 0 };
+  if (positionSec > furthest.sec) furthest.sec = positionSec;
+  // The server's duration is a tag and can be wrong or missing; what the
+  // player reports is what is really there.
+  const known = durationSec || song.duration || 0;
+  if (known > furthest.duration) furthest.duration = known;
+  if (furthest.duration <= 0) return;
+  // Written as it goes rather than when the song is left. The last song of a
+  // session is never left — the app is closed on it — and a share that only
+  // landed on a track change would be missing for exactly the song somebody
+  // was listening to most recently.
+  const share = Math.min(1, furthest.sec / furthest.duration);
+  if (share < furthest.written + HEARD_STEP) return;
+  furthest.written = share;
+  usePlayHistory.getState().markHeard(furthest.id, share);
+}
+
+/** The last word on the song being left, in case it moved since the last step. */
+function closeOffHowFar(): void {
+  const last = furthest;
+  furthest = null;
+  if (!last || last.duration <= 0 || last.sec <= 0) return;
+  usePlayHistory.getState().markHeard(last.id, Math.min(1, last.sec / last.duration));
+}
+
 function onTrackChanged(song: Song) {
   // Whatever the last stream announced was about the last stream. The
   // notification was built from it moments ago (this runs right after
@@ -1437,6 +1482,9 @@ function onTrackChanged(song: Song) {
   // Not while the app is still opening: the queue coming back is not somebody
   // listening, and this is a request to the server (see the block above).
   if (!bootQuiet) reportState(st.isPlaying ? 'starting' : 'paused', song, st.positionSec);
+  // The one leaving is closed off before the one arriving is written down, or
+  // its share would land on the wrong entry.
+  closeOffHowFar();
   usePlayHistory.getState().record(song);
   // Warm up lyrics for what is playing. The next song's are warmed too, so
   // swiping in the player shows its card instantly, but a few seconds later:
@@ -2756,6 +2804,7 @@ function onStatus(status: AudioStatus) {
   });
   maybeScrobbleThreshold(positionSec);
   maybeDetectStall(intendPlay, buffering, positionSec);
+  rememberHowFar(positionSec);
   // Queue sync with the server.
   if (status.playing) {
     // Something is actually coming out of the speaker: from here on this

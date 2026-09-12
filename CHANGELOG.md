@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.9.3] - 2026-09-12
+
+### Changed
+
+- What you skip no longer counts as what you like. A song went into the history the moment it started, so one skipped after three seconds sat there exactly like one heard to the end, and everything built on that history — "For you", the mixes on Home, which artists count as favourites — was reading a taste out of a rejection. How much of each song was actually heard is written down as it plays, a play under a fifth of the way in counts for nothing, and the rest counts for the share that was heard. Entries from before this, and songs the server gives no duration for, count in full: not knowing is not the same as rejecting.
+
 ## [0.9.2] - 2026-09-12
 
 ### Changed
@@ -2044,6 +2050,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.9.3]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.3
 [0.9.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.2
 [0.9.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.1
 [0.9.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.9.0

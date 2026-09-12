@@ -126,6 +126,20 @@ function dedupeById(songs: Song[]): Song[] {
   });
 }
 
+/**
+ * How little of a song has to be heard for the play to be a rejection rather
+ * than a taste. A song goes into the history the moment it starts, so without
+ * this a mix is partly built out of what somebody skipped.
+ *
+ * A play with nothing recorded counts: those are the entries written before
+ * the app kept track, and the songs with no duration to be a share of.
+ */
+const SKIPPED = 0.2;
+
+export function wasListenedTo(entry: HistoryEntry): boolean {
+  return entry.heard === undefined || entry.heard >= SKIPPED;
+}
+
 /** Shuffles a copy (Fisher-Yates). */
 function shuffled<T>(items: T[]): T[] {
   const a = items.slice();
@@ -150,9 +164,10 @@ export function timeOfDayMix(
   hours: DayHours,
 ): Mix | null {
   if (entries.length === 0) return null;
-  const inSlot = entries.filter((e) => daySlot(new Date(e.playedAt).getHours(), hours) === slot);
+  const listened = entries.filter(wasListenedTo);
+  const inSlot = listened.filter((e) => daySlot(new Date(e.playedAt).getHours(), hours) === slot);
   const fromSlot = inSlot.length >= MIN_SLOT_PLAYS;
-  const pool = (fromSlot ? inSlot : entries).map((e) => e.song);
+  const pool = (fromSlot ? inSlot : listened).map((e) => e.song);
   const artistSeeds = ranked(pool, (s) => s.artistId ?? s.artist)
     .slice(0, SEED_ARTISTS)
     .map((r) => r.first);
