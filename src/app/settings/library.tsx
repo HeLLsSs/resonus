@@ -2,7 +2,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,7 +14,9 @@ import { clearExportCache } from '@/lib/exportSong';
 import { ensureAudioPermission, folderNameFromUri, pickFolder } from '@/lib/localLibrary';
 import { queryClient } from '@/lib/query';
 import { useAuthStore } from '@/store/auth';
+import { otherServers, serverLabel } from '@/lib/servers';
 import { profileKeyOf, useLibraries } from '@/store/libraries';
+import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
 import { colors, fontSize, radius, SHEET_MAX_WIDTH, spacing, themed, useTheme } from '@/theme';
 
@@ -28,6 +30,16 @@ export default function LibrarySettings() {
   const source = useAuthStore((s) => s.offlineSource);
   const setSource = useAuthStore((s) => s.setOfflineSource);
   const setFolders = useAuthStore((s) => s.setOfflineFolders);
+  // `otherServers` reads the store rather than taking it as an argument, so
+  // the subscription to `profiles` is what makes the row appear and disappear
+  // as servers are added and forgotten.
+  const profiles = useAuthStore((s) => s.profiles);
+  const others = useMemo(
+    () => (offline || !auth ? [] : otherServers()),
+    [profiles, auth, offline],
+  );
+  const searchEveryServer = useSettings((s) => s.searchEveryServer);
+  const setSearchEveryServer = useSettings((s) => s.setSearchEveryServer);
   const toast = useToast((s) => s.show);
   const insets = useSafeAreaInsets();
   // Server libraries (Navidrome multi-library): one switch per folder.
@@ -210,6 +222,31 @@ export default function LibrarySettings() {
             ) : null}
           </>
         )}
+
+        {/* Only worth a row when there is more than one server to search: with
+            a single profile the switch would promise something it cannot do. */}
+        {others.length > 0 ? (
+          <>
+            <Text style={settingsStyles.sectionTitle}>
+              {t('Other servers')}
+            </Text>
+            <Text style={settingsStyles.sectionDescription}>
+              {t(
+                'Searching can ask every server you are signed in to, not only this one. What it finds elsewhere plays, opens and can be starred on the server it came from; the rest of the app stays on this profile.',
+              )}
+            </Text>
+            <SwitchList
+              options={[
+                {
+                  label: t('Search every server'),
+                  description: others.map(serverLabel).join(' · '),
+                  value: searchEveryServer,
+                  onChange: setSearchEveryServer,
+                },
+              ]}
+            />
+          </>
+        ) : null}
 
         {/* Separated from scanning/source: it's maintenance, not configuration. */}
         <Text style={settingsStyles.sectionTitle}>{t('Storage')}</Text>

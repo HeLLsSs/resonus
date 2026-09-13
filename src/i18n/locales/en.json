@@ -551,7 +551,6 @@
   "Equalizer": "Equalizer",
   "Preset": "Preset",
   "Reset bands": "Reset bands",
-  "This device does not offer an equalizer.": "This device does not offer an equalizer.",
   "Tune the sound band by band.": "Tune the sound band by band.",
   "{songs} will be saved to this device.": "{songs} will be saved to this device.",
   "Original": "Original",
@@ -1159,5 +1158,8 @@
   "Add this share": "Add this share",
   "That share is gone": "That share is gone",
   "That folder could not be read. The share may be offline.": "That folder could not be read. The share may be offline.",
-  "Nothing here": "Nothing here"
+  "Nothing here": "Nothing here",
+  "Other servers": "Other servers",
+  "Search every server": "Search every server",
+  "Searching can ask every server you are signed in to, not only this one. What it finds elsewhere plays, opens and can be starred on the server it came from; the rest of the app stays on this profile.": "Searching can ask every server you are signed in to, not only this one. What it finds elsewhere plays, opens and can be starred on the server it came from; the rest of the app stays on this profile."
 }

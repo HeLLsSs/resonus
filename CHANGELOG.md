@@ -7,6 +7,14 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.12.0] - 2026-09-12
+
+### Added
+
+- Searching can ask every server you are signed in to, not only the active one (Settings › Library). Results are laid out this server's first, then each of the others under its name, and what comes from elsewhere plays, opens, downloads and can be starred on the server it came from: an id that arrives from another profile carries that profile with it, the way a file on a WebDAV share does, and every request made about it goes back there. A server that is asleep is skipped rather than turning the whole search into an error. Off by default, and the switch only appears once there is a second server to search.
+- The remote's focus is drawn on Android TV: a green ring around whatever would answer if you pressed OK. Android tracks the focus already and simply never draws it, since a view is only highlighted by its own background and React Native's views have none — so the app was navigable and invisible at the same time. The ring is drawn once, from outside the app, over whatever has the focus, rather than as a style on each of the three hundred-odd pressables. It appears on televisions only.
+- The app installs and runs on Android TV. It declares that it works without a touchscreen, carries the leanback launcher category so a TV lists it, and has a banner for the home row. What it is not is an app designed for a television: the screens are built for a finger and are driven here by the remote's arrow keys, so browsing and playing work while nothing has been laid out for ten feet away.
+
 ## [0.11.2] - 2026-09-12
 
 ### Added
@@ -2121,6 +2129,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.12.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.12.0
 [0.11.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.2
 [0.11.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.1
 [0.11.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.0

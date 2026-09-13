@@ -636,7 +636,6 @@
   "Equalizer": "Égaliseur",
   "Preset": "Préréglage",
   "Reset bands": "Réinitialiser les bandes",
-  "This device does not offer an equalizer.": "Cet appareil ne propose pas d'égaliseur.",
   "Tune the sound band by band.": "Règle le son bande par bande.",
   "{songs} will be saved to this device.": "{songs} seront enregistrés sur cet appareil.",
   "Original": "Original",
@@ -1161,5 +1160,8 @@
   "Add this share": "Ajouter ce partage",
   "That share is gone": "Ce partage n'existe plus",
   "That folder could not be read. The share may be offline.": "Ce dossier n'a pas pu être lu. Le partage est peut-être hors ligne.",
-  "Nothing here": "Rien ici"
+  "Nothing here": "Rien ici",
+  "Other servers": "Autres serveurs",
+  "Search every server": "Chercher sur tous les serveurs",
+  "Searching can ask every server you are signed in to, not only this one. What it finds elsewhere plays, opens and can be starred on the server it came from; the rest of the app stays on this profile.": "La recherche peut interroger tous les serveurs auxquels vous êtes connecté, pas seulement celui-ci. Ce qu'elle trouve ailleurs se lit, s'ouvre et se met en favori sur le serveur d'où il vient ; le reste de l'application reste sur ce profil."
 }

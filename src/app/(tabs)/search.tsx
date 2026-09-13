@@ -2,7 +2,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useFocusEffect, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -26,6 +26,7 @@ import { GenreGridSkeleton } from '@/components/GenreGridSkeleton';
 import { Message } from '@/components/Message';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { TrackRow } from '@/components/TrackRow';
+import { authForKey, parseForeign, serverLabel } from '@/lib/servers';
 import { useDebounce } from '@/hooks/useDebounce';
 import { songsLabel, useT } from '@/i18n';
 import { haptic } from '@/lib/haptics';
@@ -45,6 +46,20 @@ import { centredPadding, useScreenSize } from '@/hooks/useScreenSize';
 /** How wide a genre card wants to be, in dp: two across a phone, and as many
  *  as fit at that size on anything wider (#131). */
 const GENRE_IDEAL = 220;
+
+/**
+ * Which server a result came from, or null for this one.
+ *
+ * Used to label a run of rows rather than each row: with one server nothing is
+ * labelled at all, and with several the name appears once where the answers
+ * change over, which is where somebody would look for it.
+ */
+function serverOf(id: string | undefined): string | null {
+  const parsed = parseForeign(id);
+  if (!parsed) return null;
+  const auth = authForKey(parsed.key);
+  return auth ? serverLabel(auth) : null;
+}
 
 export default function SearchScreen() {
   // Counted, to answer whether a tab you have visited keeps working
@@ -412,25 +427,30 @@ export default function SearchScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('Songs')}</Text>
             {data.songs.map((song, i) => (
-              <TrackRow
-                key={song.id}
-                song={song}
-                isCurrent={playing?.id === song.id}
-                showArtwork={showListArtwork}
-                onPress={() => {
-                  if (song.albumId) {
-                    addRecent({
-                      kind: 'song',
-                      id: song.id,
-                      title: song.title,
-                      artist: song.artist,
-                      coverArt: song.coverArt ?? song.albumId,
-                      href: `/album/${song.albumId}`,
-                    });
-                  }
-                  playQueue(data.songs, i);
-                }}
-              />
+              <Fragment key={song.id}>
+                {serverOf(song.id) &&
+                serverOf(song.id) !== serverOf(data.songs[i - 1]?.id) ? (
+                  <Text style={styles.fromServer}>{serverOf(song.id)}</Text>
+                ) : null}
+                <TrackRow
+                  song={song}
+                  isCurrent={playing?.id === song.id}
+                  showArtwork={showListArtwork}
+                  onPress={() => {
+                    if (song.albumId) {
+                      addRecent({
+                        kind: 'song',
+                        id: song.id,
+                        title: song.title,
+                        artist: song.artist,
+                        coverArt: song.coverArt ?? song.albumId,
+                        href: `/album/${song.albumId}`,
+                      });
+                    }
+                    playQueue(data.songs, i);
+                  }}
+                />
+              </Fragment>
             ))}
           </View>
         ) : null}
@@ -579,6 +599,15 @@ const styles = themed((colors) => ({
     fontSize: fontSize.lg,
     fontWeight: '700',
     marginBottom: spacing.md,
+  },
+  /** Which server the songs under it came from. Only drawn where the answer
+   *  changes, so a search of one server shows none of these at all. */
+  fromServer: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
   recentHeader: {
     flexDirection: 'row',

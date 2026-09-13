@@ -118,6 +118,7 @@ import { usePlayCounts } from './playCounts';
 import { usePlayHistory } from './playHistory';
 import { cachedUri, KEEP_AFTER, keepIfWorthIt, touchCached } from './playCache';
 import { davHeaders, davUrlFor, parseDavId } from './webdav';
+import { foreignSource } from '@/lib/servers';
 import { useQueueHistory } from './queueHistory';
 import { scrobbleThresholdSec, useSettings, type TranscodeFormat } from './settings';
 import { useToast } from './toast';
@@ -471,6 +472,28 @@ function sourceFor(song: Song, timeOffsetSec = 0): AudioSource {
       metadata,
       mediaId,
       ...(parsed ? { headers: davHeaders(parsed.sourceId) } : {}),
+    };
+  }
+  // A track on another signed-in server. Its own address and its own
+  // credentials: asking the active profile for this id would get a 404 at
+  // best, and at worst somebody else's track that happens to share the id.
+  const elsewhere = foreignSource(song.id);
+  if (elsewhere) {
+    const theirHeaders = authHeaders(elsewhere.auth);
+    bump('player · played from another server');
+    return {
+      uri: streamUrl(
+        elsewhere.auth,
+        elsewhere.id,
+        effectiveMaxBitRate(),
+        timeOffsetSec,
+        effectiveStreamFormat(),
+      ),
+      ...(Object.keys(theirHeaders).length > 0
+        ? { headers: theirHeaders }
+        : {}),
+      metadata,
+      mediaId,
     };
   }
   if (song.url) return { uri: song.url, metadata, mediaId };
@@ -1489,11 +1512,21 @@ function rememberHowFar(positionSec: number): void {
   if (before < KEEP_AFTER && share >= KEEP_AFTER) {
     // The same address the player would stream, so what is kept is what the
     // quality setting asks for, and the profile's own headers ride with it.
-    const { auth } = useAuthStore.getState();
+    // Whichever server the track is actually on: keeping it under the active
+    // profile's address would fetch a stranger's id, or nothing at all.
+    const elsewhere = foreignSource(song.id);
+    const auth = elsewhere?.auth ?? useAuthStore.getState().auth;
+    const there = elsewhere?.id ?? song.id;
     if (auth && !song.url && !parseDavId(song.id)) {
       const headers = authHeaders(auth);
       void keepIfWorthIt(song, !!localSourceFor(song) || !!cachedUri(song.id), {
-        uri: streamUrl(auth, song.id, effectiveMaxBitRate(), 0, effectiveStreamFormat()),
+        uri: streamUrl(
+          auth,
+          there,
+          effectiveMaxBitRate(),
+          0,
+          effectiveStreamFormat(),
+        ),
         ...(Object.keys(headers).length > 0 ? { headers } : {}),
       });
     }

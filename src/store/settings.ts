@@ -657,6 +657,14 @@ interface SettingsState {
   playCache: boolean;
   /** How much the listening cache may hold, in gigabytes. */
   playCacheGB: number;
+  /**
+   * Search every signed-in server, not only this one. Off by default: with a
+   * single profile it would change nothing, and with several it turns one
+   * request into one per server, which is a thing to ask for rather than to
+   * discover. What it finds elsewhere plays, opens and stars on the server it
+   * came from (see `lib/servers`).
+   */
+  searchEveryServer: boolean;
   language: Language;
   /** Show format/bitrate/Hi-Res label (player only). */
   showAudioQuality: boolean;
@@ -996,6 +1004,7 @@ interface SettingsState {
   setDownloadFormat: (value: TranscodeFormat) => void;
   setDownloadWifiOnly: (value: boolean) => void;
   setPlayCache: (value: boolean) => void;
+  setSearchEveryServer: (value: boolean) => void;
   setPlayCacheGB: (value: number) => void;
   setLanguage: (language: Language) => void;
   setShowAudioQuality: (value: boolean) => void;
@@ -1139,6 +1148,7 @@ function snapshot(get: () => SettingsState) {
     downloadWifiOnly: s.downloadWifiOnly,
     playCache: s.playCache,
     playCacheGB: s.playCacheGB,
+    searchEveryServer: s.searchEveryServer,
     // `language` is not in the profile blob: it's global (see LANG_KEY).
     showAudioQuality: s.showAudioQuality,
     showRating: s.showRating,
@@ -1261,6 +1271,7 @@ const DEFAULTS = {
   downloadWifiOnly: false,
   playCache: true,
   playCacheGB: 2,
+  searchEveryServer: false,
   language: 'en' as Language,
   showAudioQuality: false,
   showRating: false,
@@ -1447,6 +1458,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setPlayCacheGB: (playCacheGB) => {
     set({ playCacheGB });
+    persist(snapshot(get));
+  },
+
+  setSearchEveryServer: (searchEveryServer) => {
+    set({ searchEveryServer });
     persist(snapshot(get));
   },
 
@@ -2009,6 +2025,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           downloadWifiOnly: boolean;
           playCache: boolean;
           playCacheGB: number;
+          searchEveryServer: boolean;
           language: Language;
           showAudioQuality: string | boolean;
           showRating: boolean;
@@ -2148,6 +2165,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         }
         if (typeof parsed.playCacheGB === 'number' && parsed.playCacheGB > 0) {
           set({ playCacheGB: parsed.playCacheGB });
+        }
+        if (typeof parsed.searchEveryServer === 'boolean') {
+          set({ searchEveryServer: parsed.searchEveryServer });
         }
         if (typeof parsed.downloadWifiOnly === 'boolean') {
           set({ downloadWifiOnly: parsed.downloadWifiOnly });

@@ -4,6 +4,7 @@
  * from the server or the local catalog based on the mode (online/offline).
  */
 import { profileScopeId, useAuthStore } from '@/store/auth';
+import { foreignId, foreignSource, otherServers, serverKey } from '@/lib/servers';
 import {
   getDownloadShelf,
   getDownloadsCatalog,
@@ -37,6 +38,40 @@ import * as YoutubeApi from './subsonic';
 
 function isOffline() { return useAuthStore.getState().offline; }
 function auth() { return useAuthStore.getState().auth!; }
+
+/**
+ * Which server an id belongs to, and what that server calls it.
+ *
+ * Almost every id is the active profile's and comes back untouched. One from
+ * another server — a search that looked everywhere (`lib/servers`) — comes back
+ * wrapped, and this is where it is unwrapped: the request then goes to the
+ * server that actually has the track, with that profile's credentials, instead
+ * of asking the active one about an id it has never seen.
+ */
+function on(id: string): { a: Subsonic.SubsonicAuth; id: string } {
+  const foreign = foreignSource(id);
+  return foreign ? { a: foreign.auth, id: foreign.id } : { a: auth(), id };
+}
+
+/** Puts a server's mark on everything an answer from it carries: the item, its
+ *  cover and whatever it points at. Every id that leaves here can be traced
+ *  back to the server that minted it, which is the whole of the trick. */
+function fromServer<
+  T extends {
+    id: string;
+    coverArt?: string;
+    albumId?: string;
+    artistId?: string;
+  },
+>(item: T, key: string): T {
+  return {
+    ...item,
+    id: foreignId(key, item.id),
+    ...(item.coverArt ? { coverArt: foreignId(key, item.coverArt) } : {}),
+    ...(item.albumId ? { albumId: foreignId(key, item.albumId) } : {}),
+    ...(item.artistId ? { artistId: foreignId(key, item.artistId) } : {}),
+  };
+}
 
 /** Offline mode WITH a server account (not the local files-only profile):
  *  here the Library is a mirror of the server (see store/libraryMirror). */
@@ -203,9 +238,15 @@ export function serverImageSource(
  */
 export const CACHED_COVER = 'cached-cover:';
 
-
-
-export function coverArtUrl(id: string | undefined, _size?: number): string | undefined {
+export function coverArtUrl(
+  id: string | undefined,
+  _size?: number,
+): string | undefined {
+  // A cover belonging to another server: its own address, built with its own
+  // credentials. Nothing of it is on this phone under that id, so none of what
+  // follows would find it.
+  const foreign = foreignSource(id);
+  if (foreign) return Subsonic.coverArtUrl(foreign.auth, foreign.id, _size);
   // If the album art is downloaded (album/artist on disk), use it even
   // when in server mode: it works offline and doesn't use data, just
   // like audio plays from the downloaded file.
@@ -332,8 +373,23 @@ export function getAlbum(id: string): Promise<{ album: Subsonic.Album; songs: Su
     if (serverOffline()) return mirrorAlbum(id);
     return Local.getAlbum(id);
   }
-  return Subsonic.getAlbum(auth(), id).then((res) => {
-    useLibraryMirror.getState().saveAlbum(id, res.album, res.songs, useDownloads.getState());
+  const here = on(id);
+  // An album from another server keeps that server's mark on everything it
+  // brought with it, so its songs still play and its cover still loads once
+  // the screen has them. It is not mirrored: the mirror is the active
+  // profile's library, and filing somebody else's albums in it would make
+  // them reappear offline as albums this profile cannot play.
+  if (here.a !== auth()) {
+    const key = serverKey(here.a);
+    return Subsonic.getAlbum(here.a, here.id).then((res) => ({
+      album: fromServer(res.album, key),
+      songs: res.songs.map((song) => fromServer(song, key)),
+    }));
+  }
+  return Subsonic.getAlbum(here.a, here.id).then((res) => {
+    useLibraryMirror
+      .getState()
+      .saveAlbum(id, res.album, res.songs, useDownloads.getState());
     return res;
   });
 }
@@ -864,6 +920,14 @@ export function getArtist(id: string): Promise<{ artist: Subsonic.Artist; albums
   if (isOffline()) {
     if (serverOffline()) return mirrorArtist(id);
     return Local.getArtist(id);
+  }
+  const here = on(id);
+  if (here.a !== auth()) {
+    const key = serverKey(here.a);
+    return Subsonic.getArtist(here.a, here.id).then((res) => ({
+      artist: fromServer(res.artist, key),
+      albums: res.albums.map((album) => fromServer(album, key)),
+    }));
   }
   return Subsonic.getArtist(auth(), id)
     .catch(async (e: unknown) => {
@@ -1428,13 +1492,19 @@ export function star(id: string, type?: Subsonic.StarType, origin?: StarOrigin):
     }
     return Local.starLocal(id, type);
   }
-  const a = auth();
-  const done = Subsonic.star(a, id, type);
+  // A favourite belongs on the server that holds the track, not on whichever
+  // profile happens to be signed in: starring a search hit from elsewhere has
+  // to reach the library it came from or it marks a stranger's id.
+  const { a, id: there } = on(id);
+  const done = Subsonic.star(a, there, type);
   // Chained off to the side, so the caller still sees the server's own answer
   // (including its rejection, which the empty handler here only keeps from
   // being reported twice).
   if ((type ?? 'song') === 'song' && origin !== 'listenbrainz') {
-    void done.then(() => pushLove(a, id, true), () => {});
+    void done.then(
+      () => pushLove(a, there, true),
+      () => {},
+    );
   }
   return done;
 }
@@ -1447,9 +1517,13 @@ export function unstar(id: string, type?: Subsonic.StarType): Promise<void> {
     }
     return Local.unstarLocal(id, type);
   }
-  const a = auth();
-  const done = Subsonic.unstar(a, id, type);
-  if ((type ?? 'song') === 'song') void done.then(() => pushLove(a, id, false), () => {});
+  const { a, id: there } = on(id);
+  const done = Subsonic.unstar(a, there, type);
+  if ((type ?? 'song') === 'song')
+    void done.then(
+      () => pushLove(a, there, false),
+      () => {},
+    );
   return done;
 }
 
@@ -1651,8 +1725,8 @@ export function searchSongs(query: string, count?: number): Promise<Subsonic.Son
   );
 }
 
-export function search(query: string): Promise<Subsonic.SearchResult> {
-  if (isOffline()) return Local.search(query);
+/** The active profile's own answer: the libraries it has turned on, merged. */
+function searchHere(query: string): Promise<Subsonic.SearchResult> {
   const a = auth();
   const ids = enabledFolderIds(a);
   if (!ids) return Subsonic.search(a, query);
@@ -1663,6 +1737,55 @@ export function search(query: string): Promise<Subsonic.SearchResult> {
     songs: dedupeById(parts.flatMap((p) => p.songs)),
   }));
 }
+
+/**
+ * Searching, across one server or all of them.
+ *
+ * With Settings › Library › search every server on, the question goes to every
+ * signed-in profile at once and the answers are laid end to end: this server's
+ * first, because it is the one you are in, then the others in the order the
+ * profiles are listed. What came from elsewhere is marked with the server that
+ * answered, which is what lets it be played, opened and starred there rather
+ * than here (see `lib/servers`).
+ *
+ * A server that is asleep, away or refusing is skipped rather than fatal. The
+ * point of asking several is that some of them answer; one being unreachable
+ * turning the whole search into an error would make the feature worse than not
+ * having it.
+ */
+export async function search(query: string): Promise<Subsonic.SearchResult> {
+  if (isOffline()) return Local.search(query);
+  const elsewhere = useSettings.getState().searchEveryServer
+    ? otherServers()
+    : [];
+  if (elsewhere.length === 0) return searchHere(query);
+  const [mine, ...theirs] = await Promise.all([
+    searchHere(query).catch(() => EMPTY_SEARCH),
+    ...elsewhere.map((profile) =>
+      Subsonic.search(profile, query)
+        .then((found) => {
+          const key = serverKey(profile);
+          return {
+            artists: found.artists.map((x) => fromServer(x, key)),
+            albums: found.albums.map((x) => fromServer(x, key)),
+            songs: found.songs.map((x) => fromServer(x, key)),
+          };
+        })
+        .catch(() => EMPTY_SEARCH),
+    ),
+  ]);
+  return {
+    artists: [...mine.artists, ...theirs.flatMap((t) => t.artists)],
+    albums: [...mine.albums, ...theirs.flatMap((t) => t.albums)],
+    songs: [...mine.songs, ...theirs.flatMap((t) => t.songs)],
+  };
+}
+
+const EMPTY_SEARCH: Subsonic.SearchResult = {
+  artists: [],
+  albums: [],
+  songs: [],
+};
 
 /**
  * Lyrics for a song, from wherever this profile's lyrics come from.
@@ -1711,7 +1834,8 @@ export async function getSongLyrics(
       if (online) return online;
     }
     try {
-      const structured = await Subsonic.getLyricsBySongId(auth(), song.id);
+      const here = on(song.id);
+      const structured = await Subsonic.getLyricsBySongId(here.a, here.id);
       if (structured) return structured;
       // It answered, and it has nothing. The classic endpoint reads the same
       // place, so asking it as well was a second request per song for an answer
@@ -1743,7 +1867,10 @@ export function scrobble(id: string): Promise<void> {
   // The backend lets its errors through now (#126). This one keeps the shape it
   // had: the player is what decides to keep a refused listen, and it does not
   // come through here.
-  return Subsonic.scrobble(auth(), id).catch(() => {});
+  // To the server that holds the track: a play count belongs in the library it
+  // was played from.
+  const here = on(id);
+  return Subsonic.scrobble(here.a, here.id).catch(() => {});
 }
 
 export async function addToPlaylist(playlistId: string, songId: string): Promise<void> {
@@ -1916,7 +2043,17 @@ export async function getSongsByIds(ids: string[]): Promise<Song[]> {
   const batch = 8;
   for (let i = 0; i < ids.length; i += batch) {
     const songs = await Promise.all(
-      ids.slice(i, i + batch).map((id) => getSong(a, id).catch(() => null)),
+      // Each id asks the server it belongs to. A queue kept across a restart
+      // may hold songs from several, and one of them being the active profile
+      // is not something the queue ever promised.
+      ids.slice(i, i + batch).map((id) => {
+        const here = on(id);
+        return getSong(here.a, here.id)
+          .then((song) =>
+            !song || here.a === a ? song : fromServer(song, serverKey(here.a)),
+          )
+          .catch(() => null);
+      }),
     );
     for (const s of songs) if (s) out.push(s);
   }

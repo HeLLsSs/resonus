@@ -1,0 +1,7 @@
+{
+  "name": "tv-focus",
+  "version": "0.0.1",
+  "description": "Draws where the remote's focus is, on Android TV only (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

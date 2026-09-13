@@ -43,6 +43,7 @@ import {
   UNKNOWN_ARTIST,
 } from '@/lib/localLibrary';
 import { serializeLrc } from '@/lib/lrc';
+import { foreignSource } from '@/lib/servers';
 import { siblingLrcUri } from '@/lib/localLyrics';
 import * as Db from '@/lib/downloadsDb';
 import type { DlAlbum } from '@/lib/downloadsDb';
@@ -466,14 +467,20 @@ function songFileUrl(
   song: Song,
 ): { url: string; ext: string; bitRate?: number } {
   const { downloadBitRate: bitrate, downloadFormat: format } = useSettings.getState();
+  // A song found on another server is fetched from that server. Its id means
+  // nothing here, and asking with it would save whatever this one happened to
+  // have under the same name.
+  const elsewhere = foreignSource(song.id);
+  const on = elsewhere?.auth ?? auth;
+  const id = elsewhere?.id ?? song.id;
   if (bitrate > 0) {
     return {
-      url: streamUrl(auth, song.id, bitrate, 0, format),
+      url: streamUrl(on, id, bitrate, 0, format),
       ext: FORMAT_EXT[format] ?? 'mp3',
       bitRate: bitrate,
     };
   }
-  return { url: downloadUrl(auth, song.id), ext: song.suffix || 'mp3' };
+  return { url: downloadUrl(on, id), ext: song.suffix || 'mp3' };
 }
 
 /** Song as it enters the local catalog: server id + local file. */
