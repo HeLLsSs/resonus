@@ -1161,5 +1161,19 @@
   "Nothing here": "Nothing here",
   "Other servers": "Other servers",
   "Search every server": "Search every server",
-  "Searching can ask every server you are signed in to, not only this one. What it finds elsewhere plays, opens and can be starred on the server it came from; the rest of the app stays on this profile.": "Searching can ask every server you are signed in to, not only this one. What it finds elsewhere plays, opens and can be starred on the server it came from; the rest of the app stays on this profile."
+  "Searching can ask every server you are signed in to, not only this one. What it finds elsewhere plays, opens and can be starred on the server it came from; the rest of the app stays on this profile.": "Searching can ask every server you are signed in to, not only this one. What it finds elsewhere plays, opens and can be starred on the server it came from; the rest of the app stays on this profile.",
+  "Scan this television": "Scan this television",
+  "Choose a folder": "Choose a folder",
+  "Most televisions have no file picker, and there this does nothing.": "Most televisions have no file picker, and there this does nothing.",
+  "Preamp": "Preamp",
+  "The equalizer is not available in this build.": "The equalizer is not available in this build.",
+  "Where the room for a boost comes from. Raising a band makes the music louder, and a track mastered near the top will clip: pull this down by about as much as the biggest band you raised.": "Where the room for a boost comes from. Raising a band makes the music louder, and a track mastered near the top will clip: pull this down by about as much as the biggest band you raised.",
+  "Settings › Security › Devices & sessions makes an app password. Replace {host} with your own address.": "Settings › Security › Devices & sessions makes an app password. Replace {host} with your own address.",
+  "Use ewebdav.pcloud.com instead if your account was created in Europe.": "Use ewebdav.pcloud.com instead if your account was created in Europe.",
+  "Koofr wants an app password, made under Preferences › Password.": "Koofr wants an app password, made under Preferences › Password.",
+  "Box asks for an external app password where two-factor sign-in is on.": "Box asks for an external app password where two-factor sign-in is on.",
+  "Fastmail needs an app password with the Files access.": "Fastmail needs an app password with the Files access.",
+  "Replace {drive} with the number in your kDrive address, and use an application password.": "Replace {drive} with the number in your kDrive address, and use an application password.",
+  "Service": "Service",
+  "Another address": "Another address"
 }

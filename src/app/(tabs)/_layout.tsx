@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useT } from '@/i18n';
 import { usableTabs } from '@/lib/bottomTabs';
+import { IS_TV, TV_SPACE, TV_TEXT, tvScale } from '@/lib/tv';
 import { type TabSegment } from '@/lib/tabOrigin';
 import { useSettings } from '@/store/settings';
 import { colors, TAB_BAR_HEIGHT, useTheme } from '@/theme';
@@ -87,6 +88,18 @@ export default function TabsLayout() {
             paddingTop: 6,
             paddingBottom: insets.bottom,
           },
+          // A television is a wide screen, and on a wide screen the navigator
+          // puts the label beside the icon by itself — which is right for a
+          // phone held sideways and wrong here, where it leaves four labels
+          // adrift in the middle of two metres of bar with the icons clipped
+          // against them. Stacked, at the size the rest of the app is read at.
+          ...(IS_TV
+            ? {
+                tabBarLabelPosition: 'below-icon' as const,
+                tabBarLabelStyle: { fontSize: tvScale(12, TV_TEXT) },
+                tabBarIconStyle: { height: tvScale(30, TV_SPACE) },
+              }
+            : null),
         }}
       >
         {/* Declared in the order the user put them in, because that is what

@@ -45,6 +45,7 @@ import { Cover } from './Cover';
 import { ExplicitBadge, useExplicitBadge } from './ExplicitBadge';
 import { FavoriteButton } from './FavoriteButton';
 import { centredPadding, useScreenSize } from '@/hooks/useScreenSize';
+import { IS_TV } from '@/lib/tv';
 import { SelectionBar, type SelectionAction } from './SelectionBar';
 import { TrackRow } from './TrackRow';
 
@@ -601,7 +602,14 @@ export function TrackListView({
             {/* While searching, the large header is hidden: results stay flush
                 with the bar, which is what Spotify does. */}
             {searching ? null : (
-          <View style={styles.header}>
+          /* On a television the cover goes beside what it belongs to instead
+             of above it. Stacked, the picture, the title and the buttons come
+             to about four hundred of the five hundred and forty points a TV
+             has, so an album opens on everything except the songs. Side by
+             side they take half the width and the list starts where the eye
+             already is. Nothing of this reaches a phone, where stacked is
+             right and the header is what somebody scrolls past. */
+          <View style={IS_TV ? styles.headerWide : styles.header}>
             {hideCover ? null : (
               <Animated.View style={[styles.coverCenter, { opacity: coverOpacity }]}>
                 {onCoverPress ? (
@@ -619,6 +627,7 @@ export function TrackListView({
                 )}
               </Animated.View>
             )}
+            <View style={IS_TV ? styles.headerBeside : undefined}>
             <Text style={styles.title} numberOfLines={2}>
               {title}
             </Text>
@@ -775,6 +784,7 @@ export function TrackListView({
             ) : null}
 
             {filterBar ? <>{filterBar}</> : null}
+            </View>
           </View>
             )}
           </View>
@@ -1013,6 +1023,20 @@ const styles = themed((colors) => ({
   },
   header: {
     paddingBottom: spacing.lg,
+    gap: spacing.xs,
+  },
+  /** The same header laid across instead of down, for a television. */
+  headerWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xl,
+    paddingBottom: spacing.lg,
+  },
+  /** What sits to the right of the cover: everything the header used to stack
+   *  under it. It takes the rest of the row, so a long album title wraps
+   *  rather than pushing the picture off the side. */
+  headerBeside: {
+    flex: 1,
     gap: spacing.xs,
   },
   coverCenter: {

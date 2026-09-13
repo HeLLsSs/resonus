@@ -14,8 +14,15 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import { SettingRow, SettingsPage, settingsStyles, TextRow } from '@/components/SettingsUI';
+import {
+  SelectList,
+  SettingRow,
+  SettingsPage,
+  settingsStyles,
+  TextRow,
+} from '@/components/SettingsUI';
 import { useT } from '@/i18n';
+import { DAV_PROVIDERS, fillProviderUrl } from '@/lib/davProviders';
 import {
   forgetSource,
   saveSource,
@@ -51,6 +58,9 @@ export default function WebdavSettings() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
+  /** Which known cloud was chosen, or -1 for an address typed by hand. */
+  const [provider, setProvider] = useState(-1);
+  const chosen = provider >= 0 ? DAV_PROVIDERS[provider] : undefined;
 
   const ready = url.trim().length > 0 && user.trim().length > 0 && password.length > 0;
 
@@ -124,14 +134,46 @@ export default function WebdavSettings() {
         ) : null}
 
         <Text style={settingsStyles.sectionTitle}>{t('Add a share')}</Text>
+        {/* The address is the part nobody knows by heart, and every service
+            hides it in a help page under a different name. Choosing the
+            service fills it in. */}
+        <SelectList
+          label={t('Service')}
+          options={[
+            { value: -1, label: t('Another address') },
+            ...DAV_PROVIDERS.map((p, i) => ({ value: i, label: p.name })),
+          ]}
+          value={provider}
+          onChange={(v) => {
+            setProvider(v);
+            const picked = v >= 0 ? DAV_PROVIDERS[v] : undefined;
+            if (picked) setUrl(fillProviderUrl(picked.url, user));
+          }}
+        />
         <TextRow
           label={t('Address')}
           value={url}
-          onChange={setUrl}
+          onChange={(v) => {
+            // Typing over a filled-in address means it is no longer that
+            // service's, and the note below it would be about the wrong one.
+            setProvider(-1);
+            setUrl(v);
+          }}
           maxLength={URL_MAX}
           placeholder="https://cloud.example.com/remote.php/dav/files/you"
         />
-        <TextRow label={t('Username')} value={user} onChange={setUser} maxLength={NAME_MAX} />
+        {chosen?.note ? (
+          <Text style={settingsStyles.sectionDescription}>{t(chosen.note)}</Text>
+        ) : null}
+        <TextRow
+          label={t('Username')}
+          value={user}
+          onChange={(v) => {
+            setUser(v);
+            if (chosen) setUrl(fillProviderUrl(chosen.url, v));
+          }}
+          maxLength={NAME_MAX}
+        />
         <TextRow
           label={t('Password')}
           description={t('An app password rather than your account one, where the server offers them.')}

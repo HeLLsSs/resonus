@@ -33,6 +33,7 @@ import { useTabBarShown } from '@/hooks/useTabBar';
 import { motion } from '@/theme/motion';
 import { useT } from '@/i18n';
 import { shownTabs } from '@/lib/bottomTabs';
+import { TV_SPACE, TV_TEXT, tvScale } from '@/lib/tv';
 import { rememberTab, reselectTab, tabOrigin, TABS, type TabSegment } from '@/lib/tabOrigin';
 import { useSettings } from '@/store/settings';
 import { colors, TAB_BAR_HEIGHT, themed } from '@/theme';
@@ -40,6 +41,10 @@ import { colors, TAB_BAR_HEIGHT, themed } from '@/theme';
 /** Both drawings of each tab spelled out rather than an "-outline" added to
  *  the name: YouTube's logo has no outline twin, and there the colour alone
  *  says which tab you are on. */
+/** The tab icon, a touch bigger than the ladder's rungs because a tab is
+ *  read by its icon before its label. */
+const ICON_SIZE = tvScale(25, TV_TEXT);
+
 const ICONS: Record<
   TabSegment,
   { on: keyof typeof Ionicons.glyphMap; off: keyof typeof Ionicons.glyphMap }
@@ -149,7 +154,7 @@ export function GlobalTabBar() {
             <View style={styles.iconBox}>
               <Ionicons
                 name={here || from ? ICONS[tab.segment].on : ICONS[tab.segment].off}
-                size={25}
+                size={ICON_SIZE}
                 color={color}
               />
             </View>
@@ -175,6 +180,14 @@ const styles = themed((colors) => ({
     paddingTop: 6,
   },
   item: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', padding: 5 },
-  iconBox: { width: 31, height: 28, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 10 },
+  iconBox: {
+    width: tvScale(31, TV_SPACE),
+    height: tvScale(28, TV_SPACE),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // The one label in the app written smaller than the type ladder's bottom
+  // rung, because a tab is read by its icon. On a television it is read from
+  // the sofa instead, and 10 points there is a smudge.
+  label: { fontSize: tvScale(10, TV_TEXT) },
 }));

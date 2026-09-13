@@ -20,6 +20,8 @@
  *    the language.
  */
 import { useSyncExternalStore } from 'react';
+
+import { TV_RADIUS, TV_SPACE, TV_TEXT, tvScale } from '@/lib/tv';
 import { Appearance } from 'react-native';
 import type { ImageStyle, TextStyle, ViewStyle } from 'react-native';
 
@@ -506,13 +508,21 @@ export function useThemeMode(): ThemeMode {
   return currentMode;
 }
 
+/**
+ * The gaps, from the one inside a badge to the one between sections.
+ *
+ * Every rung is scaled on a television (see `lib/tv`). The ladder is the one
+ * place every screen already reads its sizes from, so putting the scaling here
+ * moves the whole app at once instead of asking ninety-four files to remember
+ * which device they are on.
+ */
 export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
+  xs: tvScale(4, TV_SPACE),
+  sm: tvScale(8, TV_SPACE),
+  md: tvScale(12, TV_SPACE),
+  lg: tvScale(16, TV_SPACE),
+  xl: tvScale(24, TV_SPACE),
+  xxl: tvScale(32, TV_SPACE),
 } as const;
 
 /**
@@ -529,13 +539,13 @@ export const spacing = {
  * drawn in the last few years.
  */
 export const radius = {
-  sm: 6,
-  md: 10,
-  lg: 16,
+  sm: tvScale(6, TV_RADIUS),
+  md: tvScale(10, TV_RADIUS),
+  lg: tvScale(16, TV_RADIUS),
   /** The cards that peek below the player controls. */
-  xl: 24,
+  xl: tvScale(24, TV_RADIUS),
   /** A sheet rising from the bottom, and anything else that owns the screen. */
-  xxl: 32,
+  xxl: tvScale(32, TV_RADIUS),
   pill: 999,
 } as const;
 
@@ -553,12 +563,12 @@ export const radius = {
  * it is a second name for one that already exists.
  */
 export const fontSize = {
-  xs: 12,
-  sm: 14,
-  md: 16,
-  lg: 20,
-  xl: 24,
-  xxl: 32,
+  xs: tvScale(12, TV_TEXT),
+  sm: tvScale(14, TV_TEXT),
+  md: tvScale(16, TV_TEXT),
+  lg: tvScale(20, TV_TEXT),
+  xl: tvScale(24, TV_TEXT),
+  xxl: tvScale(32, TV_TEXT),
 } as const;
 
 /**
@@ -571,11 +581,13 @@ export const fontSize = {
  */
 export const SHEET_MAX_WIDTH = 560;
 
-/** Height of the tab bar (not including the bottom safe area). */
-export const TAB_BAR_HEIGHT = 60;
+/** Height of the tab bar (not including the bottom safe area). Scaled on a
+ *  television with the rest of the spacing, or the bar would keep phone
+ *  proportions under labels and icons that have grown. */
+export const TAB_BAR_HEIGHT = tvScale(60, TV_SPACE);
 
 /** Approximate height of the floating MiniPlayer (44px artwork + padding). */
-export const MINI_PLAYER_HEIGHT = 60;
+export const MINI_PLAYER_HEIGHT = tvScale(60, TV_SPACE);
 
 /**
  * Fixed bottom spacing for screen lists WITHOUT a tab bar: the MiniPlayer

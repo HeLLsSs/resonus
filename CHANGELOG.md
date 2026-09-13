@@ -7,6 +7,15 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.13.0] - 2026-09-13
+
+### Added
+
+- A real equaliser. The bands used to be Android's, and Android gives you the bands the device feels like offering — five on most phones, three on some, at frequencies nobody chose. The filtering now happens inside the player, so there are ten bands at the octave centres every graphic equaliser has used for forty years, the same ten on the phone, in the car and on the television, and a setting carried from one means the same thing on the other. A preamp comes with them, because raising a band makes the music louder and a track mastered near the top will clip. Eight presets, the app's own rather than the device's. Float output is asked for as well, so where the device takes it the samples reach it as the filters left them instead of being squeezed back into sixteen bits. A setting saved before this had five numbers in it and is left behind rather than stretched onto ten: a guess at what somebody meant is worse than flat, which they can hear.
+- The clouds that speak WebDAV can be picked by name when adding a share — pCloud, Koofr, Yandex Disk, Mail.ru, Box, Fastmail, kDrive, Nextcloud — and choosing one fills in the address, which is the part nobody knows by heart and every service hides in a help page under a different name.
+- An interface for a television, rather than a phone's shown on one. Everything the app measures itself with — the type, the gaps, the corners, the icons, the tab bar, the mini player — is scaled up when it starts on a TV, because a set reports 960 points across where a phone reports 400 and the same 16-point line that fills a phone crosses a sixth of a television. An album now lays its cover beside its title instead of above it: stacked, the picture, the name and the buttons came to four hundred of the five hundred and forty points a TV has, so an album opened on everything except its songs.
+- Two things a television does differently are handled rather than left to fail. Android TV ships no file picker, so "choose a folder" landed on a stub that returned nothing and the press looked broken: on a TV the option that works is offered first, and the other says what will happen. And the warning about battery optimisation is never shown, a set being plugged into a wall.
+
 ## [0.12.0] - 2026-09-12
 
 ### Added
@@ -2129,6 +2138,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.13.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.13.0
 [0.12.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.12.0
 [0.11.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.2
 [0.11.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.1

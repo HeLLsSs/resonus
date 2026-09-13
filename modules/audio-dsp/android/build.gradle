@@ -1,0 +1,27 @@
+// The plugin, not the old `ExpoModulesCorePlugin.gradle` helpers: since SDK 56
+// it also applies the Kotlin compiler plugin that resolves the reified types
+// the module DSL relies on.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.audiodsp'
+version = '0.0.1'
+
+android {
+  namespace "expo.modules.audiodsp"
+  defaultConfig {
+    versionCode 1
+    versionName "0.0.1"
+  }
+}
+
+dependencies {
+  // The processor is a media3 `AudioProcessor` and the sink is built here, so
+  // both live in the player's own libraries. `compileOnly` because the app
+  // already ships them with expo-audio: taking them again would put two copies
+  // of media3 on the classpath.
+  compileOnly "androidx.media3:media3-common:1.9.0"
+  compileOnly "androidx.media3:media3-exoplayer:1.9.0"
+}

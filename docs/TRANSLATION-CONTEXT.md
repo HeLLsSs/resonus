@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1154 of them.
+Every string the app can show, under the screen it shows up on. 1170 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -459,6 +459,7 @@ you are actually typing into, which is easier than reading it here.
 | `Add profile` | Add another account, keeping the ones already saved |
 | `Advanced` | The link that expands the advanced connection options |
 | `All the music on your device.` | The line under `Scan the whole phone` |
+| `Choose a folder` |  |
 | `Choose a folder (recommended)` | One of the two ways to find the phone's own music: point at a folder |
 | `Choose the server type` | The line above the list of server kinds |
 | `Couldn't sign in` | Error when we do not know why it failed |
@@ -469,6 +470,7 @@ you are actually typing into, which is easier than reading it here.
 | `Listen to music stored on your device, without a server. Choose where from:` | The line under `Music on your device`, before the two ways of finding it |
 | `Local profile` | The on-device profile, with no server account. Its library screen is `Local music` |
 | `Media server` | The type subtitle under Jellyfin |
+| `Most televisions have no file picker, and there this does nothing.` |  |
 | `Music on your device` | Signing in to nothing at all and playing the phone's own files |
 | `Not a header line: {line}` |  |
 | `Only the music in the folder you choose.` | The line under `Choose a folder (recommended)` |
@@ -477,6 +479,7 @@ you are actually typing into, which is easier than reading it here.
 | `Restore from a backup` |  |
 | `Saved profiles` | The accounts already signed in to, to pick one |
 | `Scan the whole phone` | The other way: look everywhere for audio files |
+| `Scan this television` |  |
 | `Sends the password directly instead of a salted token. Only enable it if your server sits behind a reverse proxy or SSO that requires it.` |  |
 | `Sent with every request to this server. One per line, as Name: value.` |  |
 | `Sign in` | The button that signs in. A verb |
@@ -888,10 +891,12 @@ you are actually typing into, which is easier than reading it here.
 | `Can distort or clip; the system volume stays the limit` | The line under “Volume boost”, explaining it |
 | `Custom` | Settings › Equalizer, the first option of the preset list: none of the presets below it, the bands left wherever you dragged them. The only place this word is used |
 | `Equalizer` |  |
+| `Preamp` |  |
 | `Preset` | An equalizer preset. Not a bitrate |
 | `Reset bands` | Put the equalizer's frequency sliders back to flat |
-| `This device does not offer an equalizer.` |  |
+| `The equalizer is not available in this build.` |  |
 | `Volume boost` |  |
+| `Where the room for a boost comes from. Raising a band makes the music louder, and a track mastered near the top will clip: pull this down by about as much as the biggest band you raised.` |  |
 
 ## Settings › Explore sections
 
@@ -993,6 +998,7 @@ you are actually typing into, which is easier than reading it here.
 | `Local music` | Music stored on the phone itself |
 | `Music folders` | Settings > Local music: the list of phone folders the local profile reads its music from |
 | `Only the music in the folder you choose.` | The line under `Choose a folder (recommended)` |
+| `Other servers` |  |
 | `Rescan` | Trigger the server's library scan again |
 | `Rescanning your music…` | The phone is going through its own files again, offline |
 | `Scan` | Trigger the server's library scan |
@@ -1001,6 +1007,8 @@ you are actually typing into, which is easier than reading it here.
 | `Scan status` | How the server's library scan is going |
 | `Scan the whole phone` | The other way: look everywhere for audio files |
 | `Scanning…` | The server is looking for new music right now |
+| `Search every server` |  |
+| `Searching can ask every server you are signed in to, not only this one. What it finds elsewhere plays, opens and can be starred on the server it came from; the rest of the app stays on this profile.` |  |
 | `Source` | The music source (which server, or local). Not source code |
 | `Source updated` | Toast after changing where music is read from |
 | `Storage` | Section header over the cache |
@@ -1368,14 +1376,22 @@ you are actually typing into, which is easier than reading it here.
 | `Add this share` |  |
 | `Address` | The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box |
 | `An app password rather than your account one, where the server offers them.` | The line under “Password”, explaining it |
+| `Another address` | One of the values of “Service” |
+| `Box asks for an external app password where two-factor sign-in is on.` |  |
+| `Fastmail needs an app password with the Files access.` |  |
 | `Forget this share` |  |
 | `Forgetting a share takes its password with it. Nothing on the server is touched.` |  |
+| `Koofr wants an app password, made under Preferences › Password.` |  |
 | `Network shares` |  |
 | `On Nextcloud, make an app password under Settings › Security rather than using your account password: it opens the files and nothing else, and you can revoke it on its own.` |  |
+| `Replace {drive} with the number in your kDrive address, and use an application password.` |  |
+| `Service` |  |
+| `Settings › Security › Devices & sessions makes an app password. Replace {host} with your own address.` |  |
 | `Share added.` |  |
 | `That address could not be reached. Nothing was saved.` |  |
 | `That address did not answer, or the password was refused. Nothing was saved.` |  |
 | `Trying…` |  |
+| `Use ewebdav.pcloud.com instead if your account was created in Europe.` |  |
 | `Your shares` |  |
 
 ## Settings › Youtube

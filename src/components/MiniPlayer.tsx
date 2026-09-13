@@ -26,11 +26,15 @@ import { currentSong, useLiveInfo, usePlayerStore } from '@/store/player';
 import { CONTENT_MAX_WIDTH, useScreenSize } from '@/hooks/useScreenSize';
 import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
+import { TV_SPACE, tvScale } from '@/lib/tv';
 import { colors, fontSize, radius, spacing, themed } from '@/theme';
 import { motion } from '@/theme/motion';
 import { Cover } from './Cover';
 import { FavoriteButton } from './FavoriteButton';
 import { MarqueeText } from './MarqueeText';
+
+/** The little cover, which the bar's height is measured from. */
+const ART = tvScale(44, TV_SPACE);
 
 // Gesture thresholds: a share of the width to change track, a fixed distance
 // downwards to dismiss. Measured while rendering rather than when this file was
@@ -157,7 +161,7 @@ export function MiniPlayer() {
           onPress={() => pushOnce('/player')}
         >
       <Animated.View style={[styles.details, detailsStyle]}>
-        <Cover uri={cover} size={44} placeholderIcon={song.url ? 'radio' : 'musical-notes'} />
+        <Cover uri={cover} size={ART} placeholderIcon={song.url ? 'radio' : 'musical-notes'} />
         <View style={styles.info}>
           <MarqueeText
             text={live?.title ?? song.title}

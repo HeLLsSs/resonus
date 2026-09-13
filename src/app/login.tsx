@@ -26,6 +26,7 @@ import {
 import { parseHeaderLines } from '@/api/backend';
 import { Dialog } from '@/components/Dialog';
 import { ensureAudioPermission, pickFolder } from '@/lib/localLibrary';
+import { IS_TV } from '@/lib/tv';
 import { useToast } from '@/store/toast';
 import { useT } from '@/i18n';
 import { LANGUAGES } from '@/i18n/languages';
@@ -386,23 +387,49 @@ export default function LoginScreen() {
                     {t('Listen to music stored on your device, without a server. Choose where from:')}
                   </Text>
 
+                  {/* A folder is the better answer on a phone and the worse
+                      one on a television: Android TV ships no file picker, so
+                      the intent lands on a stub that returns nothing and the
+                      press looks broken. The one that works comes first there,
+                      and the other says what will happen rather than being
+                      taken away — a TV box that does have a picker is still a
+                      TV box. */}
+                  {IS_TV ? (
+                    <Pressable style={styles.localOption} onPress={startLocalDevice}>
+                      <Ionicons name="tv-outline" size={26} color={colors.accent} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.localOptTitle}>{t('Scan this television')}</Text>
+                        <Text style={styles.localOptSub}>{t('All the music on your device.')}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                    </Pressable>
+                  ) : null}
+
                   <Pressable style={styles.localOption} onPress={startLocalFolder}>
                     <Ionicons name="folder-outline" size={26} color={colors.accent} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.localOptTitle}>{t('Choose a folder (recommended)')}</Text>
-                      <Text style={styles.localOptSub}>{t('Only the music in the folder you choose.')}</Text>
+                      <Text style={styles.localOptTitle}>
+                        {IS_TV ? t('Choose a folder') : t('Choose a folder (recommended)')}
+                      </Text>
+                      <Text style={styles.localOptSub}>
+                        {IS_TV
+                          ? t('Most televisions have no file picker, and there this does nothing.')
+                          : t('Only the music in the folder you choose.')}
+                      </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
                   </Pressable>
 
-                  <Pressable style={styles.localOption} onPress={startLocalDevice}>
-                    <Ionicons name="phone-portrait-outline" size={26} color={colors.accent} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.localOptTitle}>{t('Scan the whole phone')}</Text>
-                      <Text style={styles.localOptSub}>{t('All the music on your device.')}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-                  </Pressable>
+                  {IS_TV ? null : (
+                    <Pressable style={styles.localOption} onPress={startLocalDevice}>
+                      <Ionicons name="phone-portrait-outline" size={26} color={colors.accent} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.localOptTitle}>{t('Scan the whole phone')}</Text>
+                        <Text style={styles.localOptSub}>{t('All the music on your device.')}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                    </Pressable>
+                  )}
                 </View>
               ) : (
                 <View style={styles.form}>

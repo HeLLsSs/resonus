@@ -5,9 +5,10 @@
 <h1 align="center">Resonuls</h1>
 
 <p align="center">
-  A clean music player for your self-hosted server, and your local files.
+  A clean music player for your self-hosted server, your network shares, and
+  your local files.
   <br />
-  Android, with an experimental iOS build.
+  Android, Android Auto and Android TV, with an experimental iOS build.
 </p>
 
 <p align="center">
@@ -65,6 +66,9 @@ appear when it is switched off.
   Two-factor, passkeys and account recovery all behave as they do anywhere
   else, and no password passes through the app. Pasting a browser's `Cookie`
   header still works underneath, as the way out.
+- **More than one YouTube account**: sign in to each of them and the tab
+  carries the one it is reading, with a tap to move to the next. The mix below
+  reads whichever is active, so switching here changes what it builds from.
 
 ### A mix built from what you listen to
 
@@ -75,7 +79,19 @@ appear when it is switched off.
   out, and a song your server and YouTube both have is taken once.
 - It leaves a dated playlist behind. The library's songs go in immediately and
   each YouTube track joins as the proxy finishes fetching it, so the music
-  starts at once rather than waiting on the playlist.
+  starts at once rather than waiting on the playlist. The toast that announces
+  it offers to download that playlist, which is what you want before a drive
+  and not something anybody would go looking for in a setting.
+- **It knows what time it is.** Artists and genres played at this hour of the
+  day count double against those played at any other, so an evening press and a
+  morning one no longer build the same thing.
+- **What you skip no longer counts as what you like.** A song used to enter the
+  history the moment it started, so one skipped after three seconds sat there
+  exactly like one heard to the end — and everything built on that history was
+  reading a taste out of a rejection. How much of each song was actually heard
+  is written down as it plays; under a fifth of the way in counts for nothing.
+- A **"For you" shortcut on the app icon**, beside Shuffle, Favorites and
+  Resume: a long press and the mix starts without opening the app.
 
 ### More outputs
 
@@ -104,6 +120,99 @@ appear when it is switched off.
 - **The car, the widget and another app's broadcast start the app themselves**,
   with no screen and nothing brought to the front. A song tapped on the car's
   screen with the phone asleep in a pocket used to be handed to nobody.
+- **A YouTube tab in the car**, the fourth and last Android Auto will draw, and
+  it carries the whole home page as the phone does: every shelf the account is
+  shown, in its order, each a folder of what it holds, each wearing the cover
+  of what it opens. Nothing is fetched to draw it — the tracks arrive with the
+  page — which is what lets twenty shelves and a hundred and thirty tiles cost
+  the one request that drew them.
+- **The queue screen says where the queue came from** — the album, the
+  playlist, "For you" — rather than heading a list of songs with nothing.
+- Pictures reach the car at all. It will not go and fetch one from a remote
+  address, whatever the address, so a YouTube thumbnail handed over as a link
+  showed nothing; the phone fetches them and hands over the files.
+
+### On a television
+
+- **Resonuls installs on Android TV.** It declares that it works without a
+  touchscreen, carries the leanback launcher category so a TV lists it, and has
+  a banner for the home row. Sideload the APK and it is there beside everything
+  else.
+- **The remote's focus is drawn**: a green ring around whatever would answer if
+  you pressed OK. Android tracks the focus already and simply never draws it —
+  a view is only highlighted by its own background, and React Native's views
+  have none — so without this the app is perfectly navigable and completely
+  invisible. The ring is drawn once, over the whole app, and appears on
+  televisions only.
+- **It is laid out for a television, not shown on one.** Everything the app
+  measures itself with — the type, the gaps, the corners, the icons, the tab
+  bar, the mini player — is scaled up when it starts on a TV: a set reports 960
+  points across where a phone reports 400, so the line that fills a phone
+  crosses a sixth of a television. An album lays its cover beside its title
+  rather than above it, which is what puts the songs on screen instead of below
+  the fold.
+- **What a television does differently is handled**, not left to fail. Android
+  TV ships no file picker, so "choose a folder" used to land on a stub and the
+  press looked broken; the option that works is offered first there. The
+  warning about battery optimisation never appears, a set being plugged into a
+  wall.
+
+### Your music from more than one place
+
+- **Network shares.** A WebDAV share — Nextcloud, ownCloud, a NAS — is added
+  under Settings › Network shares and browsed as folders: open one, press a
+  song, and the folder plays as a queue from there. Nothing is scanned and
+  nothing is copied, which is the bargain: a share of ten thousand files works
+  the moment it is added rather than after an evening of reading tags over a
+  network. Seeking works, because the servers serve a byte range. The password
+  goes to the phone's secure store and never into an address — what opens the
+  file rides in a header, so the address that reaches the media session carries
+  nothing.
+- **The clouds that speak WebDAV can be picked by name**: pCloud, Koofr,
+  Yandex Disk, Mail.ru, Box, Fastmail, kDrive and Nextcloud. Choosing one fills
+  in the address, which is the part nobody knows by heart and every service
+  hides in a help page under a different name. Google Drive, Dropbox and
+  OneDrive are not among them: none of the three speaks WebDAV, and each needs
+  a key registered with it in the name of the app.
+- **A share's songs fill in their own names.** The tags are read behind the
+  list, a few hundred bytes per file rather than the file, so a folder is
+  usable at once and the titles, artists and albums appear as they arrive. ID3
+  only, which means MP3: a FLAC keeps its filename, as it does in the local
+  library.
+- **Searching can ask every server you are signed in to**, not only the active
+  one (Settings › Library). Results are laid out this server's first, then each
+  of the others under its name, and what comes from elsewhere plays, opens,
+  downloads and can be starred on the server it came from. A server that is
+  asleep is skipped rather than turning the whole search into an error. Off by
+  default, and the switch only appears once there is a second server.
+
+### A song you listened through is kept
+
+- The next time it plays from the phone: no wait, no data, and it survives a
+  tunnel. It has its own space and never touches what you downloaded on purpose
+  — a download is a promise somebody made to themselves, and nothing here may
+  delete one.
+- It fills while you listen, empties from the oldest listen when it is full,
+  and only ever over Wi-Fi: the point is to spend less data, not to spend it
+  twice. How much it may hold is yours to set, from one gigabyte to twenty,
+  under Settings › Downloads and offline — where it can also be emptied.
+- What it keeps is exactly what the player would have streamed, quality setting
+  and headers included, so a server behind an authenticating proxy is cached
+  too.
+
+### Sound
+
+- **A real equaliser.** Ten bands at the octave centres every graphic equaliser
+  has used for forty years, filtered inside the player rather than handed to
+  the device — Android gives you the bands it feels like offering, which is
+  five on most phones at frequencies nobody chose. These ten are the same ten
+  on the phone, in the car and on the television, so a setting means the same
+  thing wherever you took it.
+- **A preamp**, because raising a band makes the music louder and a track
+  mastered near the top will clip. Eight presets, the app's own.
+- **Float output** is asked for, so where the device takes thirty-two-bit
+  floats the samples reach it as the filters left them rather than being
+  squeezed back into sixteen bits on the way out.
 
 ### Lists
 
@@ -130,6 +239,9 @@ page, or add the repository to
 [Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/HeLLsSs/resonus)
 for automatic updates. The app also checks for a newer release by itself and
 can download and install it; the switch is under Settings › About.
+
+**On a television**, the APK has to be sideloaded: the simplest way is the
+Downloader app from your TV's own store, pointed at the releases page above.
 
 ## Features
 

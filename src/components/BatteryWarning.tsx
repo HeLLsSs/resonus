@@ -8,6 +8,12 @@
  * «Don't remind me» is the one that stops it for good (a switch in Settings ›
  * Playback brings it back).
  *
+ * Never on a television, which is plugged into the wall: the warning is about
+ * a phone rationing its battery, and the one thing a set nobody can charge
+ * does not have is a battery to ration. Android still reports the app as
+ * optimized there, so the check has to be made here rather than trusted to
+ * come back false.
+ *
  * Once per launch is counted here, not per mount. This is only on screen with a
  * profile open, so leaving one and going back in builds it again, and it used
  * to ask again on the way: at that moment the settings still on hand are the
@@ -20,6 +26,7 @@ import { AppState } from 'react-native';
 
 import { useT } from '@/i18n';
 import { isBatteryOptimized, openBatterySettings } from '@/lib/batteryOpt';
+import { IS_TV } from '@/lib/tv';
 import { useSettings } from '@/store/settings';
 import { Dialog } from './Dialog';
 
@@ -40,7 +47,7 @@ export function BatteryWarning() {
   // Only once the settings are read from disk: before that `batteryWarning` is
   // its default (on), and someone who had turned it off would see it anyway.
   useEffect(() => {
-    if (askedRef.current || !hydrated || !enabled || !isBatteryOptimized()) return;
+    if (IS_TV || askedRef.current || !hydrated || !enabled || !isBatteryOptimized()) return;
     asked = true;
     askedRef.current = true;
     setVisible(true);

@@ -1,3 +1,17 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index f465e68db548adeff856a5dd3d01162dbd2bf3d9..6ecfd0872ffb8663fc7538fd47a2e2328d71354f 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -35,4 +35,9 @@ dependencies {
+   implementation "androidx.media3:media3-datasource-okhttp:$androidxMedia3Version"
+   implementation "androidx.media3:media3-exoplayer-hls:$androidxMedia3Version"
+   implementation "androidx.media3:media3-exoplayer-smoothstreaming:$androidxMedia3Version"
++
++  // The app's equaliser lives in the audio path rather than on the audio
++  // session, so the player has to build its sink with it (see
++  // `DspRenderersFactory`). A local module of this app, not a package.
++  implementation project(':audio-dsp')
+ }
 diff --git a/android/src/main/AndroidManifest.xml b/android/src/main/AndroidManifest.xml
 index 36a19f2d9c4a979a940ab681a1fb844ce45f7c75..3509de4747f3ebdda1a014f05fb02f0710563498 100644
 --- a/android/src/main/AndroidManifest.xml
@@ -315,7 +329,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
      runBlocking(appContext.mainQueue.coroutineContext) { block() }
  
 diff --git a/android/src/main/java/expo/modules/audio/AudioPlayer.kt b/android/src/main/java/expo/modules/audio/AudioPlayer.kt
-index c76a9fd2a53743a691782e0f67d0d71401df58f6..460b21db9173c33be03e03c661649b833f8cfbc8 100644
+index c76a9fd2a53743a691782e0f67d0d71401df58f6..cb01498c491a1ddaac60a0a11e20275b8160138f 100644
 --- a/android/src/main/java/expo/modules/audio/AudioPlayer.kt
 +++ b/android/src/main/java/expo/modules/audio/AudioPlayer.kt
 @@ -8,11 +8,14 @@ import android.util.Log
@@ -329,7 +343,7 @@ index c76a9fd2a53743a691782e0f67d0d71401df58f6..460b21db9173c33be03e03c661649b83
  import androidx.media3.common.Player
  import androidx.media3.common.util.UnstableApi
  import androidx.media3.exoplayer.DefaultLoadControl
-+import androidx.media3.exoplayer.DefaultRenderersFactory
++import expo.modules.audiodsp.DspRenderersFactory
  import androidx.media3.exoplayer.ExoPlayer
  import androidx.media3.exoplayer.source.MediaSource
  import androidx.media3.session.MediaSession
@@ -345,7 +359,7 @@ index c76a9fd2a53743a691782e0f67d0d71401df58f6..460b21db9173c33be03e03c661649b83
  private const val SEEK_JUMP_INTERVAL_MS: Long = 10_000
  
  @UnstableApi
-@@ -36,7 +44,39 @@ class AudioPlayer(
+@@ -36,7 +44,37 @@ class AudioPlayer(
  ) : BaseAudioPlayer(
    player = ExoPlayer.Builder(context)
      .setLooper(context.mainLooper)
@@ -353,12 +367,10 @@ index c76a9fd2a53743a691782e0f67d0d71401df58f6..460b21db9173c33be03e03c661649b83
 +    // Android does not require devices to ship an ALAC decoder, and Samsung's
 +    // codec list does not include one. Keep every platform decoder first, then
 +    // let Media3 load the bundled FFmpeg extension only for an unsupported
-+    // format. That extension contains ALAC and no other codec.
-+    .setRenderersFactory(
-+      DefaultRenderersFactory(context).setExtensionRendererMode(
-+        DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
-+      )
-+    )
++    // format. That extension contains ALAC and no other codec. The same
++    // factory puts the app's equaliser in the audio path and asks for float
++    // output (see `DspRenderersFactory` in the audio-dsp module).
++    .setRenderersFactory(DspRenderersFactory(context))
 +    // Say what this is. AudioAttributes.DEFAULT leaves the content type as
 +    // UNKNOWN, and the system reads it to decide how to treat the audio: which
 +    // volume it belongs to, and whether it can go down the low power path
@@ -386,7 +398,7 @@ index c76a9fd2a53743a691782e0f67d0d71401df58f6..460b21db9173c33be03e03c661649b83
      .setSeekForwardIncrementMs(SEEK_JUMP_INTERVAL_MS)
      .setSeekBackIncrementMs(SEEK_JUMP_INTERVAL_MS)
      .apply {
-@@ -64,7 +104,20 @@ class AudioPlayer(
+@@ -64,7 +102,20 @@ class AudioPlayer(
    var isActiveForLockScreen = false
    internal var metadata: Metadata? = null
    internal var lockScreenOptions: AudioLockScreenOptions? = null
@@ -408,7 +420,7 @@ index c76a9fd2a53743a691782e0f67d0d71401df58f6..460b21db9173c33be03e03c661649b83
    val serviceConnection = AudioPlaybackServiceConnection(WeakReference(this), appContext)
  
    val isLive: Boolean
-@@ -85,11 +138,46 @@ class AudioPlayer(
+@@ -85,11 +136,46 @@ class AudioPlayer(
  
    init {
      installPlayerListeners()
@@ -455,7 +467,7 @@ index c76a9fd2a53743a691782e0f67d0d71401df58f6..460b21db9173c33be03e03c661649b83
    fun setMediaSource(source: MediaSource) {
      previousPlaybackState = Player.STATE_IDLE
      ref.setMediaSource(source)
-@@ -97,6 +185,50 @@ class AudioPlayer(
+@@ -97,6 +183,50 @@ class AudioPlayer(
      startUpdating()
    }
  
@@ -506,7 +518,7 @@ index c76a9fd2a53743a691782e0f67d0d71401df58f6..460b21db9173c33be03e03c661649b83
    fun setActiveForLockScreen(active: Boolean, metadata: Metadata? = null, options: AudioLockScreenOptions? = null) {
      if (active) {
        this.metadata = metadata
-@@ -221,7 +353,8 @@ class AudioPlayer(
+@@ -221,7 +351,8 @@ class AudioPlayer(
  
    internal fun assignBasicMediaSession() {
      mediaSession.release()

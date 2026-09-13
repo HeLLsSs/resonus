@@ -1,0 +1,7 @@
+{
+  "name": "audio-dsp",
+  "version": "0.0.1",
+  "description": "Parametric equaliser inside the player's audio path (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

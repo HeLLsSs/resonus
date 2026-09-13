@@ -1,9 +1,11 @@
 /**
- * Settings › Equalizer: toggle, device presets and one band per row, then the
- * two boosts (bass and volume) the same module carries.
- * Processing is done by the system equalizer (native module modules/audio-eq);
- * here you only choose gains, which are saved and applied to the app audio
- * immediately.
+ * Settings › Equalizer: the switch, a preamp, a preset, one band per row, and
+ * then the two boosts that are not equalisation.
+ *
+ * The filtering happens inside the player (`modules/audio-dsp`), so the ten
+ * bands are the same ten everywhere and a gain set here means the same thing on
+ * the phone, in the car and on the television. Nothing is chosen but the gains;
+ * they are saved and heard at once.
  */
 import { useState } from 'react';
 import { ScrollView, Text } from 'react-native';
@@ -17,7 +19,13 @@ import {
   SwitchList,
 } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
-import { BASS_BOOST_MAX, LOUDNESS_MAX_MB, useEqualizer } from '@/store/equalizer';
+import {
+  BASS_BOOST_MAX,
+  LOUDNESS_MAX_MB,
+  PREAMP_MAX,
+  PREAMP_MIN,
+  useEqualizer,
+} from '@/store/equalizer';
 import { useTheme } from '@/theme';
 
 /** 62 → «62 Hz»; 16000 → «16 kHz». */
@@ -43,6 +51,8 @@ export default function EqualizerSettings() {
   const presets = useEqualizer((s) => s.presets);
   const enabled = useEqualizer((s) => s.enabled);
   const levels = useEqualizer((s) => s.levels);
+  const preamp = useEqualizer((s) => s.preamp);
+  const setPreamp = useEqualizer((s) => s.setPreamp);
   const setEnabled = useEqualizer((s) => s.setEnabled);
   const setBandLevel = useEqualizer((s) => s.setBandLevel);
   const applyPreset = useEqualizer((s) => s.applyPreset);
@@ -63,7 +73,7 @@ export default function EqualizerSettings() {
       <SettingsPage title={t('Equalizer')}>
         <ScrollView contentContainerStyle={settingsStyles.content}>
           <Text style={settingsStyles.sectionDescription}>
-            {t('This device does not offer an equalizer.')}
+            {t('The equalizer is not available in this build.')}
           </Text>
         </ScrollView>
       </SettingsPage>
@@ -82,6 +92,20 @@ export default function EqualizerSettings() {
               onChange: setEnabled,
             },
           ]}
+        />
+
+        {/* Before the bands, because it is what makes room for them. */}
+        <SliderRow
+          label={t('Preamp')}
+          description={t(
+            'Where the room for a boost comes from. Raising a band makes the music louder, and a track mastered near the top will clip: pull this down by about as much as the biggest band you raised.',
+          )}
+          value={preamp}
+          min={PREAMP_MIN}
+          max={PREAMP_MAX}
+          step={100}
+          formatValue={formatGain}
+          onChange={setPreamp}
         />
 
         {presets.length > 0 ? (
