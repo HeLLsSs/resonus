@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.14.0] - 2026-09-14
+
+### Added
+
+- A share's FLACs and M4As fill in their own names, as its MP3s already did. Only ID3 was read before, so a lossless library — which is what a share usually is — came back as a list of filenames with no artist and no album. A FLAC's Vorbis comment and an M4A's `ilst` are read the same way, over byte ranges: on a hundred-kilobyte file with a cover sitting between the stream info and the words, under eight kilobytes cross the wire. An M4A that keeps its index at the end of the file — which is where one not made for streaming puts it — is found there rather than missed. Anything else still keeps its filename, and says so by coming back empty rather than by failing.
+
 ## [0.13.1] - 2026-09-14
 
 ### Fixed
@@ -2144,6 +2150,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.14.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.14.0
 [0.13.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.13.1
 [0.13.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.13.0
 [0.12.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.12.0

@@ -176,9 +176,10 @@ appear when it is switched off.
   a key registered with it in the name of the app.
 - **A share's songs fill in their own names.** The tags are read behind the
   list, a few hundred bytes per file rather than the file, so a folder is
-  usable at once and the titles, artists and albums appear as they arrive. ID3
-  only, which means MP3: a FLAC keeps its filename, as it does in the local
-  library.
+  usable at once and the titles, artists and albums appear as they arrive.
+  MP3, FLAC and M4A are all read — a share is usually where the lossless files
+  live, and those used to come back as a list of filenames. Anything else keeps
+  its filename.
 - **Searching can ask every server you are signed in to**, not only the active
   one (Settings › Library). Results are laid out this server's first, then each
   of the others under its name, and what comes from elsewhere plays, opens,
