@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.13.1] - 2026-09-14
+
+### Fixed
+
+- The equaliser came back on, and flat. A setting saved before the bands became the app's own has five numbers in it, and those were dropped on purpose — but the switch was kept, so the equaliser was in the audio path doing nothing: the screen said it was working, the ears said otherwise, and the audio was held off the device's low-power path for no benefit. What was left behind is left behind whole.
+
 ## [0.13.0] - 2026-09-13
 
 ### Added
@@ -2138,6 +2144,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.13.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.13.1
 [0.13.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.13.0
 [0.12.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.12.0
 [0.11.2]: https://github.com/HeLLsSs/resonus/releases/tag/v0.11.2

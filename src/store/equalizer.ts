@@ -222,16 +222,21 @@ export const useEqualizer = create<EqState>((set, get) => ({
     } catch {
       // no previous data
     }
-    const flat = EQ_BANDS.map(() => 0);
     // A setting saved before the bands became ours has five numbers in it, or
     // three, and they meant frequencies these ten are not. Ignored rather than
     // stretched onto the new ones: a guess at what somebody meant is worse
     // than flat, which they can hear is flat.
-    const levels =
+    const mine =
       stored && Array.isArray(stored.levels) && stored.levels.length === EQ_BANDS.length
         ? stored.levels.map((mb) => clampLevel(mb))
-        : flat;
-    const enabled = !!dsp && !!stored?.enabled;
+        : null;
+    const levels = mine ?? EQ_BANDS.map(() => 0);
+    // And the switch goes with them. Keeping it on while the gains it belonged
+    // to have been dropped leaves an equaliser that is on and does nothing:
+    // the screen says it is working, the ears say otherwise, and the audio is
+    // kept off the device's low-power path for no benefit at all. What was
+    // left behind is left behind whole.
+    const enabled = !!dsp && !!stored?.enabled && null !== mine;
     const preamp = clampLevel(stored?.preamp ?? 0, PREAMP_MIN, PREAMP_MAX);
     const bassBoost = info?.bassBoost ? clampBoost(stored?.bassBoost, BASS_BOOST_MAX) : 0;
     const loudness = info?.loudness ? clampBoost(stored?.loudness, LOUDNESS_MAX_MB) : 0;
