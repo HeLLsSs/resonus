@@ -230,6 +230,18 @@ export function startCarAutoSync(): void {
   usePins.subscribe((state, prev) => {
     if (state.pins !== prev.pins) rebuild(false);
   });
+  // The one row of Home that is the player itself: "Continue listening" shows
+  // the queue where it stands, so it has to follow the queue. Nothing watched
+  // playback before, which left that row showing whatever was current at the
+  // last build — a song that had finished long ago, under a heading inviting
+  // you to pick it up. Narrow on purpose: the position moves every second and
+  // is no business of the browse tree, so only a change of track or of
+  // playing-or-not counts.
+  usePlayerStore.subscribe((state, prev) => {
+    const song = state.queue[state.index]?.id;
+    const before = prev.queue[prev.index]?.id;
+    if (song !== before || state.isPlaying !== prev.isPlaying) rebuild(false);
+  });
   const sameSongs = (a: Record<string, unknown>, b: Record<string, unknown>) => {
     const ids = Object.keys(a);
     return ids.length === Object.keys(b).length && ids.every((id) => id in b);

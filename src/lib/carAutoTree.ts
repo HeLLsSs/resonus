@@ -311,11 +311,19 @@ const HOME_BOOKMARKS = 3;
  * The queue as the phone holds it now: one row, which is what a driver who
  * paused on the doorstep taps first. The song's own cover, so the row looks
  * like what it will play, and the collection it was started from under it.
+ *
+ * **Nothing to pick up while it is already playing**, and the row is then left
+ * out. It used to be drawn regardless, wearing the title and cover of the
+ * current song — so the first row of the car's Home looked exactly like a song
+ * in a list, and tapping it did nothing at all: there was no paused queue to
+ * set going. The car still jumped to the playback screen, which is what it
+ * does for any play request, and the whole thing read as a song that refused
+ * to play.
  */
 function resumeNode(): CarNode | null {
-  const { queue, index, source } = usePlayerStore.getState();
+  const { queue, index, source, isPlaying } = usePlayerStore.getState();
   const song = queue[index];
-  if (!song) return null;
+  if (!song || isPlaying) return null;
   return {
     id: RESUME_ID,
     title: song.title || tg('Unknown title'),

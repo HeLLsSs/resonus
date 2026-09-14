@@ -7,6 +7,13 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.15.1] - 2026-09-14
+
+### Fixed
+
+- The first row of the car's Home did nothing. "Continue listening" shows the queue where it stands, wearing the current song's title and cover, so it looks exactly like a song in a list — and its one job is to set a paused queue going. Tapped while the music was already playing it could do nothing at all, while the car jumped to the playback screen as it does for any play request: from the driver's seat, a song that refused to play. A row that cannot act is no longer drawn.
+- And that row could be showing the wrong song. Nothing watched playback, so the browse tree kept whatever was current when it was last built — a track that had finished long ago, under a heading inviting you to pick it up. The tree now follows a change of track or of playing-or-not, and nothing else: the position moves every second and is no business of a list of rows.
+
 ## [0.15.0] - 2026-09-14
 
 ### Added
@@ -2156,6 +2163,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.15.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.15.1
 [0.15.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.15.0
 [0.14.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.14.0
 [0.13.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.13.1

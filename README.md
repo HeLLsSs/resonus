@@ -291,7 +291,7 @@ Thanks to the people who have translated the app:
 | Italiano | [Anakin-bb8](https://github.com/Anakin-bb8) |
 | 简体中文 | [xcdmrCHP](https://github.com/xcdmrCHP) |
 | Українська | [albedych](https://github.com/albedych) |
-| Français | Gaëtan |
+| Français | [HeLLsSs](https://github.com/HeLLsSs) |
 
 ## Contributing
 
