@@ -41,6 +41,7 @@ import { SelectionBar } from '@/components/SelectionBar';
 import { SongCard } from '@/components/SongCard';
 import { TrackRow } from '@/components/TrackRow';
 import { useAccent } from '@/hooks/useAccent';
+import { useBrowseSort } from '@/hooks/useBrowseSort';
 import { useSelectionMenu } from '@/hooks/useSelectionMenu';
 import { useT } from '@/i18n';
 import { haptic } from '@/lib/haptics';
@@ -146,8 +147,14 @@ export function SongsBrowser({ embedded, actionRef, searchOpen }: BrowserProps) 
    * where it would do nothing.
    */
   const { sort: sortParam } = useLocalSearchParams<{ sort?: string }>();
-  const [sort, setSort] = useState<SongListSort>(
-    (sorts.find((s) => s === sortParam) ?? sorts[0] ?? 'server') as SongListSort,
+  // `sorts` is what this server can actually order by, so it is also what a
+  // saved order is checked against: one the server no longer offers is dropped
+  // rather than sent and refused.
+  const [sort, setSort] = useBrowseSort<SongListSort>(
+    'browse:songs',
+    (sorts[0] ?? 'server') as SongListSort,
+    sorts.find((s) => s === sortParam) as SongListSort | undefined,
+    sorts as readonly SongListSort[],
   );
 
   // When the last song played changes, "Recently played" is a different list:

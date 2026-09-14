@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [0.15.0] - 2026-09-14
+
+### Added
+
+- Browsing albums, artists or songs keeps the order you picked. Every other list in the app already did — an album, a playlist, the favourites, a discography — and these three were the exception, so choosing "A-Z" meant choosing it again on every visit. Opening one from a Home shelf still works the way it reads: "Most played albums" opens that list in that order, for that visit, and does not overwrite what you chose, because a shelf that quietly rewrote your default would end up lying about its own title. On the Songs screen, an order the server can no longer sort by is dropped rather than sent and refused.
+
 ## [0.14.0] - 2026-09-14
 
 ### Added
@@ -2150,6 +2156,7 @@ of work nobody asked for, and the bigger the library the worse it got.
 - Softened the cover-derived background color so text and controls stay legible
   on any artwork.
 
+[0.15.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.15.0
 [0.14.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.14.0
 [0.13.1]: https://github.com/HeLLsSs/resonus/releases/tag/v0.13.1
 [0.13.0]: https://github.com/HeLLsSs/resonus/releases/tag/v0.13.0

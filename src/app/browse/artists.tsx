@@ -20,6 +20,7 @@ import { ArtistGridSkeleton } from '@/components/ArtistGridSkeleton';
 import { ArtistListSkeleton } from '@/components/ArtistListSkeleton';
 import { ArtistRow } from '@/components/ArtistRow';
 import { useHistoryTimes } from '@/hooks/useHistoryTimes';
+import { useBrowseSort } from '@/hooks/useBrowseSort';
 import { EmptyState } from '@/components/EmptyState';
 import { Message } from '@/components/Message';
 import { useT } from '@/i18n';
@@ -93,10 +94,13 @@ export function ArtistsBrowser({ embedded, actionRef, searchOpen }: BrowserProps
   const canFetch = useAuthStore((s) => !!s.auth || s.offline);
   const [query, setQuery] = useState('');
   /** Same as the Albums and Songs screens: a Home shelf can say which order it
-   *  was showing, and anything unrecognised is ignored. */
+   *  was showing, anything unrecognised is ignored, and what you pick from the
+   *  menu is kept for next time (`useBrowseSort`). */
   const { sort: sortParam } = useLocalSearchParams<{ sort?: string }>();
-  const [sort, setSort] = useState<ArtistSort>(
-    SORTS.some((s) => s.key === sortParam) ? (sortParam as ArtistSort) : 'recent',
+  const [sort, setSort] = useBrowseSort<ArtistSort>(
+    'browse:artists',
+    'recent',
+    SORTS.some((s) => s.key === sortParam) ? (sortParam as ArtistSort) : undefined,
   );
   const layout = useSettings((s) => s.browseArtistsLayout);
   const setLayout = useSettings((s) => s.setBrowseArtistsLayout);

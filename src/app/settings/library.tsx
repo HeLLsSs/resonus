@@ -2,7 +2,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,13 +31,12 @@ export default function LibrarySettings() {
   const setSource = useAuthStore((s) => s.setOfflineSource);
   const setFolders = useAuthStore((s) => s.setOfflineFolders);
   // `otherServers` reads the store rather than taking it as an argument, so
-  // the subscription to `profiles` is what makes the row appear and disappear
-  // as servers are added and forgotten.
-  const profiles = useAuthStore((s) => s.profiles);
-  const others = useMemo(
-    () => (offline || !auth ? [] : otherServers()),
-    [profiles, auth, offline],
-  );
+  // subscribing to `profiles` is what makes the row appear and disappear as
+  // servers are added and forgotten. Recomputed every render rather than
+  // memoized: it is a filter over a handful of profiles, and a memo whose real
+  // input is invisible to it is a memo that lies about its dependencies.
+  useAuthStore((s) => s.profiles);
+  const others = offline || !auth ? [] : otherServers();
   const searchEveryServer = useSettings((s) => s.searchEveryServer);
   const setSearchEveryServer = useSettings((s) => s.setSearchEveryServer);
   const toast = useToast((s) => s.show);

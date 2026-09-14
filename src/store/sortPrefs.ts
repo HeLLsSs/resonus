@@ -5,6 +5,7 @@
  */
 import { create } from 'zustand';
 
+import { type AlbumListType, type SongListSort } from '@/api/subsonic';
 import { type SongSortDir, type SongSortField } from '@/lib/songSort';
 import { getItem, setItem } from '@/lib/storage';
 
@@ -15,8 +16,16 @@ const KEY = 'resonus.sortPrefs';
 export type { SongSortField };
 /** And a list of albums (see `useAlbumSort`); 'alpha' means the same there. */
 export type AlbumSortField = 'year' | 'alpha';
+/**
+ * And the orders the three Browse screens ask the server for (see
+ * `useBrowseSort`). These are the server's own orders rather than something
+ * the app applies to a list it holds, which is why they have no direction of
+ * their own — the map carries one because every other list needs it.
+ */
+export type BrowseArtistSort = 'alpha' | 'recent' | 'newest' | 'frequent' | 'random';
+export type BrowseSortField = AlbumListType | SongListSort | BrowseArtistSort;
 /** Anything this map can hold: one store keeps the choice made on every list. */
-export type SortField = SongSortField | AlbumSortField;
+export type SortField = SongSortField | AlbumSortField | BrowseSortField;
 export type SortDir = SongSortDir;
 
 export interface SortPref {

@@ -43,6 +43,7 @@ import { BackChevron } from '@/components/BackChevron';
 import { BrowseFrame, useSearchBox, type BrowserProps } from '@/components/BrowseFrame';
 import { BrowseToolbar } from '@/components/BrowseToolbar';
 import { useGridColumns } from '@/hooks/useGridColumns';
+import { useBrowseSort } from '@/hooks/useBrowseSort';
 import { useScreenBottomPadding } from '@/hooks/useScreenBottomPadding';
 
 const PAGE = 30;
@@ -98,11 +99,16 @@ export function AlbumsBrowser({ embedded, actionRef, searchOpen }: BrowserProps)
   /**
    * Arrived at from a Home shelf, this says which one: "Most played albums"
    * opens the same albums under the same heading rather than dropping you at
-   * the top of a list you then have to sort yourself. Only the initial value —
-   * each visit is its own screen, so there is nothing here to keep in step.
+   * the top of a list you then have to sort yourself. That order holds for the
+   * visit and is not remembered — otherwise the next shelf would lie about its
+   * own title. What you pick from the menu is what gets kept (`useBrowseSort`).
    */
   const { sort: sortParam } = useLocalSearchParams<{ sort?: string }>();
-  const [sort, setSort] = useState<AlbumListType>(sortFromParam(sortParam) ?? 'recent');
+  const [sort, setSort] = useBrowseSort<AlbumListType>(
+    'browse:albums',
+    'recent',
+    sortFromParam(sortParam),
+  );
   const layout = useSettings((s) => s.browseAlbumsLayout);
   const setLayout = useSettings((s) => s.setBrowseAlbumsLayout);
   const grid = layout === 'grid';
