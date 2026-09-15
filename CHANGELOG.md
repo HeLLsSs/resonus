@@ -7,6 +7,17 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.0.0] - 2026-09-15
+
+### Added
+
+- Importing a Spotify playlist through Navifind says why it did not come, instead of "Nothing to fetch at that link" for almost every one. Spotify no longer hands a playlist's tracks to an application holding only its own credentials: it wants the account of the person who made it, and a link refused for want of one now stays in the field, because branching an account and pressing Import again is the whole of the repair. Branching is a section of the same screen. The proxy keeps one Spotify account per Navidrome user and the app never holds any of it: the browser is sent to the address the proxy hands out, which carries a signed, short-lived state and nothing of this profile's credentials. Where the proxy has an account of its own, the section is not drawn.
+- A playlist that is not the branched account's own comes through Spotify's public page, which stops at a hundred tracks and does not say whether the playlist holds more. A hundred looked like a whole; the screen now says when a list stopped there, with the one repair: make a copy of the playlist on the branched account, where Spotify gives all of it, and import that one.
+
+### Fixed
+
+- The WebDAV browser keeps what it read together with the folder it read it from, so moving to another folder never shows the last one's files for a frame.
+
 ## [0.15.1] - 2026-09-14
 
 ### Fixed
