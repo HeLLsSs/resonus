@@ -1177,5 +1177,21 @@
   "Fastmail needs an app password with the Files access.": "Fastmail demande un mot de passe d'application avec l'accès Fichiers.",
   "Replace {drive} with the number in your kDrive address, and use an application password.": "Remplace {drive} par le numéro qui figure dans l'adresse de ton kDrive, et utilise un mot de passe d'application.",
   "Service": "Service",
-  "Another address": "Une autre adresse"
+  "Another address": "Une autre adresse",
+  "Spotify no longer opens a playlist to an app on its own. Branch your Spotify account on this screen, once.": "Spotify n'ouvre plus une playlist à une application seule. Branche ton compte Spotify sur cet écran, une fois.",
+  "Spotify did not answer. Try again.": "Spotify n'a pas répondu. Réessaie.",
+  "Spotify refused the proxy's own credentials.": "Spotify a refusé les identifiants du proxy.",
+  "That Spotify link was not recognised": "Lien Spotify non reconnu",
+  "Forgotten. Navifind has no Spotify account left.": "Oublié. Navifind n'a plus de compte Spotify.",
+  "The proxy couldn't be asked": "Impossible d'interroger le proxy",
+  "Spotify account": "Compte Spotify",
+  "Spotify is branched": "Spotify est branché",
+  "Branch Spotify": "Brancher Spotify",
+  "Opens Spotify in a browser to ask for its permission.": "Ouvre Spotify dans un navigateur pour lui demander son accord.",
+  "Forget the Spotify account": "Oublier le compte Spotify",
+  "That is gone from Spotify, or it is one of its own playlists — those are closed to apps.": "Ça n'existe plus sur Spotify, ou c'est une de ses propres playlists — celles-là sont fermées aux applications.",
+  "There are no tracks at that link": "Il n'y a aucune piste à ce lien",
+  "Spotify only opens the playlists the branched account made itself. Make a copy of it on that account, then import the copy.": "Spotify n'ouvre que les playlists créées par le compte branché. Fais-en une copie sur ce compte, puis importe la copie.",
+  "Spotify only opens a playlist to the account that made it, so importing one needs your account branched here once. It stays on the proxy, for this profile alone.": "Spotify n'ouvre une playlist qu'au compte qui l'a créée : en importer une demande de brancher ton compte ici, une fois. Il reste sur le proxy, pour ce profil seul.",
+  "The playlists you made are yours to import.": "Les playlists que tu as créées sont importables."
 }

@@ -1600,15 +1600,86 @@ export async function addOnlineTrackToLibrary(auth: SubsonicAuth, id: string): P
 }
 
 /**
+ * Why a Spotify link fetched nothing. Two of these are somebody's to fix from
+ * the phone: `needs-account`, which is Spotify having closed playlists to an
+ * application on its own and wanting a real account behind the ask, and
+ * `not-yours`, which is Spotify only opening to that account the playlists it
+ * made itself.
+ */
+export type ImportRefusal =
+  | 'needs-account'
+  | 'not-yours'
+  | 'gone'
+  | 'empty'
+  | 'unreachable'
+  | 'no-token'
+  | 'unsupported';
+
+export interface ImportResult {
+  /** Tracks the proxy set out to fetch. */
+  queued: number;
+  /** Why it set out to fetch none, when it is a Spotify link that it knows. */
+  reason?: ImportRefusal;
+}
+
+/**
  * Hands the proxy a link (a YouTube, SoundCloud or Spotify playlist, album or
  * track) to fetch into the library, as a playlist of the same name where it
- * is a list. Answers how many tracks it set out to fetch.
+ * is a list. Answers how many tracks it set out to fetch, and — for a Spotify
+ * link that gave none — why.
  */
-export async function importIntoLibrary(auth: SubsonicAuth, url: string): Promise<number> {
-  const res = await request<{ navifind?: { queued?: number } }>(auth, 'navifind/import.view', {
-    url: url.trim(),
-  });
-  return res.navifind?.queued ?? 0;
+export async function importIntoLibrary(auth: SubsonicAuth, url: string): Promise<ImportResult> {
+  const res = await request<{ navifind?: { queued?: number; reason?: ImportRefusal } }>(
+    auth,
+    'navifind/import.view',
+    { url: url.trim() },
+  );
+  return { queued: res.navifind?.queued ?? 0, reason: res.navifind?.reason };
+}
+
+// ── navifind · Spotify ───────────────────────────────────────────────────────
+// Spotify stopped handing a playlist's tracks to an application holding only
+// its own credentials, so an import of one now needs the account of somebody
+// who can see it. That account is branched once, per Navidrome user, and the
+// proxy keeps the refresh token; nothing about it is held here.
+
+export interface SpotifyAccount {
+  /** Whether this profile has a Spotify account branched onto the proxy. */
+  connected: boolean;
+  /**
+   * The proxy has an account of its own, for whoever has branched none: that
+   * account's playlists import without a word, and branching one's own is
+   * for importing one's own.
+   */
+  shared: boolean;
+  /**
+   * Where to send a browser to branch one, or null where the proxy has no
+   * Spotify set up. It is Spotify's own page and it has to be opened outside
+   * the app: Spotify only comes back to the address registered against the
+   * proxy, and what comes back is a page for a person to read. The address
+   * carries a signed, short-lived state and nothing of this profile's
+   * credentials, which is why it is asked for here rather than built.
+   */
+  authorizeUrl: string | null;
+}
+
+/** The Spotify account branched onto this profile, and how to branch one. */
+export async function spotifyAccount(auth: SubsonicAuth): Promise<SpotifyAccount> {
+  const res = await request<{ navifind?: { spotifyAccount?: Partial<SpotifyAccount> } }>(
+    auth,
+    'navifind/spotify/account.view',
+  );
+  const account = res.navifind?.spotifyAccount;
+  return {
+    connected: account?.connected === true,
+    shared: account?.shared === true,
+    authorizeUrl: account?.authorizeUrl ?? null,
+  };
+}
+
+/** Makes the proxy forget the Spotify account branched onto this profile. */
+export async function forgetSpotifyAccount(auth: SubsonicAuth): Promise<void> {
+  await request(auth, 'navifind/spotify/account.view', { action: 'forget' });
 }
 
 export interface NavifindStatus {

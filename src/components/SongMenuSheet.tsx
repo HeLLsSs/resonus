@@ -656,7 +656,7 @@ export function SongMenuSheet() {
                         // The watcher says when the copy is in, here or as a
                         // notification if the app has been put away by then.
                         const work = addOnlineTrackToLibrary(auth, song.id);
-                        navifindWorkStarted(work.then(() => 1));
+                        navifindWorkStarted(work.then(() => ({ queued: 1 })));
                         work.then(
                           () => toast(t('Copying to the library; it shows up once the server has scanned it.')),
                           () => toast(t("Couldn't add it to the library")),

@@ -1175,5 +1175,21 @@
   "Fastmail needs an app password with the Files access.": "Fastmail needs an app password with the Files access.",
   "Replace {drive} with the number in your kDrive address, and use an application password.": "Replace {drive} with the number in your kDrive address, and use an application password.",
   "Service": "Service",
-  "Another address": "Another address"
+  "Another address": "Another address",
+  "Spotify no longer opens a playlist to an app on its own. Branch your Spotify account on this screen, once.": "Spotify no longer opens a playlist to an app on its own. Branch your Spotify account on this screen, once.",
+  "Spotify did not answer. Try again.": "Spotify did not answer. Try again.",
+  "Spotify refused the proxy's own credentials.": "Spotify refused the proxy's own credentials.",
+  "That Spotify link was not recognised": "That Spotify link was not recognised",
+  "Forgotten. Navifind has no Spotify account left.": "Forgotten. Navifind has no Spotify account left.",
+  "The proxy couldn't be asked": "The proxy couldn't be asked",
+  "Spotify account": "Spotify account",
+  "Spotify is branched": "Spotify is branched",
+  "Branch Spotify": "Branch Spotify",
+  "Opens Spotify in a browser to ask for its permission.": "Opens Spotify in a browser to ask for its permission.",
+  "Forget the Spotify account": "Forget the Spotify account",
+  "That is gone from Spotify, or it is one of its own playlists — those are closed to apps.": "That is gone from Spotify, or it is one of its own playlists — those are closed to apps.",
+  "There are no tracks at that link": "There are no tracks at that link",
+  "Spotify only opens the playlists the branched account made itself. Make a copy of it on that account, then import the copy.": "Spotify only opens the playlists the branched account made itself. Make a copy of it on that account, then import the copy.",
+  "Spotify only opens a playlist to the account that made it, so importing one needs your account branched here once. It stays on the proxy, for this profile alone.": "Spotify only opens a playlist to the account that made it, so importing one needs your account branched here once. It stays on the proxy, for this profile alone.",
+  "The playlists you made are yours to import.": "The playlists you made are yours to import."
 }

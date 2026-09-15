@@ -202,7 +202,7 @@ function openScreen(response: Notifications.NotificationResponse | null): void {
  * is what the proxy answered when it was asked; nothing to fetch, or a
  * refusal, is nothing to wait for.
  */
-export function navifindWorkStarted(queued?: Promise<number>): void {
+export function navifindWorkStarted(queued?: Promise<{ queued: number }>): void {
   const known = queryClient.getQueryData(NAVIFIND_STATUS_KEY);
   before ??= isStatus(known) ? new Set(known.done) : null;
   graceUntil = Date.now() + GRACE_MS;
@@ -213,8 +213,8 @@ export function navifindWorkStarted(queued?: Promise<number>): void {
     graceUntil = 0;
     stopPolling();
   };
-  void queued?.then((n) => {
-    if (n === 0) standDown();
+  void queued?.then((answer) => {
+    if (answer.queued === 0) standDown();
   }, standDown);
 }
 

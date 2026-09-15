@@ -44,8 +44,20 @@ export default function WebdavBrowse() {
   const source = useWebdav((s) => s.sources.find((x) => x.id === id));
   const here = typeof path === 'string' ? path : '';
 
-  const [entries, setEntries] = useState<DavEntry[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  /**
+   * What was read, and the folder it was read from. The two are one piece of
+   * state because they change together: moving to another folder must not show
+   * the last one's files for a frame, and clearing them on the way in is a
+   * render nobody needs — the folder it belongs to is checked when it is read.
+   */
+  const where = `${source?.id ?? ''}|${here}`;
+  const [read, setRead] = useState<{ at: string; entries: DavEntry[] | null; failed: boolean }>({
+    at: where,
+    entries: null,
+    failed: false,
+  });
+  const entries = read.at === where ? read.entries : null;
+  const failed = read.at === where && read.failed;
   /**
    * What the tags said, by href, as they come in. The list is shown at once
    * from the filenames and each row is replaced as its tag arrives, so a
@@ -55,20 +67,18 @@ export default function WebdavBrowse() {
 
   useEffect(() => {
     let live = true;
-    setEntries(null);
-    setFailed(false);
     if (!source) return;
     listFolder(source, here)
       .then((found) => {
-        if (live) setEntries(found);
+        if (live) setRead({ at: where, entries: found, failed: false });
       })
       .catch(() => {
-        if (live) setFailed(true);
+        if (live) setRead({ at: where, entries: null, failed: true });
       });
     return () => {
       live = false;
     };
-  }, [source, here]);
+  }, [source, here, where]);
 
   // The tags, behind the list. A few at a time: a folder of fifty songs fired
   // at once is how a phone times out its own connections.

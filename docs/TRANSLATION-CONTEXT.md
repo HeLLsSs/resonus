@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1170 of them.
+Every string the app can show, under the screen it shows up on. 1186 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -1049,9 +1049,12 @@ you are actually typing into, which is easier than reading it here.
 | `{n} tracks are in the library now` |  |
 | `1 track is in the library now` |  |
 | `A YouTube, SoundCloud or Spotify link. A playlist or an album becomes a playlist of the same name on the server once its tracks are in.` |  |
+| `Branch Spotify` |  |
 | `Fetching {n} tracks into the library` |  |
 | `Fetching 1 track into the library` |  |
 | `Fetching now` |  |
+| `Forget the Spotify account` |  |
+| `Forgotten. Navifind has no Spotify account left.` |  |
 | `Import` |  |
 | `Import into the library` |  |
 | `In the library` |  |
@@ -1062,9 +1065,22 @@ you are actually typing into, which is easier than reading it here.
 | `Nothing to fetch at that link` |  |
 | `Offline: nothing to ask.` |  |
 | `On the proxy` |  |
+| `Opens Spotify in a browser to ask for its permission.` |  |
 | `Sending…` |  |
+| `Spotify account` |  |
+| `Spotify did not answer. Try again.` |  |
+| `Spotify is branched` |  |
+| `Spotify no longer opens a playlist to an app on its own. Branch your Spotify account on this screen, once.` |  |
+| `Spotify only opens a playlist to the account that made it, so importing one needs your account branched here once. It stays on the proxy, for this profile alone.` |  |
+| `Spotify only opens the playlists the branched account made itself. Make a copy of it on that account, then import the copy.` |  |
+| `Spotify refused the proxy's own credentials.` |  |
+| `That is gone from Spotify, or it is one of its own playlists — those are closed to apps.` |  |
+| `That Spotify link was not recognised` |  |
+| `The playlists you made are yours to import.` |  |
+| `The proxy couldn't be asked` |  |
 | `The proxy couldn't take that link` |  |
 | `The server did not answer as Navifind would. Check the address, or turn this off.` |  |
+| `There are no tracks at that link` |  |
 | `Tracks the proxy has fetched so far. Navidrome picks them up on its next scan.` | The line under “In the library”, explaining it |
 | `Use Navifind` |  |
 | `Which account Navifind reads, and where to sign in to another.` | The line under “YouTube account”, explaining it |
