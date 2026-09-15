@@ -20,7 +20,7 @@
 import * as Notifications from 'expo-notifications';
 import { AppState, Linking, Platform } from 'react-native';
 
-import { navifindStatus, type NavifindStatus } from '@/api/subsonic';
+import { type ImportReport, navifindStatus, type NavifindStatus } from '@/api/subsonic';
 import { tg } from '@/i18n';
 import { navifindActive } from '@/lib/navifind';
 import { queryClient } from '@/lib/query';
@@ -51,6 +51,8 @@ const SEARCH_KEYS = [['search'], ['searchSongs'], ['searchAlbums']] as const;
 let timer: ReturnType<typeof setInterval> | null = null;
 /** The last answer, for the one before it when an answer comes in. */
 let last: NavifindStatus | null = null;
+/** When the work now watched was handed over: an import older than that is not its. */
+let watchedSince = 0;
 /**
  * The files the library had when the work under watch began, to count what
  * landed since. Null while nothing is being waited for.
@@ -129,18 +131,29 @@ function observe(next: NavifindStatus): void {
   // picked it up yet.
   if (!sawProgress && fresh === 0 && Date.now() < graceUntil) return;
 
+  // An import that finished while this was watched says what it gave: the
+  // source's count was announced on the way in, this is the way out.
+  const report = next.imports.find((i) => i.at * 1000 >= watchedSince);
   before = null;
   sawProgress = false;
   graceUntil = 0;
   stopPolling();
-  announce(fresh);
+  announce(fresh, report);
   for (const queryKey of SEARCH_KEYS) void queryClient.invalidateQueries({ queryKey });
   void queryClient.invalidateQueries({ queryKey: NAVIFIND_STATUS_KEY });
 }
 
-function announce(fresh: number): void {
-  const message =
-    fresh === 0
+function announce(fresh: number, report?: ImportReport): void {
+  const message = report
+    ? report.leftOut.length === 0
+      ? tg('{name}: all {total} tracks are in the library', { name: report.name, total: report.total })
+      : tg('{name}: {found} of {total} tracks are in the library, {left} left out. The Navifind screen says which.', {
+          name: report.name,
+          found: report.found,
+          total: report.total,
+          left: report.leftOut.length,
+        })
+    : fresh === 0
       ? tg('Nothing new in the library')
       : fresh === 1
         ? tg('1 track is in the library now')
@@ -205,6 +218,7 @@ function openScreen(response: Notifications.NotificationResponse | null): void {
 export function navifindWorkStarted(queued?: Promise<{ queued: number }>): void {
   const known = queryClient.getQueryData(NAVIFIND_STATUS_KEY);
   before ??= isStatus(known) ? new Set(known.done) : null;
+  watchedSince = Date.now();
   graceUntil = Date.now() + GRACE_MS;
   startPolling();
   const standDown = () => {

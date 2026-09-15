@@ -262,6 +262,30 @@ export default function NavifindSettings() {
                   description={t('Tracks the proxy has fetched so far. Navidrome picks them up on its next scan.')}
                   right={String(status.data?.done.length ?? 0)}
                 />
+                {/* What the last imports gave. The count on the way in was the
+                    source's; this is what arrived, and what was left out
+                    because nothing online was recognised as it. */}
+                {status.data?.imports.length ? (
+                  <>
+                    <Text style={settingsStyles.sectionTitle}>{t('Last imports')}</Text>
+                    {status.data.imports.slice(0, 5).map((report) => (
+                      <SettingRow
+                        key={`${report.at}-${report.name}`}
+                        icon={report.leftOut.length === 0 ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+                        label={report.name || t('Untitled')}
+                        description={
+                          report.leftOut.length === 0
+                            ? t('All {total} tracks found', { total: report.total })
+                            : t('{found} of {total} found. Left out: {titles}', {
+                                found: report.found,
+                                total: report.total,
+                                titles: report.leftOut.join(' · '),
+                              })
+                        }
+                      />
+                    ))}
+                  </>
+                ) : null}
               </>
             )}
           </>

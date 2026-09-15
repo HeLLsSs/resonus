@@ -1194,5 +1194,11 @@
   "Spotify only opens the playlists the branched account made itself. Make a copy of it on that account, then import the copy.": "Spotify n'ouvre que les playlists créées par le compte branché. Fais-en une copie sur ce compte, puis importe la copie.",
   "Spotify only opens a playlist to the account that made it, so importing one needs your account branched here once. It stays on the proxy, for this profile alone.": "Spotify n'ouvre une playlist qu'au compte qui l'a créée : en importer une demande de brancher ton compte ici, une fois. Il reste sur le proxy, pour ce profil seul.",
   "The playlists you made are yours to import.": "Les playlists que tu as créées sont importables.",
-  "Only the first 100 tracks came: Spotify shows no more of a playlist to anyone but its maker. If it holds more, make a copy of it on your Spotify account and import that one.": "Seules les 100 premières pistes sont venues : Spotify ne montre pas plus d'une playlist à d'autres que son auteur. Si elle en a plus, fais-en une copie sur ton compte Spotify et importe celle-là."
+  "Only the first 100 tracks came: Spotify shows no more of a playlist to anyone but its maker. If it holds more, make a copy of it on your Spotify account and import that one.": "Seules les 100 premières pistes sont venues : Spotify ne montre pas plus d'une playlist à d'autres que son auteur. Si elle en a plus, fais-en une copie sur ton compte Spotify et importe celle-là.",
+  "{name}: all {total} tracks are in the library": "{name} : les {total} pistes sont dans la bibliothèque",
+  "{name}: {found} of {total} tracks are in the library, {left} left out. The Navifind screen says which.": "{name} : {found} pistes sur {total} dans la bibliothèque, {left} laissées de côté. L'écran Navifind dit lesquelles.",
+  "Last imports": "Derniers imports",
+  "All {total} tracks found": "Les {total} pistes retrouvées",
+  "{found} of {total} found. Left out: {titles}": "{found} sur {total} retrouvées. Laissées de côté : {titles}",
+  "Untitled": "Sans titre"
 }

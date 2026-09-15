@@ -1688,17 +1688,44 @@ export async function forgetSpotifyAccount(auth: SubsonicAuth): Promise<void> {
   await request(auth, 'navifind/spotify/account.view', { action: 'forget' });
 }
 
+/**
+ * What an import gave once it was through. The count announced when it was
+ * handed over was the source's; this is what actually arrived, and what did
+ * not because nothing online was recognised as it.
+ */
+export interface ImportReport {
+  /** The playlist's name, as the source had it. */
+  name: string;
+  /** Tracks the source announced. */
+  total: number;
+  /** Tracks found online and fetched. */
+  found: number;
+  /** "Artist — Title" of each track left out. */
+  leftOut: string[];
+  /** When it finished, seconds since the epoch. */
+  at: number;
+}
+
 export interface NavifindStatus {
   /** Tracks copied into the library so far, by the name of their file. */
   done: string[];
   /** Transfers under way on the proxy right now. */
   inProgress: number;
+  /** The last imports, newest first; empty on a proxy too old to keep them. */
+  imports: ImportReport[];
 }
 
 /** What the proxy has fetched and what it is fetching. */
 export async function navifindStatus(auth: SubsonicAuth): Promise<NavifindStatus> {
   const res = await request<{ navifind?: Partial<NavifindStatus> }>(auth, 'navifind/status.view');
-  return { done: res.navifind?.done ?? [], inProgress: res.navifind?.inProgress ?? 0 };
+  const imports = (res.navifind?.imports ?? []).map((i) => ({
+    name: i.name ?? '',
+    total: i.total ?? 0,
+    found: i.found ?? 0,
+    leftOut: i.leftOut ?? [],
+    at: i.at ?? 0,
+  }));
+  return { done: res.navifind?.done ?? [], inProgress: res.navifind?.inProgress ?? 0, imports };
 }
 
 // ── navifind · YouTube ───────────────────────────────────────────────────────
