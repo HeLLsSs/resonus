@@ -7,6 +7,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.0.1] - 2026-09-15
+
+### Added
+
+- An import says what it gave once it is through. The count shown when a link was handed over was the source's: a playlist of a hundred said a hundred, and a track nothing online was recognised as could stay out without a word. The toast or notification at the end now says "97 of 100 tracks are in the library, 3 left out", and the Navifind screen lists the last imports with the artist and title of every track left out, so what is missing can be found by hand.
+
 ## [1.0.0] - 2026-09-15
 
 ### Added
