@@ -1191,5 +1191,6 @@
   "There are no tracks at that link": "There are no tracks at that link",
   "Spotify only opens the playlists the branched account made itself. Make a copy of it on that account, then import the copy.": "Spotify only opens the playlists the branched account made itself. Make a copy of it on that account, then import the copy.",
   "Spotify only opens a playlist to the account that made it, so importing one needs your account branched here once. It stays on the proxy, for this profile alone.": "Spotify only opens a playlist to the account that made it, so importing one needs your account branched here once. It stays on the proxy, for this profile alone.",
-  "The playlists you made are yours to import.": "The playlists you made are yours to import."
+  "The playlists you made are yours to import.": "The playlists you made are yours to import.",
+  "Only the first 100 tracks came: Spotify shows no more of a playlist to anyone but its maker. If it holds more, make a copy of it on your Spotify account and import that one.": "Only the first 100 tracks came: Spotify shows no more of a playlist to anyone but its maker. If it holds more, make a copy of it on your Spotify account and import that one."
 }

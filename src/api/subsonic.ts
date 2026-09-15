@@ -1618,6 +1618,12 @@ export type ImportRefusal =
 export interface ImportResult {
   /** Tracks the proxy set out to fetch. */
   queued: number;
+  /**
+   * The list came from Spotify's public page and stopped at its hundred: the
+   * playlist may hold more, and only a copy made on the branched account
+   * gives all of it.
+   */
+  capped?: boolean;
   /** Why it set out to fetch none, when it is a Spotify link that it knows. */
   reason?: ImportRefusal;
 }
@@ -1629,12 +1635,12 @@ export interface ImportResult {
  * link that gave none — why.
  */
 export async function importIntoLibrary(auth: SubsonicAuth, url: string): Promise<ImportResult> {
-  const res = await request<{ navifind?: { queued?: number; reason?: ImportRefusal } }>(
+  const res = await request<{ navifind?: { queued?: number; capped?: boolean; reason?: ImportRefusal } }>(
     auth,
     'navifind/import.view',
     { url: url.trim() },
   );
-  return { queued: res.navifind?.queued ?? 0, reason: res.navifind?.reason };
+  return { queued: res.navifind?.queued ?? 0, capped: res.navifind?.capped === true, reason: res.navifind?.reason };
 }
 
 // ── navifind · Spotify ───────────────────────────────────────────────────────

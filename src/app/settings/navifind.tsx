@@ -137,7 +137,7 @@ export default function NavifindSettings() {
       // Watched from before the proxy answers: a single track can be in the
       // library before the answer arrives, and the count starts from here.
       navifindWorkStarted(work);
-      const { queued, reason } = await work;
+      const { queued, capped, reason } = await work;
       // A link that only wanted an account stays in the field: branching one
       // and pressing Import again is the whole of the repair.
       if (queued > 0) setUrl('');
@@ -146,9 +146,11 @@ export default function NavifindSettings() {
           ? reason
             ? refusalSaid(reason)
             : t('Nothing to fetch at that link')
-          : queued === 1
-            ? t('Fetching 1 track into the library')
-            : t('Fetching {n} tracks into the library', { n: queued }),
+          : capped
+            ? t('Only the first 100 tracks came: Spotify shows no more of a playlist to anyone but its maker. If it holds more, make a copy of it on your Spotify account and import that one.')
+            : queued === 1
+              ? t('Fetching 1 track into the library')
+              : t('Fetching {n} tracks into the library', { n: queued }),
       );
     } catch {
       toast(t("The proxy couldn't take that link"));
