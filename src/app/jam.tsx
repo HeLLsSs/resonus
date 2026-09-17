@@ -16,6 +16,7 @@ import { ActivityIndicator, Pressable, ScrollView, Share, Text, View } from 'rea
 import { SettingRow, SettingsPage, settingsStyles, SwitchList, TextRow } from '@/components/SettingsUI';
 import { useAccent } from '@/hooks/useAccent';
 import { useT } from '@/i18n';
+import { authHeaders } from '@/api/subsonic';
 import { cleanCode, JamError, jamPageUrl, jamQrUrl, listJams } from '@/lib/jam';
 import { navifindActive } from '@/lib/navifind';
 import { useAuthStore } from '@/store/auth';
@@ -110,7 +111,7 @@ export default function JamScreen() {
               {auth ? (
                 <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: spacing.sm }}>
                   <Image
-                    source={{ uri: jamQrUrl(auth.serverUrl, session.code) }}
+                    source={{ uri: jamQrUrl(auth.serverUrl, session.code), headers: authHeaders(auth) }}
                     style={{ width: QR_SIZE, height: QR_SIZE }}
                     contentFit="contain"
                     accessibilityLabel={t('QR code to join from a browser')}

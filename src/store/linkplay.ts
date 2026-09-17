@@ -13,7 +13,9 @@
  */
 import { create } from 'zustand';
 
-import { type Song } from '@/api/subsonic';
+import { fetch } from 'expo/fetch';
+
+import { authHeaders, authParams, type Song, type SubsonicAuth } from '@/api/subsonic';
 import { tg } from '@/i18n';
 import {
   ask,
@@ -22,13 +24,19 @@ import {
   describe,
   discover,
   type LinkPlayDevice,
+  type LinkPlayRelay,
   type LinkPlaySlave,
   linkPlayAvailable,
+  linkPlayDiscovers,
+  setLinkPlayRelay,
   slavesFrom,
   watchStatus,
 } from '@/lib/linkplay';
+import { navifindActive } from '@/lib/navifind';
 import { getItem, setItem } from '@/lib/storage';
+import { useAuthStore } from './auth';
 import { castStop } from './castMedia';
+import { useSettings } from './settings';
 import { ensureLocalFilesServed, remoteTrackUrl } from './remoteTrack';
 import { useToast } from './toast';
 import type { RemoteEvents } from './upnp';
@@ -94,6 +102,59 @@ export function isLinkPlayConnected(): boolean {
 export function initLinkPlay(ev: RemoteEvents): void {
   events = ev;
   void hydrateManual();
+  // In a browser the speakers are reached through the proxy, when there is
+  // one: the relay follows the profile and the Navifind switch.
+  if (!linkPlayDiscovers()) {
+    const arm = () => {
+      const auth = useAuthStore.getState().auth;
+      // The store's own word rather than `navifindActive()`: the settings
+      // store writes its state before it mirrors the flag, and this runs on
+      // the write.
+      setLinkPlayRelay(auth && useSettings.getState().navifind ? relayThrough(auth) : null);
+    };
+    arm();
+    useAuthStore.subscribe(arm);
+    useSettings.subscribe((s, prev) => {
+      if (s.navifind !== prev.navifind) arm();
+    });
+  }
+}
+
+/** The proxy as the way to the speakers (see `LinkPlayRelay`). */
+function relayThrough(auth: SubsonicAuth): LinkPlayRelay {
+  const url = (path: string, extra: Record<string, string> = {}) => {
+    const params = authParams(auth);
+    for (const [k, v] of Object.entries(extra)) params.set(k, v);
+    return `${auth.serverUrl}/rest/navifind/linkplay/${path}?${params.toString()}`;
+  };
+  return {
+    async call(host, command) {
+      const res = await fetch(url('call', { host, command }), { headers: authHeaders(auth) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    },
+    async list() {
+      const res = await fetch(url('list'), { headers: authHeaders(auth) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { devices } = (await res.json()) as { devices: { name: string; host: string }[] };
+      return devices;
+    },
+  };
+}
+
+/**
+ * What a phone found, told to the proxy, so that a browser signed in to the
+ * same server has the speakers without typing an address.
+ */
+async function tellProxy(found: LinkPlayDevice[]): Promise<void> {
+  const auth = useAuthStore.getState().auth;
+  if (!auth || !navifindActive() || found.length === 0 || !linkPlayDiscovers()) return;
+  const params = authParams(auth);
+  await fetch(`${auth.serverUrl}/rest/navifind/linkplay/seen?${params.toString()}`, {
+    method: 'POST',
+    headers: { ...authHeaders(auth), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ devices: found.map((d) => ({ host: d.host, name: d.name, model: d.model })) }),
+  }).catch(() => undefined);
 }
 
 async function hydrateManual(): Promise<void> {
@@ -139,7 +200,9 @@ export async function linkPlaySearch(): Promise<void> {
     const found = await discover();
     const hosts = new Set([...found.map((f) => f.host), ...useLinkPlay.getState().devices.map((d) => d.host)]);
     const described = await Promise.all([...hosts].map((host) => describe(host)));
-    merge(described.filter((d): d is LinkPlayDevice => d !== null));
+    const devices = described.filter((d): d is LinkPlayDevice => d !== null);
+    merge(devices);
+    void tellProxy(devices.filter((d) => !d.manual));
     if (isLinkPlayConnected()) await refreshSlaves();
   } finally {
     useLinkPlay.setState({ searching: false });
@@ -353,8 +416,14 @@ export async function linkPlayPause(): Promise<void> {
 export async function linkPlaySeek(sec: number): Promise<void> {
   const { host } = useLinkPlay.getState();
   if (!host) return;
-  pendingSeekSec = null;
   lastPositionSec = sec;
+  // Sent while the speaker is still fetching the track, a seek is dropped:
+  // it waits for the first moment the speaker is heard playing.
+  if (loading) {
+    pendingSeekSec = sec;
+    return;
+  }
+  pendingSeekSec = null;
   await ask(host, cmd.seek(sec)).catch(() => undefined);
 }
 

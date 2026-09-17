@@ -30,3 +30,9 @@ export function normalizeUrl(url: string): string {
 export function authHeaders(auth: Pick<SubsonicAuth, 'headers'>): Record<string, string> {
   return auth.headers ?? {};
 }
+
+export function authParams(auth: SubsonicAuth): URLSearchParams {
+  const base = { u: auth.username, v: '1.16.1', c: 'Resonuls', f: 'json' };
+  if (auth.password !== undefined) return new URLSearchParams({ ...base, p: `enc:${auth.password}` });
+  return new URLSearchParams({ ...base, t: auth.token, s: auth.salt });
+}

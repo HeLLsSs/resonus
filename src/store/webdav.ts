@@ -131,6 +131,8 @@ export function davUrlFor(id: string): string | undefined {
 /** Adds a share, or replaces one of the same id. The password goes to the
  *  secure store and nowhere else. */
 export async function saveSource(source: DavSource, password: string): Promise<void> {
+  // On a phone that is the secure store; in a browser it is the browser's
+  // own storage for this origin, which is as far as a browser goes.
   await setItem(secretKey(source.id), password);
   headerCache.set(source.id, { Authorization: `Basic ${basic(source.user, password)}` });
   const rest = useWebdav.getState().sources.filter((s) => s.id !== source.id);

@@ -27,7 +27,29 @@ interface NativeLinkPlay {
 
 const native = requireOptionalNativeModule<NativeLinkPlay>('LinkPlay');
 
+/**
+ * What stands in for the native module where there is none, in a browser:
+ * the proxy, which is on the speakers' network and relays a command to one
+ * (`/rest/navifind/linkplay/call`) and lists the ones the phone has found
+ * (`/rest/navifind/linkplay/list`). Set by the store when the proxy is on.
+ */
+export interface LinkPlayRelay {
+  call(host: string, command: string): Promise<string>;
+  list(): Promise<{ name: string; host: string }[]>;
+}
+
+let relay: LinkPlayRelay | null = null;
+
+export function setLinkPlayRelay(r: LinkPlayRelay | null): void {
+  relay = r;
+}
+
 export function linkPlayAvailable(): boolean {
+  return native !== null || relay !== null;
+}
+
+/** Speakers are found here, by mDNS: a phone. A browser only knows what a phone told the proxy. */
+export function linkPlayDiscovers(): boolean {
   return native !== null;
 }
 
@@ -176,9 +198,10 @@ export const cmd = {
 // ── The wire ──────────────────────────────────────────────────────────────
 
 async function call(host: string, command: string): Promise<string> {
-  if (!native) throw new LinkPlayError('LinkPlay is not available on this platform');
+  const wire = native ?? relay;
+  if (!wire) throw new LinkPlayError('LinkPlay is not available on this platform');
   try {
-    return await native.call(host, command);
+    return await wire.call(host, command);
   } catch (e) {
     throw new LinkPlayError(e instanceof Error ? e.message : String(e));
   }
@@ -196,9 +219,9 @@ export async function ask(host: string, command: string): Promise<unknown> {
 
 /** The speakers announcing themselves on the network, each read for its name and model. */
 export async function discover(): Promise<{ name: string; host: string }[]> {
-  if (!native) return [];
+  if (!native && !relay) return [];
   try {
-    const found = await native.discover(DISCOVER_MS);
+    const found = native ? await native.discover(DISCOVER_MS) : await relay!.list();
     const seen = new Set<string>();
     return found.filter((f) => {
       if (seen.has(f.host)) return false;
@@ -221,7 +244,17 @@ export function watchStatus(
   intervalMs: number,
   onStatus: (status: LinkPlayStatus | null, error?: string) => void,
 ): () => void {
-  if (!native) return () => {};
+  if (!native) {
+    // No native side: a plain timer, which a browser keeps running in the
+    // tab that plays.
+    const timer = setInterval(() => {
+      ask(host, cmd.player).then(
+        (raw) => onStatus(statusFrom(raw), null === raw ? 'Not a status' : undefined),
+        (e) => onStatus(null, e instanceof Error ? e.message : String(e)),
+      );
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }
   const sub = native.addListener('status', (e) => {
     if (e.host !== host) return;
     if (e.error !== undefined || e.body === undefined) {

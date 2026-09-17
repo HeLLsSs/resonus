@@ -150,8 +150,9 @@ async function track(request) {
     return sliced(whole, request.headers.get('Range'));
   }
   // Not kept yet: the player gets the network as it asked, and the whole
-  // song is fetched once behind it and kept for next time.
-  if (!fetching.has(key)) {
+  // song is fetched once behind it and kept for next time. Not a stream
+  // asked for from a second on (`timeOffset`): that is a piece of a song.
+  if (!fetching.has(key) && !/[?&]timeOffset=/.test(key)) {
     fetching.add(key);
     keep(cache, key).finally(() => fetching.delete(key));
   }
@@ -203,8 +204,10 @@ async function evict(cache, index) {
 
 /** The part of a kept song a range asks for, the way a server would answer it. */
 async function sliced(whole, range) {
-  const body = await whole.arrayBuffer();
-  const total = body.byteLength;
+  // A Blob rather than a buffer: slicing a Blob copies nothing, where a
+  // buffer of the whole song would be built for every few hundred KB asked.
+  const body = await whole.blob();
+  const total = body.size;
   const type = whole.headers.get('Content-Type') || 'audio/mpeg';
   const m = range && /bytes=(\d*)-(\d*)/.exec(range);
   if (!m) {

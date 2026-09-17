@@ -2264,6 +2264,9 @@ export const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
  */
 function speedFor(song: Song | null | undefined): number {
   if (!song || song.url) return 1;
+  // In a Jam everybody runs at the song's own pace; a speed of one's own
+  // would drift away from the session every second and be dragged back.
+  if (isJamActive()) return 1;
   return usePlayerStore.getState().speed;
 }
 
@@ -3472,10 +3475,27 @@ async function jamFollow(
       `[jam] follow · index ${index} · ${playing ? 'playing' : 'paused'} at ${positionAt().toFixed(1)}s · here ${st.isPlaying ? 'playing' : 'paused'}${st.isBuffering ? ' (buffering)' : ''} ${current?.id === target?.id ? 'same song' : 'other song'}${activePlayer() ? '' : ' · no player'}`,
     );
   }
-  if (!sameQueue(st.queue, songs) || st.index !== index) {
+  const p = activePlayer();
+  const remote = remoteKind();
+  // A track that ended here started the next one before the session said so
+  // (see `jamAdvance`): the session now saying so is not a reason to start it
+  // twice. It is aligned once it is in.
+  const arriving = jamAdvancingTo === index && st.queue[index]?.id === target?.id;
+  // The session has just moved to the track after the one playing here, by
+  // its clock, which can run a moment ahead of the file: this player is about
+  // to get there on its own, gapless or at the end (`jamAdvance`), and handed
+  // the track now it would start it twice. A speaker holding the next few
+  // tracks moves there by itself the same way. A player that never gets there
+  // is caught by the next word from the session. Until then the index stays
+  // the player's own: moved ahead of it, every advance would count from the
+  // wrong song and skip one.
+  const holdsTail = remote === 'cast' || remote === 'ha' || remote === 'ma';
+  const aboutToArrive =
+    (!remote || holdsTail) && st.index + 1 === index && st.queue[index]?.id === target?.id && positionAt() < 2.5;
+  if (!sameQueue(st.queue, songs) || (st.index !== index && !arriving && !aboutToArrive)) {
     usePlayerStore.setState({
       queue: songs,
-      index,
+      index: arriving || aboutToArrive ? st.index : index,
       queuedCount: 0,
       originalQueue: null,
       queueDealt: false,
@@ -3486,8 +3506,6 @@ async function jamFollow(
     });
     scheduleSync();
   }
-  const p = activePlayer();
-  const remote = remoteKind();
   if (!target) {
     if (st.isPlaying) {
       cutCrossfade();
@@ -3497,25 +3515,9 @@ async function jamFollow(
     }
     return;
   }
-  // A track that ended here started the next one before the session said so
-  // (see `jamAdvance`): the session now saying so is not a reason to start it
-  // twice. It is aligned once it is in.
-  if (jamAdvancingTo === index && st.queue[index]?.id === target.id) return;
-  // The session has just moved to the track after the one playing here, by
-  // its clock, which can run a moment ahead of the file: this player is
-  // about to get there on its own, gapless or at the end (`jamAdvance`), and
-  // handed the track now it would start it twice. A player that never gets
-  // there is caught by the next word from the session.
-  if (!remote && st.index + 1 === index && st.queue[index]?.id === target.id && positionAt() < 2.5) return;
+  if (arriving || aboutToArrive) return;
   if (!current || current.id !== target.id || (!p && !remote)) {
     if (remote) {
-      // A speaker holding the next few tracks moves to this one by itself at
-      // the moment the session does: handed it again it would start over.
-      // It gets a second to get there; the next word from the session, or
-      // the poll after it, loads it if it never did. A speaker handed one
-      // track at a time has nothing to move to and is handed it now.
-      const holdsTail = remote === 'cast' || remote === 'ha' || remote === 'ma';
-      if (holdsTail && st.queue[st.index + 1]?.id === target.id && positionAt() < 2) return;
       jamRemoteLoadedAt = Date.now();
       await remoteLoadIndex(index, playing, positionAt());
       return;
@@ -3775,6 +3777,14 @@ export function initRemoteIntegration() {
       jamSilent = silent;
       const p = activePlayer();
       if (p && !fadingOut && !pauseFadeTimer) p.volume = effectiveVolume(currentSong(usePlayerStore.getState()));
+    },
+    armed: () => {
+      // What a Jam changes about the player holding a song already: no loop,
+      // and the song's own pace (see `applyLoop`, `speedFor`). Both are set
+      // on load, and the song playing was loaded before the Jam.
+      const p = activePlayer();
+      applyLoop(p);
+      applySpeed(p, currentSong(usePlayerStore.getState()));
     },
   });
   // Sync crossfade toggle to Sonos whenever the setting changes.

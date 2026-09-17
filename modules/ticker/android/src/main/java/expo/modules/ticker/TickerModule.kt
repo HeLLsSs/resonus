@@ -45,5 +45,10 @@ class TickerModule : Module() {
     Function("stop") { id: String ->
       jobs.remove(id)?.cancel()
     }
+
+    OnDestroy {
+      jobs.values.forEach { it.cancel() }
+      jobs.clear()
+    }
   }
 }

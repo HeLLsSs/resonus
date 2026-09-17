@@ -59,6 +59,11 @@ class LinkPlayModule : Module() {
       pollJob = null
     }
 
+    OnDestroy {
+      pollJob?.cancel()
+      pollJob = null
+    }
+
     /** The LinkPlay devices announcing themselves, after `timeoutMs` of listening. */
     AsyncFunction("discover") { timeoutMs: Double, promise: Promise ->
       val context = appContext.reactContext ?: run {

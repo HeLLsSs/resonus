@@ -48,6 +48,10 @@ const ALIGN_EVERY_MS = 1_000;
 const CLOCK_EVERY_MS = 5 * 60_000;
 /** The pause after a failed poll before the next one. */
 const RETRY_MS = 2_000;
+/** What a session holds at most (the proxy's `JamStore::MAX_QUEUE`). */
+const SESSION_MAX_QUEUE = 500;
+/** Of a queue too long for it, how much of what was already played is kept. */
+const KEEP_BEHIND = 50;
 
 /** What the player lends the session: the way to move it without asking it. */
 export interface JamHooks {
@@ -67,6 +71,8 @@ export interface JamHooks {
   snapshot: () => { songs: Song[]; index: number; playing: boolean; positionSec: number };
   /** Makes the player follow in silence, or gives it its voice back. */
   silence: (silent: boolean) => void;
+  /** The Jam has just started or ended: what it changes about playback is applied to the song playing. */
+  armed: () => void;
 }
 
 interface JamState {
@@ -108,6 +114,7 @@ let pollAbort: AbortController | null = null;
 let stopAlign: (() => void) | null = null;
 let stopClock: (() => void) | null = null;
 let appStateSub: { remove: () => void } | null = null;
+let unsubAuth: (() => void) | null = null;
 /** Which session the loops belong to, so a stale loop ends itself. */
 let generation = 0;
 
@@ -120,10 +127,6 @@ export function isJamActive(): boolean {
   return !!token && !!useJam.getState().session;
 }
 
-export function jamCode(): string | null {
-  return useJam.getState().session?.code ?? null;
-}
-
 /** Whether this phone opened the session, or inherited it. */
 export function isJamHost(): boolean {
   const { session, me } = useJam.getState();
@@ -133,12 +136,6 @@ export function isJamHost(): boolean {
 /** The name of a member, or nothing for one who has left. */
 export function jamMemberName(id: string): string {
   return useJam.getState().session?.members.find((m) => m.id === id)?.name ?? '';
-}
-
-/** Who added the song at this position of the queue, by name. */
-export function jamAddedBy(index: number): string {
-  const id = useJam.getState().addedBy[index];
-  return id ? jamMemberName(id) : '';
 }
 
 function auth() {
@@ -178,10 +175,14 @@ export async function startJam(): Promise<void> {
     let view = await createJam(auth(), auth().username);
     const here = hooks?.snapshot();
     if (here && here.songs.length > 0) {
+      // A queue longer than the session holds is cut around the song playing:
+      // a little of what was played, and as much of what is to come as fits.
+      const from = here.songs.length > SESSION_MAX_QUEUE ? Math.max(0, here.index - KEEP_BEHIND) : 0;
+      const songs = here.songs.slice(from, from + SESSION_MAX_QUEUE);
       view = await jamCommand(auth(), view.token, {
         type: 'replace',
-        songs: here.songs,
-        index: here.index,
+        songs,
+        index: here.index - from,
         position: Math.round(here.positionSec * 1000),
       });
       // Paused here stays paused there: `replace` starts playing, which is
@@ -249,7 +250,15 @@ function enter(view: JamView): void {
   const gen = ++generation;
   token = view.token;
   hooks?.silence(!useJam.getState().listenHere);
+  hooks?.armed();
   take(view);
+  // A profile that goes away takes its session with it: the token was the
+  // profile's, and steering a session it can no longer reach is worse than
+  // leaving it.
+  const profile = useAuthStore.getState().auth;
+  unsubAuth = useAuthStore.subscribe((s) => {
+    if (s.auth?.serverUrl !== profile?.serverUrl || s.auth?.username !== profile?.username) stop();
+  });
   void poll(gen);
   let beats = 0;
   stopAlign = everyMs(ALIGN_EVERY_MS, () => {
@@ -282,8 +291,11 @@ function stop(): void {
   stopClock = null;
   appStateSub?.remove();
   appStateSub = null;
+  unsubAuth?.();
+  unsubAuth = null;
   hooks?.silence(false);
   useJam.setState({ session: null, me: '', addedBy: [] });
+  hooks?.armed();
 }
 
 function positionAt(session: JamSession): () => number {
@@ -308,9 +320,9 @@ async function poll(gen: number): Promise<void> {
       take(view);
     } catch (e) {
       if (gen !== generation) return;
-      if (e instanceof JamError && e.kind === 'gone') {
+      if (e instanceof JamError && e.kind !== 'network') {
         stop();
-        useToast.getState().show(tg('The Jam has ended'));
+        useToast.getState().show(e.kind === 'gone' ? tg('The Jam has ended') : tg('Could not reach the Jam'));
         return;
       }
       await new Promise((r) => setTimeout(r, RETRY_MS));

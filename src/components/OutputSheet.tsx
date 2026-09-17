@@ -350,6 +350,7 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   }
 
   async function pickDevice(device: UpnpDevice) {
+    if (lpHost) await linkPlayDisconnect(true);
     if (device.id === upnpId) return;
     // Silent handoff between remote outputs (does not resume on local in between).
     if (castId) await castDisconnect(true);
@@ -360,6 +361,7 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   }
 
   async function pickJukebox() {
+    if (lpHost) await linkPlayDisconnect(true);
     if (jukeboxActive) return;
     // Silent handoff between remote outputs (does not resume on local in between).
     if (upnpId) await upnpDisconnect(true);
@@ -371,6 +373,7 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   }
 
   async function pickCastDevice(device: CastDevice) {
+    if (lpHost) await linkPlayDisconnect(true);
     if (device.id === castId) return;
     // Silent handoff between remote outputs (does not resume on local in between).
     if (upnpId) await upnpDisconnect(true);

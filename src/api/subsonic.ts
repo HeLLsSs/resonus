@@ -467,7 +467,8 @@ export function normalizeUrl(url: string): string {
   return u;
 }
 
-function authParams(auth: SubsonicAuth): URLSearchParams {
+/** The `u`, `t`/`s` (or `p`), `v`, `c`, `f` every request carries. */
+export function authParams(auth: SubsonicAuth): URLSearchParams {
   const base = { u: auth.username, v: API_VERSION, c: CLIENT_NAME, f: 'json' };
   // Classic auth for Ampache; token + salt for the rest.
   if (auth.password !== undefined) {
