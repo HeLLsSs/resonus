@@ -113,6 +113,15 @@ import {
   jukeboxSetVolume,
 } from './jukebox';
 import { initJam, isJamActive, jamSend, leaveJam } from './jam';
+import {
+  initLinkPlay,
+  isLinkPlayConnected,
+  linkPlayLoad,
+  linkPlayPause,
+  linkPlayPlay,
+  linkPlaySeek,
+  linkPlaySetVolume,
+} from './linkplay';
 import { useLastPlayed } from './lastPlayed';
 import { useNetworkType } from './networkType';
 import { useOfflineQueue } from './offlineQueue';
@@ -853,12 +862,13 @@ function clearLockScreen() {
 // ── Remote output (UPnP/DLNA renderer, server jukebox, Google Cast, Home Assistant, Music Assistant) ──
 
 /** Active remote output, if any. */
-function remoteKind(): 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | null {
+function remoteKind(): 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay' | null {
   if (isUpnpConnected()) return 'upnp';
   if (isJukeboxActive()) return 'jukebox';
   if (isCastConnected()) return 'cast';
   if (isHaConnected()) return 'ha';
   if (isMaConnected()) return 'ma';
+  if (isLinkPlayConnected()) return 'linkplay';
   return null;
 }
 
@@ -871,7 +881,7 @@ function remoteKind(): 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | null {
  */
 function usesCastMedia(): boolean {
   const kind = remoteKind();
-  return kind === 'upnp' || kind === 'cast' || kind === 'ha' || kind === 'ma';
+  return kind === 'upnp' || kind === 'cast' || kind === 'ha' || kind === 'ma' || kind === 'linkplay';
 }
 
 function remotePlay() {
@@ -880,6 +890,7 @@ function remotePlay() {
   else if (kind === 'cast') void castPlay();
   else if (kind === 'ha') void haPlay();
   else if (kind === 'ma') void maPlay();
+  else if (kind === 'linkplay') void linkPlayPlay();
   else void upnpPlay();
 }
 
@@ -889,6 +900,7 @@ function remotePause() {
   else if (kind === 'cast') void castPause();
   else if (kind === 'ha') void haPause();
   else if (kind === 'ma') void maPause();
+  else if (kind === 'linkplay') void linkPlayPause();
   else void upnpPause();
 }
 
@@ -898,6 +910,7 @@ function remoteSeek(sec: number) {
   else if (kind === 'cast') void castSeek(sec);
   else if (kind === 'ha') void haSeek(sec);
   else if (kind === 'ma') void maSeek(sec);
+  else if (kind === 'linkplay') void linkPlaySeek(sec);
   else void upnpSeek(sec);
 }
 
@@ -910,6 +923,7 @@ function remoteSetVolume(volume: number) {
   if (kind === 'cast') castSetVolume(volume);
   else if (kind === 'ha') haSetVolume(volume);
   else if (kind === 'ma') maSetVolume(volume);
+  else if (kind === 'linkplay') linkPlaySetVolume(volume);
   else upnpSetVolume(volume);
   // Reflect the exact value back in the system volume overlay (UPnP, Cast,
   // Home Assistant and Music Assistant go through the CastMedia session;
@@ -1022,7 +1036,9 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
           ? await loadHaQueue(castQueueState(index), autoplay, startSec)
           : kind === 'ma'
           ? await loadMaQueue(castQueueState(index), autoplay, startSec)
-          : await loadUpnpRemoteTrack(
+          : kind === 'linkplay'
+            ? await linkPlayLoad(song, autoplay, startSec)
+            : await loadUpnpRemoteTrack(
             {
               queue: state.queue,
               index,
@@ -1036,7 +1052,9 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
   if (!ok) {
     // Cast, Home Assistant and Music Assistant say why themselves, when the
     // device gave a reason.
-    if (kind !== 'cast' && kind !== 'ha' && kind !== 'ma') useToast.getState().show(tg("This song can't be cast"));
+    if (kind !== 'cast' && kind !== 'ha' && kind !== 'ma' && kind !== 'linkplay') {
+      useToast.getState().show(tg("This song can't be cast"));
+    }
     usePlayerStore.setState({ index, isPlaying: false, isBuffering: false });
     return;
   }
@@ -2037,8 +2055,6 @@ function gaplessReady(): boolean {
   // reserve player. Both cannot own the change.
   if (settings.crossfadeSec > 0) return false;
   if (remoteKind()) return false;
-  // In a Jam the session says when the next song starts, not the player.
-  if (isJamActive()) return false;
   const st = usePlayerStore.getState();
   // 'one' repeats through the native `loop`, and "stop at end of song" needs
   // the track to end for real so its `didJustFinish` arrives.
@@ -2911,10 +2927,14 @@ function onStatus(status: AudioStatus) {
   if (!pendingSeek) maybeStartCrossfade(status);
   if (status.didJustFinish) {
     if (handleSleepAtSongEnd()) return;
-    // In a Jam the session moves the queue on, for everybody at once, and
-    // this phone follows it there (see `jamFollow`).
+    // In a Jam the session moves on at this same moment, by its own clock,
+    // to the track after this one: it is started here now rather than once
+    // the session has said so. Waiting left the phone silent, and a phone
+    // silent with its screen locked is a phone Android puts to sleep, along
+    // with the request that would have brought the session's word. What the
+    // session says when it comes is applied over this (see `jamFollow`).
     if (isJamActive()) {
-      usePlayerStore.setState({ isPlaying: false });
+      jamAdvance();
       return;
     }
     // Repeating one song is normally the native `loop` and never gets here. A
@@ -3420,6 +3440,17 @@ function attachAppState() {
 
 /** A nudge in progress: the rate goes back to the song's own once in time. */
 let jamNudging = false;
+/**
+ * How far a remote output may stray before it is moved. Its position comes
+ * back by polling, seconds apart, and a speaker cannot be hurried the way the
+ * local player can: only a gap well past that is worth a seek.
+ */
+const JAM_REMOTE_SEEK_ABOVE_SEC = 4;
+/** After a remote load, how long the speaker is left alone to get going. */
+const JAM_REMOTE_SETTLE_MS = 6_000;
+let jamRemoteLoadedAt = 0;
+/** The index a track end here is moving the player to, while it still is. */
+let jamAdvancingTo = -1;
 
 /**
  * Puts the player where the session is: this queue at this index, playing or
@@ -3456,15 +3487,39 @@ async function jamFollow(
     scheduleSync();
   }
   const p = activePlayer();
+  const remote = remoteKind();
   if (!target) {
     if (st.isPlaying) {
       cutCrossfade();
-      p?.pause();
+      if (remote) remotePause();
+      else p?.pause();
       usePlayerStore.setState({ isPlaying: false });
     }
     return;
   }
-  if (!current || current.id !== target.id || !p) {
+  // A track that ended here started the next one before the session said so
+  // (see `jamAdvance`): the session now saying so is not a reason to start it
+  // twice. It is aligned once it is in.
+  if (jamAdvancingTo === index && st.queue[index]?.id === target.id) return;
+  // The session has just moved to the track after the one playing here, by
+  // its clock, which can run a moment ahead of the file: this player is
+  // about to get there on its own, gapless or at the end (`jamAdvance`), and
+  // handed the track now it would start it twice. A player that never gets
+  // there is caught by the next word from the session.
+  if (!remote && st.index + 1 === index && st.queue[index]?.id === target.id && positionAt() < 2.5) return;
+  if (!current || current.id !== target.id || (!p && !remote)) {
+    if (remote) {
+      // A speaker holding the next few tracks moves to this one by itself at
+      // the moment the session does: handed it again it would start over.
+      // It gets a second to get there; the next word from the session, or
+      // the poll after it, loads it if it never did. A speaker handed one
+      // track at a time has nothing to move to and is handed it now.
+      const holdsTail = remote === 'cast' || remote === 'ha' || remote === 'ma';
+      if (holdsTail && st.queue[st.index + 1]?.id === target.id && positionAt() < 2) return;
+      jamRemoteLoadedAt = Date.now();
+      await remoteLoadIndex(index, playing, positionAt());
+      return;
+    }
     attachAppState();
     resetWarmed();
     if (!(await loadIndex(index, playing))) return;
@@ -3473,6 +3528,14 @@ async function jamFollow(
     return;
   }
   if (playing !== st.isPlaying) {
+    if (remote) {
+      if (playing) remotePlay();
+      else remotePause();
+      usePlayerStore.setState({ isPlaying: playing });
+      jamAlign(positionAt, target.id);
+      return;
+    }
+    if (!p) return;
     if (playing) {
       try {
         p.volume = effectiveVolume(current);
@@ -3487,7 +3550,28 @@ async function jamFollow(
     }
     usePlayerStore.setState({ isPlaying: playing });
   }
-  jamAlign(positionAt);
+  jamAlign(positionAt, target.id);
+}
+
+/**
+ * The track after this one, started now, in a Jam: the queue is the
+ * session's and the session moves on at the end of a track by its own clock,
+ * so this is where it is going, a poll ahead of being told. Nothing to move
+ * on to leaves the player stopped, as the session will be.
+ */
+function jamAdvance(): void {
+  const { queue, index } = usePlayerStore.getState();
+  const next = index + 1;
+  if (next >= queue.length) {
+    usePlayerStore.setState({ isPlaying: false });
+    return;
+  }
+  jamRemoteLoadedAt = Date.now();
+  jamAdvancingTo = next;
+  const started = remoteKind() ? remoteLoadIndex(next, true) : loadIndex(next, true);
+  void Promise.resolve(started).finally(() => {
+    if (jamAdvancingTo === next) jamAdvancingTo = -1;
+  });
 }
 
 /**
@@ -3495,9 +3579,23 @@ async function jamFollow(
  * small one is played out at a slightly different rate, which nobody hears
  * where a jump would be heard (see `driftPlan`).
  */
-function jamAlign(positionAt: () => number): void {
-  const p = activePlayer();
+function jamAlign(positionAt: () => number, songId: string | undefined): void {
   const st = usePlayerStore.getState();
+  if (!songId || st.queue[st.index]?.id !== songId || jamAdvancingTo >= 0) return;
+  if (remoteKind()) {
+    // What the speaker reports, when it last reported it: a coarse clock,
+    // corrected coarsely, and not at all while it is still starting a track.
+    if (!st.isPlaying || st.isBuffering || Date.now() - jamRemoteLoadedAt < JAM_REMOTE_SETTLE_MS) return;
+    const target = positionAt();
+    if (Math.abs(target - st.positionSec) > JAM_REMOTE_SEEK_ABOVE_SEC) {
+      if (__DEV__) console.log(`[jam] align · remote ${Math.round((target - st.positionSec) * 1000)} ms behind · seek`);
+      jamRemoteLoadedAt = Date.now();
+      remoteSeek(target);
+      usePlayerStore.setState({ positionSec: target });
+    }
+    return;
+  }
+  const p = activePlayer();
   if (!p || !st.isPlaying || st.isBuffering || pendingSeek) return;
   let live: number;
   try {
@@ -3636,6 +3734,13 @@ export function initRemoteIntegration() {
     },
     onFinished: () => {
       if (handleSleepAtSongEnd()) return;
+      // In a Jam the speaker is handed the next track now, the way the local
+      // player starts it now (see `jamAdvance`): a speaker left silent is a
+      // phone left silent, and the session's word is applied over it.
+      if (isJamActive()) {
+        jamAdvance();
+        return;
+      }
       const { repeat, index } = usePlayerStore.getState();
       if (repeat === 'one') {
         void remoteLoadIndex(index, true);
@@ -3651,6 +3756,7 @@ export function initRemoteIntegration() {
   remoteEvents = events;
   initUpnp(events);
   initJukebox(events);
+  initLinkPlay(events);
   const queueOf = () => {
     const { queue, index } = usePlayerStore.getState();
     return { queue, index };

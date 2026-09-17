@@ -37,4 +37,8 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     : context.resolveRequest(context, moduleName, platform);
 };
 
+// The web build of expo-sqlite ships its engine as a .wasm file, which Metro
+// only bundles once told it is an asset. Nothing on a phone reads this line.
+config.resolver.assetExts.push('wasm');
+
 module.exports = config;

@@ -17,6 +17,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+
+import { Dialog } from '@/components/Dialog';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
@@ -43,7 +45,20 @@ import {
   useGoogleCast,
   type CastDevice,
 } from '@/store/googleCast';
+import { useAuthStore } from '@/store/auth';
 import { haConnect, haDisconnect, haSearch, useHomeAssistant } from '@/store/homeAssistant';
+import { linkPlayAvailable, type LinkPlayDevice } from '@/lib/linkplay';
+import {
+  linkPlayAdd,
+  linkPlayConnect,
+  linkPlayDisconnect,
+  linkPlayForget,
+  linkPlayJoin,
+  linkPlayLeave,
+  linkPlaySearch,
+  useLinkPlay,
+} from '@/store/linkplay';
+import { listJams, type OpenJam } from '@/lib/jam';
 import { useJam } from '@/store/jam';
 import { maConnect, maDisconnect, maSearch, useMusicAssistant } from '@/store/musicAssistant';
 import {
@@ -66,12 +81,22 @@ import {
 } from '@/store/upnp';
 import { colors, fontSize, radius, SHEET_MAX_WIDTH, spacing, themed } from '@/theme';
 
-/** Every discovery at once: they are four answers to the same question. */
+/**
+ * Whether a speaker found another way keeps its row: not when LinkPlay lists
+ * one of that name, unless it is the one playing, whose row is the way to
+ * stop it.
+ */
+function notOnLinkPlay(lpNames: Set<string>, name: string, active: boolean): boolean {
+  return active || !lpNames.has(normalizeOutputDisplayName(name).toLowerCase());
+}
+
+/** Every discovery at once: they are five answers to the same question. */
 function searchAll() {
   void upnpSearch();
   void castSearch();
   void haSearch();
   void maSearch();
+  void linkPlaySearch();
 }
 
 export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -81,24 +106,55 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   const toast = useToast((s) => s.show);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const upnpId = useUpnp((s) => (s.connected ? s.deviceId : null));
-  const devices = useUpnp((s) => s.devices);
+  const allUpnpDevices = useUpnp((s) => s.devices);
   const scanning = useUpnp((s) => s.scanning);
   const jukeboxActive = useJukebox((s) => s.active);
   const jukeboxAvailable = useJukebox((s) => s.available);
   const castId = useGoogleCast((s) => (s.connected ? s.deviceId : null));
-  const castDevices = useGoogleCast((s) => s.devices);
+  const allCastDevices = useGoogleCast((s) => s.devices);
   const castScanning = useGoogleCast((s) => s.scanning);
   const haId = useHomeAssistant((s) => (s.connected ? s.entityId : null));
-  const haPlayers = useHomeAssistant((s) => s.players);
+  const allHaPlayers = useHomeAssistant((s) => s.players);
   const haSearching = useHomeAssistant((s) => s.searching);
   const haOn = useHomeAssistant((s) => s.enabled);
   const haReady = useHomeAssistant((s) => s.enabled && !!s.url && !!s.token);
   const maId = useMusicAssistant((s) => (s.connected ? s.playerId : null));
-  const maPlayers = useMusicAssistant((s) => s.players);
+  const allMaPlayers = useMusicAssistant((s) => s.players);
   const maSearching = useMusicAssistant((s) => s.searching);
   const maOn = useMusicAssistant((s) => s.enabled);
   const maReady = useMusicAssistant((s) => s.enabled && !!s.url && !!s.username);
-  const phoneActive = !upnpId && !jukeboxActive && !castId && !haId && !maId;
+  const lpHost = useLinkPlay((s) => (s.connected ? s.host : null));
+  const lpDevices = useLinkPlay((s) => s.devices);
+  const lpSlaves = useLinkPlay((s) => s.slaves);
+  const lpSearching = useLinkPlay((s) => s.searching);
+  // Typing a speaker's address, for a network that swallows the announcement.
+  const [addingLinkPlay, setAddingLinkPlay] = useState(false);
+  // A speaker LinkPlay reaches directly is the same speaker a Cast search, a
+  // UPnP search or the house's assistants find under the same name, and one
+  // row is enough: it goes under LinkPlay, where its group is, and nowhere
+  // else. The one already playing through another route stays, since its
+  // row is the way to stop it.
+  const lpNames = useMemo(
+    () => new Set(lpDevices.map((d) => normalizeOutputDisplayName(d.name).toLowerCase())),
+    [lpDevices],
+  );
+  const devices = useMemo(
+    () => allUpnpDevices.filter((d) => notOnLinkPlay(lpNames, d.name, d.id === upnpId)),
+    [allUpnpDevices, lpNames, upnpId],
+  );
+  const castDevices = useMemo(
+    () => allCastDevices.filter((d) => notOnLinkPlay(lpNames, d.name, d.id === castId)),
+    [allCastDevices, lpNames, castId],
+  );
+  const haPlayers = useMemo(
+    () => allHaPlayers.filter((p) => notOnLinkPlay(lpNames, p.name, p.entityId === haId)),
+    [allHaPlayers, lpNames, haId],
+  );
+  const maPlayers = useMemo(
+    () => allMaPlayers.filter((p) => notOnLinkPlay(lpNames, p.name, p.playerId === maId)),
+    [allMaPlayers, lpNames, maId],
+  );
+  const phoneActive = !upnpId && !jukeboxActive && !castId && !haId && !maId && !lpHost;
   // The phone's own outputs and its media volume, only while the phone is the
   // one playing: a remote output has a volume of its own and the phone's
   // outputs are nothing to it.
@@ -224,6 +280,11 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
           ? activeHaPlayer.name
           : activeMaPlayer
           ? activeMaPlayer.name
+          : lpHost
+          ? formatGroupedDeviceLabel([
+              lpDevices.find((d) => d.host === lpHost)?.name ?? lpHost,
+              ...lpSlaves.map((s) => s.name),
+            ]) || lpHost
           : activeSonosGroupMode
           ? formatGroupedDeviceLabel(activeGroupMembers.map((device) => device.name))
           : activeUpnpDevice
@@ -247,6 +308,36 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     else if (castId) await castDisconnect();
     else if (haId) await haDisconnect();
     else if (maId) await maDisconnect();
+    else if (lpHost) await linkPlayDisconnect();
+  }
+
+  /** Every other remote output let go quietly, before this one takes over. */
+  async function leaveOtherRemotes(keep: 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay') {
+    if (upnpId && keep !== 'upnp') await upnpDisconnect(true);
+    if (jukeboxActive && keep !== 'jukebox') await jukeboxDisconnect(true);
+    if (castId && keep !== 'cast') await castDisconnect(true);
+    if (haId && keep !== 'ha') await haDisconnect(true);
+    if (maId && keep !== 'ma') await maDisconnect(true);
+    if (lpHost && keep !== 'linkplay') await linkPlayDisconnect(true);
+  }
+
+  async function pickLinkPlay(device: LinkPlayDevice) {
+    if (device.host === lpHost) return;
+    await leaveOtherRemotes('linkplay');
+    const ok = await linkPlayConnect(device);
+    if (!ok) toast(t("Couldn't complete the action"));
+  }
+
+  /** A speaker typed in by address: read, kept, and played on straight away. */
+  async function addLinkPlay(address: string) {
+    setAddingLinkPlay(false);
+    if (!address.trim()) return;
+    const device = await linkPlayAdd(address);
+    if (!device) {
+      toast(t('Nothing at that address answers as a LinkPlay speaker'));
+      return;
+    }
+    await pickLinkPlay(device);
   }
 
   /**
@@ -293,10 +384,7 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   async function pickHaPlayer(player: HaPlayer) {
     if (player.entityId === haId) return;
     // Silent handoff between remote outputs (does not resume on local in between).
-    if (upnpId) await upnpDisconnect(true);
-    if (jukeboxActive) await jukeboxDisconnect(true);
-    if (castId) await castDisconnect(true);
-    if (maId) await maDisconnect(true);
+    await leaveOtherRemotes('ha');
     const ok = await haConnect(player);
     if (!ok) toast(t("Couldn't complete the action"));
   }
@@ -304,16 +392,29 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   async function pickMaPlayer(player: MaPlayer) {
     if (player.playerId === maId) return;
     // Silent handoff between remote outputs (does not resume on local in between).
-    if (upnpId) await upnpDisconnect(true);
-    if (jukeboxActive) await jukeboxDisconnect(true);
-    if (castId) await castDisconnect(true);
-    if (haId) await haDisconnect(true);
+    await leaveOtherRemotes('ma');
     const ok = await maConnect(player);
     if (!ok) toast(t("Couldn't complete the action"));
   }
 
   const jamCode = useJam((s) => s.session?.code ?? null);
   const jamOffered = useSettings((s) => s.navifind);
+  // A session under way in the house, named on the row while this phone is
+  // in none: asked once each time the sheet opens, which is when it matters.
+  const [jamUnderWay, setJamUnderWay] = useState<OpenJam | null>(null);
+  const jamAuth = useAuthStore((s) => s.auth);
+  useEffect(() => {
+    if (!visible || !jamOffered || jamCode || !jamAuth) return;
+    let live = true;
+    listJams(jamAuth)
+      .then((jams) => {
+        if (live) setJamUnderWay(jams[0] ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [visible, jamOffered, jamCode, jamAuth]);
 
   /** The Jam screen: a session to open or join, or the one under way. */
   function openJam() {
@@ -401,6 +502,7 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   const showLocalOutputs = phoneActive && audioOutputAvailable && outputs.devices.length > 0;
 
   return (
+    <>
     <Modal transparent visible={visible} animationType="none" onRequestClose={close}>
       {/* Gestures inside an RN Modal need a root view of their own: the
           Modal renders in a native hierarchy outside the app's. */}
@@ -432,6 +534,28 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
               scrollEventThrottle={16}
               bounces={false}
             >
+              {/* First, above every output: not where the sound goes but who
+                  else hears it, everybody in the session, each on their own
+                  device. Only with the proxy that keeps sessions. */}
+              {jamOffered ? (
+                <>
+                  <Text style={styles.sectionTitle}>{t('Listen together')}</Text>
+                  <Row
+                    icon={<Ionicons name="people-outline" size={22} color={jamCode ? colors.accent : colors.text} />}
+                    label={
+                      jamCode
+                        ? t('Jam {code}', { code: jamCode })
+                        : jamUnderWay
+                          ? t("Join {name}'s Jam", { name: jamUnderWay.host })
+                          : t('Start or join a Jam')
+                    }
+                    active={!!jamCode}
+                    onPress={openJam}
+                    action={<Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+                  />
+                </>
+              ) : null}
+
               <Row
                 icon={outputIcon('phone', phoneActive)}
                 label={t('This phone')}
@@ -499,6 +623,80 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
                   />
                   <Ionicons name="volume-high-outline" size={20} color={colors.textSecondary} />
                 </View>
+              ) : null}
+
+              {/* LinkPlay speakers, WiiM among them, over their own API, and
+                  first among the outputs: it is the direct way to a speaker a
+                  Cast search also finds, and the only way to a WiiM Mini. With one
+                  playing, the others carry a control each to bring them into its
+                  multiroom group or take them out, the way the Sonos rooms do.
+                  A speaker the network keeps from announcing itself is typed in
+                  by address, and kept. */}
+              {linkPlayAvailable() && (lpDevices.length > 0 || lpHost) ? (
+                <>
+                  <Text style={styles.sectionTitle}>{t('LinkPlay')}</Text>
+                  {lpDevices.map((device) => {
+                    const active = device.host === lpHost;
+                    const following = lpSlaves.some((s) => s.host === device.host);
+                    const actionKey = `lp:${device.host}`;
+                    const action =
+                      lpHost && !active ? (
+                        <Pressable
+                          hitSlop={10}
+                          style={({ pressed }) => [pressed && { opacity: 0.6 }]}
+                          disabled={busyAction != null}
+                          accessibilityRole="button"
+                          accessibilityLabel={following ? t('Remove from the group') : t('Add to the group')}
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            void runGroupAction(actionKey, () =>
+                              following ? linkPlayLeave(device.host) : linkPlayJoin(device.host),
+                            );
+                          }}
+                        >
+                          {busyAction === actionKey ? (
+                            <ActivityIndicator size="small" color={colors.textSecondary} />
+                          ) : (
+                            <Ionicons
+                              name={following ? 'remove-circle-outline' : 'add-circle-outline'}
+                              size={22}
+                              color={colors.textSecondary}
+                            />
+                          )}
+                        </Pressable>
+                      ) : device.manual && !active ? (
+                        <Pressable
+                          hitSlop={10}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('Forget')}
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            linkPlayForget(device.host);
+                          }}
+                        >
+                          <Ionicons name="close-circle-outline" size={22} color={colors.textMuted} />
+                        </Pressable>
+                      ) : undefined;
+                    return (
+                      <Row
+                        key={`lp:${device.host}`}
+                        icon={outputIcon('speaker', active || following)}
+                        label={following ? `${device.name} · ${t('in the group')}` : device.name}
+                        active={active || following}
+                        onPress={active || following ? undefined : () => void pickLinkPlay(device)}
+                        action={action}
+                      />
+                    );
+                  })}
+                </>
+              ) : null}
+              {linkPlayAvailable() ? (
+                <Row
+                  icon={outputIcon('speaker')}
+                  label={t('Add a LinkPlay speaker by address…')}
+                  onPress={() => setAddingLinkPlay(true)}
+                  action={<Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+                />
               ) : null}
 
               {jukeboxAvailable ? (
@@ -600,22 +798,6 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
                 </>
               ) : null}
 
-              {/* Not an output but the one thing here that is about who else
-                  hears it: everybody in the session, each on their own
-                  device. Only with the proxy that keeps sessions. */}
-              {jamOffered ? (
-                <>
-                  <Text style={styles.sectionTitle}>{t('Listen together')}</Text>
-                  <Row
-                    icon={<Ionicons name="people-outline" size={22} color={jamCode ? colors.accent : colors.text} />}
-                    label={jamCode ? t('Jam {code}', { code: jamCode }) : t('Start or join a Jam')}
-                    active={!!jamCode}
-                    onPress={openJam}
-                    action={<Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
-                  />
-                </>
-              ) : null}
-
               {/* The house's players, under a heading of their own like the Cast
                   receivers: a Chromecast or a Sonos is in one of the lists above
                   as well, and the heading says which way it is being reached.
@@ -690,7 +872,7 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
                   that says it is searching whether or not it is says nothing at
                   all. When it has finished and found nothing, that is the news,
                   and the way to try again goes with it. */}
-              {scanning || castScanning || haSearching || maSearching ? (
+              {scanning || castScanning || haSearching || maSearching || lpSearching ? (
                 <View style={styles.scanRow}>
                   <ActivityIndicator size="small" color={colors.textSecondary} />
                   <Text style={styles.scanText}>{t('Searching for devices…')}</Text>
@@ -716,6 +898,16 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
         </GestureDetector>
       </GestureHandlerRootView>
     </Modal>
+      <Dialog
+        visible={addingLinkPlay}
+        title={t('Add a LinkPlay speaker by address…')}
+        message={t("The speaker's IP address on your network, as its own app shows it.")}
+        input={{ placeholder: '192.168.1.20' }}
+        confirmLabel={t('Add')}
+        onCancel={() => setAddingLinkPlay(false)}
+        onConfirm={(value) => void addLinkPlay(value)}
+      />
+    </>
   );
 }
 

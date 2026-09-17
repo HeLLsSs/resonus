@@ -1,0 +1,7 @@
+{
+  "name": "linkplay",
+  "version": "0.0.1",
+  "description": "LinkPlay (WiiM and friends) bridge for Resonus: mDNS discovery and the pinned HTTPS API (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

@@ -241,6 +241,28 @@ export function createJam(auth: SubsonicAuth, name: string): Promise<JamView> {
   return call<JamView>(auth, '/create', { form });
 }
 
+/** A session under way on the server, as the list names it. */
+export interface OpenJam {
+  code: string;
+  host: string;
+  members: number;
+  playing: boolean;
+  title: string;
+  artist: string;
+}
+
+/** The sessions under way on this server, newest first. Asked with the profile's credentials. */
+export async function listJams(auth: SubsonicAuth): Promise<OpenJam[]> {
+  const params = new URLSearchParams({ u: auth.username });
+  if (auth.password !== undefined) params.set('p', auth.password);
+  else {
+    params.set('t', auth.token);
+    params.set('s', auth.salt);
+  }
+  const { jams } = await call<{ jams: OpenJam[] }>(auth, `/list?${params.toString()}`);
+  return jams;
+}
+
 export function joinJam(auth: Pick<SubsonicAuth, 'serverUrl' | 'headers'>, code: string, name: string): Promise<JamView> {
   return call<JamView>(auth, '/join', { json: { code, name } });
 }

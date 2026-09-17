@@ -55,8 +55,13 @@ export interface JamHooks {
    * at the position `positionAt` gives when read. Loads what has to be.
    */
   follow: (songs: Song[], index: number, playing: boolean, positionAt: () => number) => Promise<void>;
-  /** Compares the live position with `positionAt()` and closes the gap. */
-  align: (positionAt: () => number) => void;
+  /**
+   * Compares the live position with `positionAt()` and closes the gap, as
+   * long as the player is on the song the session is on (`songId`): between
+   * a track ending here and the session saying so, the two are a song apart
+   * and there is nothing to align.
+   */
+  align: (positionAt: () => number, songId: string | undefined) => void;
   /** What the player holds right now, for a session opened around it. */
   snapshot: () => { songs: Song[]; index: number; playing: boolean; positionSec: number };
   /** Makes the player follow in silence, or gives it its voice back. */
@@ -246,7 +251,7 @@ function enter(view: JamView): void {
   void poll(gen);
   alignTimer = setInterval(() => {
     const { session } = useJam.getState();
-    if (session?.playing) hooks?.align(positionAt(session));
+    if (session?.playing) hooks?.align(positionAt(session), session.queue[session.index]?.id);
   }, ALIGN_EVERY_MS);
   clockTimer = setInterval(() => void syncClock(), CLOCK_EVERY_MS);
   // Back from the background the timers above have been asleep: measure and
@@ -255,7 +260,7 @@ function enter(view: JamView): void {
     if (state !== 'active') return;
     void syncClock().then(() => {
       const { session } = useJam.getState();
-      if (session) hooks?.align(positionAt(session));
+      if (session) hooks?.align(positionAt(session), session.queue[session.index]?.id);
     });
   });
 }

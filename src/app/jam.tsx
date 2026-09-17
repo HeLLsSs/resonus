@@ -9,13 +9,14 @@
  */
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, Text, View } from 'react-native';
 
 import { SettingRow, SettingsPage, settingsStyles, SwitchList, TextRow } from '@/components/SettingsUI';
 import { useAccent } from '@/hooks/useAccent';
 import { useT } from '@/i18n';
-import { cleanCode, JamError, jamPageUrl, jamQrUrl } from '@/lib/jam';
+import { cleanCode, JamError, jamPageUrl, jamQrUrl, listJams } from '@/lib/jam';
 import { navifindActive } from '@/lib/navifind';
 import { useAuthStore } from '@/store/auth';
 import { endJam, isJamHost, joinJamByCode, leaveJam, setJamListenHere, startJam, useJam } from '@/store/jam';
@@ -25,6 +26,8 @@ import { fontSize, spacing, useTheme } from '@/theme';
 /** A code is six characters; room for the dashes and spaces people type. */
 const CODE_MAX = 8;
 const QR_SIZE = 200;
+/** How often the list of sessions under way is asked for while this screen is up. */
+const OPEN_EVERY_MS = 10_000;
 
 export default function JamScreen() {
   const colors = useTheme();
@@ -51,6 +54,17 @@ export default function JamScreen() {
 
   const start = () => startJam().catch(said);
   const join = () => joinJamByCode(code).catch(said);
+
+  // The sessions under way on the server: the one in the house is a tap away
+  // rather than a code to type. Asked again now and then while the screen is
+  // up, as somebody may open one after you got here.
+  const open = useQuery({
+    queryKey: ['jam', 'open', auth?.serverUrl],
+    queryFn: () => listJams(auth!),
+    enabled: canJam && !session,
+    refetchInterval: OPEN_EVERY_MS,
+  });
+  const openJams = open.data ?? [];
 
   // The link brought a code: join once, as arriving with it is asking to.
   const joinedFromLink = useRef(false);
@@ -164,6 +178,26 @@ export default function JamScreen() {
               description={t('What is playing here becomes what everybody hears.')}
               onPress={busy ? undefined : () => void start()}
             />
+            {openJams.length > 0 ? (
+              <>
+                <Text style={settingsStyles.sectionTitle}>{t('Jams under way')}</Text>
+                {openJams.map((jam) => (
+                  <SettingRow
+                    key={jam.code}
+                    icon="people-outline"
+                    label={t("{name}'s Jam", { name: jam.host })}
+                    description={[
+                      jam.members === 1 ? t('1 listening') : t('{n} listening', { n: jam.members }),
+                      jam.title ? [jam.title, jam.artist].filter(Boolean).join(' · ') : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    right={jam.code}
+                    onPress={busy ? undefined : () => void joinJamByCode(jam.code).catch(said)}
+                  />
+                ))}
+              </>
+            ) : null}
             <Text style={settingsStyles.sectionTitle}>{t('Join a Jam')}</Text>
             <TextRow
               label={t('Code')}

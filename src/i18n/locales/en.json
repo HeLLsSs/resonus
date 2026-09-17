@@ -1230,5 +1230,16 @@
   "Listen together, everyone on their own device.": "Listen together, everyone on their own device.",
   "Added by {name}": "Added by {name}",
   "Play on this phone": "Play on this phone",
-  "Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.": "Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it."
+  "Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.": "Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.",
+  "Jams under way": "Jams under way",
+  "{name}'s Jam": "{name}'s Jam",
+  "Join {name}'s Jam": "Join {name}'s Jam",
+  "in the group": "in the group",
+  "The speaker's IP address on your network, as its own app shows it.": "The speaker's IP address on your network, as its own app shows it.",
+  "Add": "Add",
+  "Lost contact with the speaker": "Lost contact with the speaker",
+  "The speaker couldn't play this song": "The speaker couldn't play this song",
+  "LinkPlay": "LinkPlay",
+  "Add a LinkPlay speaker by address…": "Add a LinkPlay speaker by address…",
+  "Nothing at that address answers as a LinkPlay speaker": "Nothing at that address answers as a LinkPlay speaker"
 }

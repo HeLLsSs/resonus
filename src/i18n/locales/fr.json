@@ -1232,5 +1232,16 @@
   "Listen together, everyone on their own device.": "Écouter ensemble, chacun sur son appareil.",
   "Added by {name}": "Ajouté par {name}",
   "Play on this phone": "Jouer sur ce téléphone",
-  "Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.": "Désactivé, ce téléphone se contente d’afficher et de piloter le Jam : pour le téléphone dans la main quand les enceintes sont sur l’ordinateur qui l’a ouvert."
+  "Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.": "Désactivé, ce téléphone se contente d’afficher et de piloter le Jam : pour le téléphone dans la main quand les enceintes sont sur l’ordinateur qui l’a ouvert.",
+  "Jams under way": "Jams en cours",
+  "{name}'s Jam": "Jam de {name}",
+  "Join {name}'s Jam": "Rejoindre le Jam de {name}",
+  "in the group": "dans le groupe",
+  "The speaker's IP address on your network, as its own app shows it.": "L’adresse IP de l’enceinte sur ton réseau, telle que son application l’affiche.",
+  "Add": "Ajouter",
+  "Lost contact with the speaker": "Contact perdu avec l’enceinte",
+  "The speaker couldn't play this song": "L’enceinte n’a pas pu lire ce titre",
+  "LinkPlay": "LinkPlay",
+  "Add a LinkPlay speaker by address…": "Ajouter une enceinte LinkPlay par son adresse…",
+  "Nothing at that address answers as a LinkPlay speaker": "Rien à cette adresse ne répond comme une enceinte LinkPlay"
 }

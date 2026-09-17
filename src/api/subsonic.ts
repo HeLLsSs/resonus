@@ -6,6 +6,9 @@
  * is never sent in the clear. See https://www.subsonic.org/pages/api.jsp
  */
 import * as Crypto from 'expo-crypto';
+import { Platform } from 'react-native';
+
+import { md5Hex } from '@/lib/md5';
 // Not the global `fetch`. React Native's stops delivering answers once the app
 // is in the background: measured at eleven requests sent and none resolved or
 // rejected, which is a promise that never settles and a worker that waits for
@@ -392,10 +395,11 @@ export async function makeAuth(
   headers?: Record<string, string>,
 ): Promise<SubsonicAuth> {
   const salt = randomSalt();
-  const token = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.MD5,
-    password + salt,
-  );
+  // A browser's WebCrypto has no MD5; the web build brings its own.
+  const token =
+    Platform.OS === 'web'
+      ? md5Hex(password + salt)
+      : await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.MD5, password + salt);
   // Ampache doesn't validate the token, and the user can force cleartext auth
   // (proxies/SSO): in both cases we store the password to use `p=enc:`.
   const usePlain = isAmpache(serverType) || !!plainAuth;

@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1225 of them.
+Every string the app can show, under the screen it shows up on. 1236 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -400,6 +400,7 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `{n} listening` |  |
+| `{name}'s Jam` |  |
 | `1 listening` |  |
 | `A code has six letters or digits` |  |
 | `A Jam needs a connection to the server.` |  |
@@ -410,6 +411,7 @@ you are actually typing into, which is easier than reading it here.
 | `For everybody.` | The line under “End the Jam”, explaining it |
 | `Host` |  |
 | `Jam needs a server account` |  |
+| `Jams under way` |  |
 | `Join` |  |
 | `Join a Jam` |  |
 | `Leave` |  |
@@ -558,6 +560,8 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `A code has six letters or digits` |  |
 | `About the artist` | The label over the photo on the artist card, the one below the player controls |
+| `Add` |  |
+| `Add a LinkPlay speaker by address…` |  |
 | `Add to the group` | Read out by the screen reader, never shown: the + beside a Sonos room in the output sheet, which sets that room playing along with the one already playing. Sonos only, and `group` is a group of SPEAKERS in the sense Sonos itself uses — rooms playing the same thing together. Whatever word Sonos uses in your language is the one |
 | `Back {n} seconds` | Read out by the screen reader for the seek button. `{n}` is how many seconds it is set to |
 | `Change the output from the system's media output picker` |  |
@@ -565,14 +569,18 @@ you are actually typing into, which is easier than reading it here.
 | `Currently playing on` | Heading above the output the music is coming out of right now, at the top of the output sheet |
 | `Devices` | The audio output devices to cast to |
 | `Explicit` | A value of `Content`: the recording carries a parental advisory (strong language). Also read out for the E badge next to a title |
+| `Forget` |  |
 | `Forward {n} seconds` | Read out by the screen reader for the seek button. `{n}` is how many seconds it is set to |
 | `From SoundCloud` |  |
 | `From YouTube` |  |
 | `Google Cast` |  |
 | `Hearing aid` |  |
+| `in the group` |  |
 | `Jam {code}` |  |
 | `Jam needs a server account` |  |
+| `Join {name}'s Jam` |  |
 | `Keep pitch` |  |
+| `LinkPlay` |  |
 | `Listen together` |  |
 | `Media volume` |  |
 | `Music Assistant` |  |
@@ -580,6 +588,7 @@ you are actually typing into, which is easier than reading it here.
 | `No devices found` |  |
 | `No media players in Home Assistant` | In the output sheet, under the `Home Assistant` heading: Home Assistant answered but has no media player that can be handed a URL. `Media player` is Home Assistant's own name for a speaker or TV it controls |
 | `No players in Music Assistant` |  |
+| `Nothing at that address answers as a LinkPlay speaker` |  |
 | `NOW PLAYING` | Small label above the cover, in the same place and style as `PLAYING FROM`, when there is nothing to name |
 | `Open system output picker` |  |
 | `Output` |  |
@@ -602,6 +611,7 @@ you are actually typing into, which is easier than reading it here.
 | `Show more` | Unfolds the rest of a text that was cut short |
 | `Start or join a Jam` |  |
 | `The Jam has ended` |  |
+| `The speaker's IP address on your network, as its own app shows it.` |  |
 | `This phone` | The on-device profile, with no server account |
 | `USB audio` |  |
 | `View queue` | Read out by the screen reader for the button that opens the queue |
@@ -1706,6 +1716,7 @@ you are actually typing into, which is easier than reading it here.
 | `Hold to go back to {tab}` | The hint on holding the back arrow. `{tab}` is Home, Search or Library |
 | `Jam` |  |
 | `List` | An option in that menu: one row per item, instead of cards |
+| `Lost contact with the speaker` |  |
 | `Lyrics` | The words of the song. Also a line of the storage bar, where it is their size on the phone |
 | `Mix of “{name}”` | What the player calls the queue once it has grown past its album into songs the app picked itself. `{name}` is the song it was grown from |
 | `More` | A "see more" action, and the third button of the selection bar, the one that opens the rest of what it can do |
@@ -1754,6 +1765,7 @@ you are actually typing into, which is easier than reading it here.
 | `The receiver can't play this format` |  |
 | `The receiver couldn't fetch this song` |  |
 | `The receiver couldn't play this song` |  |
+| `The speaker couldn't play this song` |  |
 | `This song can't be cast` | Toast: the speaker or TV will not take this file |
 | `This song is already in “{name}”.` | The line under that title. `{name}` is the playlist |
 | `Undo` | The button in a toast that takes back what just happened. It is there for a few seconds |

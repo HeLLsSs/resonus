@@ -107,11 +107,31 @@ appear when it is switched off.
   guest who has the app can open the session in it from there. Every player keeps
   itself within a few tens of milliseconds of the session, correcting quietly
   by playing a touch faster or slower rather than jumping.
+- **The host's sound can go anywhere.** In a Jam the phone can play through
+  any of its outputs: a Chromecast, a Home Assistant or Music Assistant
+  player, a WiiM group. The session still decides what plays and when; the
+  phone hands it to the speaker and keeps it within a few seconds.
+- **The Jam in the house is a tap away**: the sessions under way on the
+  server are listed on the Jam screen and named on the output sheet's row.
 - `resonuls://jam/<code>` joins that session from a link, and so does the
   page's own `https://<proxy>/jam/<code>` once the proxy publishes the app's
   signing certificate under `/.well-known/assetlinks.json` (Android app
   links): scanning the QR code then opens the app straight away. The host is
   declared in `app.json` under `android.intentFilters`.
+
+### In a browser
+
+- **The same app on the web.** `scripts/build-web.sh` exports the app for
+  the browser and the proxy serves it at `https://<proxy>/app`: sign in with
+  your account and the library, the playlists, the YouTube tab, the mixes and
+  the Jam are there. What the browser cannot do is left out of it: casting,
+  DLNA, LinkPlay, Android Auto, the widget, the equaliser and downloads.
+  Playback is the browser's own, and a Jam is the same Jam.
+- **What you played stays within reach.** A service worker keeps the app,
+  the covers, the answers the library screens are built from and the songs
+  that were played, within a budget, so the page opens and the recent songs
+  play with no network. A browser has no file system to download into, so
+  this is as far as offline goes there.
 
 ### More outputs
 
@@ -119,6 +139,13 @@ appear when it is switched off.
   among them, appear in the Output sheet. One speaker is often several entities
   there, so they are kept one per name, and the one that can wake a speaker in
   standby is remembered and asked first.
+- **WiiM and other LinkPlay speakers**, over the speaker's own API: a WiiM
+  Mini has no Chromecast and this is the way to reach it. They are found by
+  mDNS, or typed in by address for a network that swallows the announcement,
+  and one speaker playing brings the others into its multiroom group from
+  the output sheet, one control per speaker, the way Sonos rooms do. The
+  speaker only speaks HTTPS with a certificate of LinkPlay's own, which the
+  app pins and trusts for nothing else.
 - **Music Assistant**, spoken to directly rather than through Home Assistant.
   Nothing is polled, and no address is handed to a speaker: a song is named by
   its id in the library Music Assistant already keeps, and it fetches the song

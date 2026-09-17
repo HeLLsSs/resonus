@@ -11,10 +11,9 @@
  * an `Authorization` header instead, so the URL that reaches the media session
  * — and from there every app that can read it — carries nothing.
  */
-import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
-import { getItem, setItem } from '@/lib/storage';
+import { deleteItem, getItem, setItem } from '@/lib/storage';
 import { parsePropfind, sortEntries, type DavEntry } from '@/lib/webdav';
 
 /** A share as it is kept: everything but the password. */
@@ -62,7 +61,7 @@ export async function hydrateWebdav(): Promise<void> {
 /** The password for a share, from the secure store. */
 export async function passwordFor(id: string): Promise<string | undefined> {
   try {
-    return (await SecureStore.getItemAsync(secretKey(id))) ?? undefined;
+    return (await getItem(secretKey(id))) ?? undefined;
   } catch {
     return undefined;
   }
@@ -132,7 +131,7 @@ export function davUrlFor(id: string): string | undefined {
 /** Adds a share, or replaces one of the same id. The password goes to the
  *  secure store and nowhere else. */
 export async function saveSource(source: DavSource, password: string): Promise<void> {
-  await SecureStore.setItemAsync(secretKey(source.id), password);
+  await setItem(secretKey(source.id), password);
   headerCache.set(source.id, { Authorization: `Basic ${basic(source.user, password)}` });
   const rest = useWebdav.getState().sources.filter((s) => s.id !== source.id);
   const sources = [...rest, source];
@@ -142,7 +141,7 @@ export async function saveSource(source: DavSource, password: string): Promise<v
 
 /** Forgets a share, password included. */
 export async function forgetSource(id: string): Promise<void> {
-  await SecureStore.deleteItemAsync(secretKey(id)).catch(() => {});
+  await deleteItem(secretKey(id)).catch(() => {});
   headerCache.delete(id);
   const sources = useWebdav.getState().sources.filter((s) => s.id !== id);
   useWebdav.setState({ sources });
