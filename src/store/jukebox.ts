@@ -10,10 +10,9 @@
  * the clock; track end is inferred from a "stopped near the end", as in
  * UPnP.
  *
- * Known limitation: polling is a JS `setInterval`, which Android freezes
- * in the background. With the app minimized the queue advance pauses until
- * it's reopened (the server finishes the current track and waits). Designed to
- * be used with the app in front, as a remote.
+ * The poll rides the native ticker (`lib/ticker.ts`) rather than a JS
+ * timer, which Android freezes in the background: with the app minimized the
+ * queue still advances when the server finishes a track.
  *
  * Only Subsonic servers with the jukebox role enabled by the admin.
  */
@@ -30,6 +29,7 @@ import {
   jukeboxStop,
   type SubsonicAuth,
 } from '@/api/subsonic';
+import { everyMs } from '@/lib/ticker';
 import { useAuthStore } from './auth';
 import type { RemoteEvents } from './upnp';
 
@@ -48,7 +48,8 @@ export const useJukebox = create<JukeboxStoreState>(() => ({
 const POLL_MS = 1000;
 
 let events: RemoteEvents | null = null;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+/** Stops the poll's beat (see `everyMs`); null while there is none. */
+let stopPolls: (() => void) | null = null;
 let lastPositionSec = 0;
 let lastDurationSec = 0;
 /** Prevents advancing the queue twice for the same track end. */
@@ -139,8 +140,8 @@ export async function jukeboxConnect(): Promise<boolean> {
   intendedPlaying = false;
   lastPlaying = null;
   useJukebox.setState({ active: true });
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(() => void poll(), POLL_MS);
+  stopPolls?.();
+  stopPolls = everyMs(POLL_MS, () => void poll());
   events?.onConnected();
   return true;
 }
@@ -148,10 +149,8 @@ export async function jukeboxConnect(): Promise<boolean> {
 /** Closes the session; with `silent` it doesn't notify the player (when switching output). */
 export async function jukeboxDisconnect(silent = false): Promise<void> {
   if (!isJukeboxActive()) return;
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
+  stopPolls?.();
+  stopPolls = null;
   useJukebox.setState({ active: false });
   const a = auth();
   try {

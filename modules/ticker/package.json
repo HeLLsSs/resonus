@@ -1,0 +1,7 @@
+{
+  "name": "ticker",
+  "version": "0.0.1",
+  "description": "A clock that keeps ticking in the background, for the polls React Native's timers would leave asleep (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

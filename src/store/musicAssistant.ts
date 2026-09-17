@@ -69,6 +69,7 @@ import {
   wsUrlFor,
 } from '@/lib/musicAssistant';
 import { getItem, setItem } from '@/lib/storage';
+import { everyMs } from '@/lib/ticker';
 import { useAuthStore } from './auth';
 import { castStop } from './castMedia';
 import type { CastQueueState } from './googleCast';
@@ -176,7 +177,8 @@ let client: MaClient | null = null;
 let opening: Promise<MaClient> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempt = 0;
-let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+/** Stops the keepalive's beat (see `everyMs`); null while there is none. */
+let endKeepalive: (() => void) | null = null;
 let idleCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
@@ -411,7 +413,7 @@ function scheduleIdleClose(): void {
  */
 function startKeepalive(): void {
   stopKeepalive();
-  keepaliveTimer = setInterval(() => {
+  endKeepalive = everyMs(KEEPALIVE_MS, () => {
     const held = client;
     if (!held?.isOpen || held.idleMs < SILENT_MS) return;
     void listPlayers(held).catch(() => {
@@ -419,12 +421,12 @@ function startKeepalive(): void {
       closeClient();
       if (isMaConnected()) scheduleReconnect();
     });
-  }, KEEPALIVE_MS);
+  });
 }
 
 function stopKeepalive(): void {
-  if (keepaliveTimer) clearInterval(keepaliveTimer);
-  keepaliveTimer = null;
+  endKeepalive?.();
+  endKeepalive = null;
 }
 
 function onSocketClosed(closed: MaClient): void {

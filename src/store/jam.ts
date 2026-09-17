@@ -38,6 +38,7 @@ import {
   positionMs,
   splitQueue,
 } from '@/lib/jam';
+import { everyMs } from '@/lib/ticker';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/store/toast';
 
@@ -103,8 +104,9 @@ let token = '';
 /** Server clock minus ours, in ms. */
 let offsetMs = 0;
 let pollAbort: AbortController | null = null;
-let alignTimer: ReturnType<typeof setInterval> | null = null;
-let clockTimer: ReturnType<typeof setInterval> | null = null;
+/** Stop the align and clock beats (see `everyMs`); null while there are none. */
+let stopAlign: (() => void) | null = null;
+let stopClock: (() => void) | null = null;
 let appStateSub: { remove: () => void } | null = null;
 /** Which session the loops belong to, so a stale loop ends itself. */
 let generation = 0;
@@ -249,11 +251,15 @@ function enter(view: JamView): void {
   hooks?.silence(!useJam.getState().listenHere);
   take(view);
   void poll(gen);
-  alignTimer = setInterval(() => {
+  let beats = 0;
+  stopAlign = everyMs(ALIGN_EVERY_MS, () => {
+    // Counted in development: whether the beat goes on with the screen off
+    // is the one thing about it that cannot be seen any other way.
+    if (__DEV__ && ++beats % 15 === 0) console.log(`[jam] beat ${beats}`);
     const { session } = useJam.getState();
     if (session?.playing) hooks?.align(positionAt(session), session.queue[session.index]?.id);
-  }, ALIGN_EVERY_MS);
-  clockTimer = setInterval(() => void syncClock(), CLOCK_EVERY_MS);
+  });
+  stopClock = everyMs(CLOCK_EVERY_MS, () => void syncClock());
   // Back from the background the timers above have been asleep: measure and
   // catch up now rather than at their next turn.
   appStateSub = AppState.addEventListener('change', (state) => {
@@ -270,10 +276,10 @@ function stop(): void {
   token = '';
   pollAbort?.abort();
   pollAbort = null;
-  if (alignTimer) clearInterval(alignTimer);
-  if (clockTimer) clearInterval(clockTimer);
-  alignTimer = null;
-  clockTimer = null;
+  stopAlign?.();
+  stopClock?.();
+  stopAlign = null;
+  stopClock = null;
   appStateSub?.remove();
   appStateSub = null;
   hooks?.silence(false);

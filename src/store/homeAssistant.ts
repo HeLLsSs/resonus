@@ -58,6 +58,7 @@ import {
 } from '@/lib/homeAssistant';
 import { stopLocalHttp } from '@/lib/localHttp';
 import { getItem, setItem } from '@/lib/storage';
+import { everyMs } from '@/lib/ticker';
 import { castStop } from './castMedia';
 import type { CastQueueState } from './googleCast';
 import { ensureLocalFilesServed, mp3StreamUrl, remoteTrackInfo, remoteTrackUrl } from './remoteTrack';
@@ -143,7 +144,8 @@ interface Handed {
 let events: RemoteEvents | null = null;
 /** The player's queue, for naming the index a handed track stands for. */
 let queueOf: (() => { queue: Song[]; index: number }) | null = null;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+/** Stops the poll's beat (see `everyMs`); null while there is none. */
+let stopPolls: (() => void) | null = null;
 /** A poll is waiting on its answer: the next tick is skipped rather than stacked. */
 let polling = false;
 let failures = 0;
@@ -358,13 +360,13 @@ export async function haDisconnect(silent = false, leaveSounding = false): Promi
 
 function startPolling() {
   stopPolling();
-  pollTimer = setInterval(() => void poll(), POLL_MS);
+  stopPolls = everyMs(POLL_MS, () => void poll());
   void poll();
 }
 
 function stopPolling() {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = null;
+  stopPolls?.();
+  stopPolls = null;
   polling = false;
 }
 
