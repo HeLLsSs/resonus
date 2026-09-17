@@ -188,6 +188,7 @@ export default function RootLayout() {
                 <Stack.Screen name="smart-playlist/edit" />
                 <Stack.Screen name="bookmarks" />
                 <Stack.Screen name="past-queues" />
+                <Stack.Screen name="jam" />
                 <Stack.Screen name="settings/index" />
                 <Stack.Screen name="settings/downloads" />
                 <Stack.Screen name="settings/download-activity" />

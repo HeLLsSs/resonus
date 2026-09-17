@@ -41,6 +41,7 @@ import { haptic } from '@/lib/haptics';
 import { listPerf } from '@/lib/listPerf';
 import { queryClient } from '@/lib/query';
 import { useAuthStore } from '@/store/auth';
+import { jamMemberName, useJam } from '@/store/jam';
 import { mixSeedOf, SOURCE_FAVORITES, SOURCE_HISTORY, usePlayerStore } from '@/store/player';
 import { usePlaylistPicker } from '@/store/playlistPicker';
 import { useSettings } from '@/store/settings';
@@ -102,6 +103,9 @@ function QueueRow({
   const t = useT();
   const drag = useReorderableDrag();
   const current = state === 'current';
+  // In a Jam, whose pick this was: read by position, which is how the session
+  // keeps it, and only while the queue is the session's.
+  const addedBy = useJam((s) => (s.session ? jamMemberName(s.addedBy[absIndex] ?? '') : ''));
 
   const remove = async () => {
     // Removing the one playing moves on to the next, which is loud enough on
@@ -127,6 +131,11 @@ function QueueRow({
             {item.title}
           </Text>
           <ArtistLine song={item} />
+          {addedBy ? (
+            <Text style={styles.artist} numberOfLines={1}>
+              {t('Added by {name}', { name: addedBy })}
+            </Text>
+          ) : null}
         </View>
       </Pressable>
 

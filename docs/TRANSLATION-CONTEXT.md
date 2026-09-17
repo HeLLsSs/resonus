@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1193 of them.
+Every string the app can show, under the screen it shows up on. 1225 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -395,6 +395,36 @@ you are actually typing into, which is easier than reading it here.
 | `Sign in on your phone` |  |
 | `Unknown title` | Fallback when the file and the server have no title |
 
+## Jam
+
+| String | What it is |
+| --- | --- |
+| `{n} listening` |  |
+| `1 listening` |  |
+| `A code has six letters or digits` |  |
+| `A Jam needs a connection to the server.` |  |
+| `A Jam needs the Navifind proxy: turn it on in Settings › Navifind.` |  |
+| `Code` |  |
+| `Could not reach the Jam` |  |
+| `End the Jam` |  |
+| `For everybody.` | The line under “End the Jam”, explaining it |
+| `Host` |  |
+| `Jam needs a server account` |  |
+| `Join` |  |
+| `Join a Jam` |  |
+| `Leave` |  |
+| `Leave the Jam` |  |
+| `Listen together, everyone on their own device, all hearing the same thing at the same moment. Anyone can add songs, skip or pause. A browser can join with the code, no account needed.` |  |
+| `No Jam with that code` |  |
+| `Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.` | The line under “Play on this phone”, explaining it |
+| `Play on this phone` |  |
+| `QR code to join from a browser` |  |
+| `Share the link` |  |
+| `Start a Jam` |  |
+| `The Jam has ended` |  |
+| `What is playing here becomes what everybody hears.` | The line under “Start a Jam”, explaining it |
+| `What is playing keeps playing, on this phone alone.` | The line under “Leave the Jam”, explaining it |
+
 ## Label
 
 | String | What it is |
@@ -526,10 +556,12 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `A code has six letters or digits` |  |
 | `About the artist` | The label over the photo on the artist card, the one below the player controls |
 | `Add to the group` | Read out by the screen reader, never shown: the + beside a Sonos room in the output sheet, which sets that room playing along with the one already playing. Sonos only, and `group` is a group of SPEAKERS in the sense Sonos itself uses — rooms playing the same thing together. Whatever word Sonos uses in your language is the one |
 | `Back {n} seconds` | Read out by the screen reader for the seek button. `{n}` is how many seconds it is set to |
 | `Change the output from the system's media output picker` |  |
+| `Could not reach the Jam` |  |
 | `Currently playing on` | Heading above the output the music is coming out of right now, at the top of the output sheet |
 | `Devices` | The audio output devices to cast to |
 | `Explicit` | A value of `Content`: the recording carries a parental advisory (strong language). Also read out for the E badge next to a title |
@@ -538,7 +570,10 @@ you are actually typing into, which is easier than reading it here.
 | `From YouTube` |  |
 | `Google Cast` |  |
 | `Hearing aid` |  |
+| `Jam {code}` |  |
+| `Jam needs a server account` |  |
 | `Keep pitch` |  |
+| `Listen together` |  |
 | `Media volume` |  |
 | `Music Assistant` |  |
 | `Next` | Player control: the next track (accessibility label) |
@@ -565,6 +600,8 @@ you are actually typing into, which is easier than reading it here.
 | `Show cover` | Lyrics screen: the button that goes back to the cover art |
 | `Show less` | Folds it back |
 | `Show more` | Unfolds the rest of a text that was cut short |
+| `Start or join a Jam` |  |
+| `The Jam has ended` |  |
 | `This phone` | The on-device profile, with no server account |
 | `USB audio` |  |
 | `View queue` | Read out by the screen reader for the button that opens the queue |
@@ -616,14 +653,18 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `A code has six letters or digits` |  |
 | `A playlist called “{name}” already exists. Replace its songs?` |  |
+| `Added by {name}` |  |
 | `At the end of the queue` | Queue screen header: the songs 'Add to queue' put after everything else |
 | `Clear all` | Throw away the whole list: the history, the queue, or what you searched for |
 | `Clear queue` | Menu action: empty the list of what is coming |
+| `Could not reach the Jam` |  |
 | `Explicit` | A value of `Content`: the recording carries a parental advisory (strong language). Also read out for the E badge next to a title |
 | `From SoundCloud` |  |
 | `From YouTube` |  |
 | `Get the server's queue` | Queue screen action: replace what is playing here with the queue the server has, which is the one left on another player |
+| `Jam needs a server account` |  |
 | `Next from {name}` | Heading on the queue screen: what is coming, and where it comes from. `{name}` is an album, a playlist or a mix |
 | `Next in queue` | Queue screen header: the track that plays next |
 | `None of these songs can be saved to a playlist` |  |
@@ -639,6 +680,7 @@ you are actually typing into, which is easier than reading it here.
 | `Saved as “{name}”` | Where the exported file ended up. `{name}` is the file's name |
 | `Stop the mix` | Stop the app carrying on with similar songs when the queue runs out |
 | `The current song keeps playing.` | The line under the clear-queue dialog: only what is coming goes |
+| `The Jam has ended` |  |
 | `The mix won't grow any further` | Toast after stopping the mix: what is in the queue stays, nothing new is added |
 | `The queue is empty.` | Empty state on the queue screen |
 | `The server has no saved queue` | The toast when the server had nothing to bring over |
@@ -1064,6 +1106,7 @@ you are actually typing into, which is easier than reading it here.
 | `In the library` |  |
 | `Last imports` |  |
 | `Link` |  |
+| `Listen together, everyone on their own device.` | The line under “Jam”, explaining it |
 | `Marks online tracks in searches and lets them be copied into the library.` | The line under “Use Navifind”, explaining it |
 | `Navifind sits in front of Navidrome and answers searches with tracks it can fetch from YouTube and SoundCloud. Only turn it on if your server address points at it.` |  |
 | `Nothing new in the library` |  |
@@ -1661,6 +1704,7 @@ you are actually typing into, which is easier than reading it here.
 | `Find in playlist` | Placeholder of the search box hidden above a tracklist, for finding a song within it |
 | `History` | The listening history: what was played and when |
 | `Hold to go back to {tab}` | The hint on holding the back arrow. `{tab}` is Home, Search or Library |
+| `Jam` |  |
 | `List` | An option in that menu: one row per item, instead of cards |
 | `Lyrics` | The words of the song. Also a line of the storage bar, where it is their size on the phone |
 | `Mix of “{name}”` | What the player calls the queue once it has grown past its album into songs the app picked itself. `{name}` is the song it was grown from |
@@ -1671,6 +1715,7 @@ you are actually typing into, which is easier than reading it here.
 | `No results` | Nothing matched what was typed |
 | `No results for “{q}”` | Empty state. `{q}` is what was typed |
 | `Not available offline` | This one is not downloaded, so it cannot play without a connection |
+| `Not while in a Jam` |  |
 | `Nothing here is a favorite` | Shown in place of the rows when the favorites narrowing empties the list |
 | `Nothing here is downloaded` | Toast when playing something that is not downloaded, offline |
 | `Nothing to shuffle yet` | Empty state: there is nothing here to play in random order |

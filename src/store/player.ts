@@ -26,6 +26,7 @@ import { AppState, Platform } from 'react-native';
 import { create } from 'zustand';
 
 import { CLIENT_NAME } from '@/api/subsonic';
+import { driftPlan, sameQueue } from '@/lib/jam';
 import {
   getAlbum,
   getArtist,
@@ -111,6 +112,7 @@ import {
   jukeboxSeek,
   jukeboxSetVolume,
 } from './jukebox';
+import { initJam, isJamActive, jamSend, leaveJam } from './jam';
 import { useLastPlayed } from './lastPlayed';
 import { useNetworkType } from './networkType';
 import { useOfflineQueue } from './offlineQueue';
@@ -570,7 +572,9 @@ function setStreamOffset(sec: number, p: AudioPlayer | null = activePlayer()) {
 function applyLoop(p: AudioPlayer | null, offsetSec = streamOffsetSec) {
   if (!p) return;
   try {
-    p.loop = usePlayerStore.getState().repeat === 'one' && offsetSec === 0;
+    // Not in a Jam: the session moves the queue on, a song looping here
+    // would stay behind it.
+    p.loop = usePlayerStore.getState().repeat === 'one' && offsetSec === 0 && !isJamActive();
   } catch {
     // ignore
   }
@@ -2033,6 +2037,8 @@ function gaplessReady(): boolean {
   // reserve player. Both cannot own the change.
   if (settings.crossfadeSec > 0) return false;
   if (remoteKind()) return false;
+  // In a Jam the session says when the next song starts, not the player.
+  if (isJamActive()) return false;
   const st = usePlayerStore.getState();
   // 'one' repeats through the native `loop`, and "stop at end of song" needs
   // the track to end for real so its `didJustFinish` arrives.
@@ -2188,8 +2194,17 @@ function gainFactor(song: Song | null | undefined): number {
   return Math.min(Math.max(f, 0.05), 4);
 }
 
+/**
+ * In a Jam, this phone is only a remote: it follows the session, so the
+ * screen shows what everybody hears, but makes no sound of its own. For the
+ * phone in your hand while the speakers are on the computer that opened the
+ * session.
+ */
+let jamSilent = false;
+
 /** Effective volume (user × ReplayGain) for the given song. */
 function effectiveVolume(song: Song | null | undefined): number {
+  if (jamSilent) return 0;
   return usePlayerStore.getState().volume * gainFactor(song);
 }
 
@@ -2461,6 +2476,7 @@ function maybeStartCrossfade(status: AudioStatus) {
   const fadeSec = useSettings.getState().crossfadeSec;
   // `handoffReserve`: a server handoff is using the reserve player.
   if (fadeSec <= 0 || fadingOut || handoffReserve || !status.playing) return;
+  if (isJamActive()) return;
   const st = usePlayerStore.getState();
   // Same cases excluded by normal advance, plus those with no predictable end
   // (radio) or where a fade makes no sense (very short tracks).
@@ -2895,6 +2911,12 @@ function onStatus(status: AudioStatus) {
   if (!pendingSeek) maybeStartCrossfade(status);
   if (status.didJustFinish) {
     if (handleSleepAtSongEnd()) return;
+    // In a Jam the session moves the queue on, for everybody at once, and
+    // this phone follows it there (see `jamFollow`).
+    if (isJamActive()) {
+      usePlayerStore.setState({ isPlaying: false });
+      return;
+    }
     // Repeating one song is normally the native `loop` and never gets here. A
     // source that only holds part of the song (re-requested with `timeOffset`)
     // cannot be looped, though — it would replay that part — so it ends for
@@ -3394,6 +3416,117 @@ function attachAppState() {
 }
 
 /** The events handed to the remote outputs, kept for the Cast resume to reuse. */
+// ── Jam (listening together, see src/store/jam.ts) ──────────────────────────
+
+/** A nudge in progress: the rate goes back to the song's own once in time. */
+let jamNudging = false;
+
+/**
+ * Puts the player where the session is: this queue at this index, playing or
+ * paused, at the position `positionAt` gives once loaded. Loads only when the
+ * song playing is not the one the session is on, so a queue the others merely
+ * added to keeps playing untouched.
+ */
+async function jamFollow(
+  songs: Song[],
+  index: number,
+  playing: boolean,
+  positionAt: () => number,
+): Promise<void> {
+  const st = usePlayerStore.getState();
+  const current = st.queue[st.index];
+  const target = songs[index];
+  if (__DEV__) {
+    console.log(
+      `[jam] follow · index ${index} · ${playing ? 'playing' : 'paused'} at ${positionAt().toFixed(1)}s · here ${st.isPlaying ? 'playing' : 'paused'}${st.isBuffering ? ' (buffering)' : ''} ${current?.id === target?.id ? 'same song' : 'other song'}${activePlayer() ? '' : ' · no player'}`,
+    );
+  }
+  if (!sameQueue(st.queue, songs) || st.index !== index) {
+    usePlayerStore.setState({
+      queue: songs,
+      index,
+      queuedCount: 0,
+      originalQueue: null,
+      queueDealt: false,
+      source: tg('Jam'),
+      sourceHref: '/jam',
+      radioMode: false,
+      radioSeed: null,
+    });
+    scheduleSync();
+  }
+  const p = activePlayer();
+  if (!target) {
+    if (st.isPlaying) {
+      cutCrossfade();
+      p?.pause();
+      usePlayerStore.setState({ isPlaying: false });
+    }
+    return;
+  }
+  if (!current || current.id !== target.id || !p) {
+    attachAppState();
+    resetWarmed();
+    if (!(await loadIndex(index, playing))) return;
+    const sec = positionAt();
+    if (sec > 0.5) seekActive(sec);
+    return;
+  }
+  if (playing !== st.isPlaying) {
+    if (playing) {
+      try {
+        p.volume = effectiveVolume(current);
+      } catch {
+        // ignore
+      }
+      p.play();
+    } else {
+      cutCrossfade();
+      p.pause();
+      scheduleSync();
+    }
+    usePlayerStore.setState({ isPlaying: playing });
+  }
+  jamAlign(positionAt);
+}
+
+/**
+ * Closes the gap between the player and the session. A big one is jumped; a
+ * small one is played out at a slightly different rate, which nobody hears
+ * where a jump would be heard (see `driftPlan`).
+ */
+function jamAlign(positionAt: () => number): void {
+  const p = activePlayer();
+  const st = usePlayerStore.getState();
+  if (!p || !st.isPlaying || st.isBuffering || pendingSeek) return;
+  let live: number;
+  try {
+    live = streamOffsetSec + p.currentTime;
+  } catch {
+    return;
+  }
+  const song = st.queue[st.index];
+  const plan = driftPlan((positionAt() - live) * 1000);
+  if (__DEV__ && plan.action !== 'none') {
+    console.log(`[jam] align · ${Math.round((positionAt() - live) * 1000)} ms behind · ${plan.action}`);
+  }
+  if (plan.action === 'seek') {
+    jamNudging = false;
+    applySpeed(p, song);
+    seekActive(positionAt());
+  } else if (plan.action === 'nudge') {
+    try {
+      p.setPlaybackRate(plan.rate);
+      jamNudging = true;
+    } catch {
+      // ignore
+    }
+  } else if (jamNudging) {
+    jamNudging = false;
+    applySpeed(p, song);
+  }
+}
+
 let remoteEvents: RemoteEvents | null = null;
 
 /**
@@ -3525,6 +3658,19 @@ export function initRemoteIntegration() {
   initGoogleCast(events, queueOf);
   initHomeAssistant(events, queueOf);
   initMusicAssistant(events, queueOf);
+  initJam({
+    follow: jamFollow,
+    align: jamAlign,
+    snapshot: () => {
+      const { queue, index, isPlaying, positionSec } = usePlayerStore.getState();
+      return { songs: queue, index, playing: isPlaying, positionSec };
+    },
+    silence: (silent) => {
+      jamSilent = silent;
+      const p = activePlayer();
+      if (p && !fadingOut && !pauseFadeTimer) p.volume = effectiveVolume(currentSong(usePlayerStore.getState()));
+    },
+  });
   // Sync crossfade toggle to Sonos whenever the setting changes.
   let lastCrossfadeSec = useSettings.getState().crossfadeSec;
   useSettings.subscribe((s) => {
@@ -3812,6 +3958,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   playQueue: async (songs, startIndex = 0, source, sourceHref, opts) => {
     if (songs.length === 0) return false;
+    // The list goes to the session, which starts it for everybody at once.
+    if (isJamActive()) {
+      const shuffled = !!opts?.shuffled && songs.length > 1;
+      void jamSend({ type: 'replace', songs: shuffled ? dealt(songs) : songs, index: shuffled ? 0 : startIndex });
+      return true;
+    }
     // Discard offline-unavailable tracks (not downloaded): they can't be
     // played. The initial index is remapped to the tapped song within the
     // already-filtered list. Online never marks `unavailable`, so it doesn't change.
@@ -3975,6 +4127,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
    * into the middle of an album and taken the header with it (`handAdded`).
    */
   addToQueue: (song) => {
+    if (isJamActive()) {
+      void jamSend({ type: 'add', songs: [song], where: 'end' });
+      return;
+    }
     const { queue } = get();
     if (queue.length === 0) {
       void get().playQueue([song], 0);
@@ -3985,6 +4141,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   playNext: (song) => {
+    if (isJamActive()) {
+      void jamSend({ type: 'add', songs: [song], where: 'next' });
+      return;
+    }
     const { queue, index, queuedCount } = get();
     if (queue.length === 0) {
       void get().playQueue([song], 0);
@@ -3999,6 +4159,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   queueMany: (songs, where) => {
     if (songs.length === 0) return;
+    if (isJamActive()) {
+      void jamSend({ type: 'add', songs, where });
+      return;
+    }
     const { queue, index, queuedCount } = get();
     // Nothing playing: this is not a queue to add to, it is the queue.
     if (queue.length === 0) {
@@ -4022,6 +4186,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // The one press that does not change track: what was restored is about to
     // be heard, so what the opening held back is due now.
     endBootQuiet(true);
+    // In a Jam nothing here plays or pauses on its own: the session does, for
+    // everybody, and this phone follows (see `jamFollow`).
+    if (isJamActive()) {
+      void jamSend({ type: get().isPlaying ? 'pause' : 'play' });
+      return;
+    }
     if (remoteKind()) {
       if (get().isPlaying) {
         remotePause();
@@ -4089,6 +4259,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   next: () => {
     endBootQuiet();
+    if (isJamActive()) {
+      void jamSend({ type: 'next' });
+      return;
+    }
     const ni = nextIndex(true);
     if (ni != null) {
       pushHistory();
@@ -4098,6 +4272,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   previous: () => {
     endBootQuiet();
+    if (isJamActive()) {
+      void jamSend({ type: 'previous' });
+      return;
+    }
     const { index, positionSec } = get();
     // Like Spotify: past a few seconds, "previous" restarts the song. In
     // "always" mode (YouTube-style) it always goes to the previous track, no restart.
@@ -4137,6 +4315,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // module's `handleSeek`). A position the player cannot answer is not a seek
     // that goes nowhere, it is a player that stops.
     if (!Number.isFinite(sec)) return;
+    if (isJamActive()) {
+      void jamSend({ type: 'seek', position: Math.round(Math.max(0, sec) * 1000) });
+      return;
+    }
     const duration = get().durationSec;
     // A radio has no length to stay inside of, and a stream still loading has
     // not said its own yet.
@@ -4182,6 +4364,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     endBootQuiet();
     const { queue } = get();
     if (index < 0 || index >= queue.length) return;
+    if (isJamActive()) {
+      void jamSend({ type: 'jump', index });
+      return;
+    }
     // Forward jump like any other: "previous" must be able to return.
     pushHistory();
     void loadIndex(index, kind === 'skip' ? skipAutoplay(get().isPlaying) : true);
@@ -4191,6 +4377,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { queue, index: cur, queuedCount } = get();
     if (index < 0 || index >= queue.length) return undefined;
     const removed = queue[index];
+    // The session removes it for everybody; there is no undoing that here.
+    if (isJamActive()) {
+      void jamSend({ type: 'remove', index, id: removed.id });
+      return undefined;
+    }
     const next = queue.filter((_, i) => i !== index);
     if (next.length === 0) {
       clearQueueLocal();
@@ -4233,6 +4424,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { queue, index, queuedCount, originalQueue, radioMode, radioSeed } = get();
     const current = queue[index];
     if (!current) return undefined;
+    if (isJamActive()) {
+      void jamSend({ type: 'clear' });
+      return undefined;
+    }
     // Clearing also turns off the radio. Otherwise it'd be zombie: autoplay only
     // triggers when STARTING a song, and after clearing none starts, so the icon
     // would say "radio active" on a radio that would never extend.
@@ -4255,6 +4450,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   stopAndClear: async () => {
+    if (isJamActive()) void leaveJam();
     const {
       queue,
       index,
@@ -4330,6 +4526,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     ) {
       return;
     }
+    if (isJamActive()) {
+      void jamSend({ type: 'move', from, to });
+      return;
+    }
     const next = [...queue];
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
@@ -4357,6 +4557,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   toggleShuffle: () => {
+    // The order is the session's: dealing it here would put this phone on a
+    // different song from everybody else's.
+    if (isJamActive()) {
+      useToast.getState().show(tg('Not while in a Jam'));
+      return;
+    }
     const { shuffle, queue, index, originalQueue, source, sourceHref } = get();
     const current = queue[index];
     const remoteHoldsQueue = remoteKind() === 'upnp' || remoteKind() === 'ha' || remoteKind() === 'ma';

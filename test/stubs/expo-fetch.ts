@@ -8,7 +8,10 @@ export interface HttpCall {
   url: string;
   method: string;
   headers: Record<string, string>;
+  /** The body parsed as JSON, or undefined for a body that is not JSON. */
   body: unknown;
+  /** The body as it was sent. */
+  rawBody?: string;
 }
 
 export interface HttpAnswer {
@@ -27,6 +30,15 @@ export const http = {
   },
 };
 
+function parsed(body: string | undefined): unknown {
+  if (body === undefined) return undefined;
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function fetch(
   url: string,
   init: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal } = {},
@@ -35,7 +47,8 @@ export async function fetch(
     url,
     method: init.method ?? 'GET',
     headers: init.headers ?? {},
-    body: init.body === undefined ? undefined : JSON.parse(init.body),
+    body: parsed(init.body),
+    rawBody: init.body,
   };
   http.calls.push(call);
   const answer = http.answer(url, call);

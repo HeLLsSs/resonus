@@ -25,6 +25,10 @@ import { type StoreApi } from 'zustand';
 // and a path alone comes from the router's own handling.
 const PLAY_LINK = /^(?:[a-z]+:\/\/)?\/?play\/(album|playlist|artist)\/([^/?#]+)/;
 const ACTION_LINK = /^(?:[a-z]+:\/\/)?\/?play\/(random|favorites|resume|foryou)(?:[/?#]|$)/;
+// `resonuls://jam/ABC123`, or the proxy's own `https://<host>/jam/ABC123`
+// (the address on the QR code, declared as an app link in app.json): the Jam
+// screen, which joins that session on arrival.
+const JAM_LINK = /^(?:https?:\/\/[^/]+\/|[a-z]+:\/\/)?\/?jam\/([A-Za-z0-9]{6})(?:[/?#]|$)/;
 
 /**
  * How long an action on a cold start waits for the saved queue to come back
@@ -49,6 +53,8 @@ export function redirectSystemPath({ path, initial }: { path: string; initial: b
     }
     const play = PLAY_LINK.exec(path);
     if (play) return `/${play[1]}/${play[2]}?play=1`;
+    const jam = JAM_LINK.exec(path);
+    if (jam) return `/jam?code=${jam[1].toUpperCase()}`;
     return path;
   } catch {
     return '/';

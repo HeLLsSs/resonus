@@ -93,6 +93,26 @@ appear when it is switched off.
 - A **"For you" shortcut on the app icon**, beside Shuffle, Favorites and
   Resume: a long press and the mix starts without opening the app.
 
+### Listening together
+
+- **A Jam**: several people hearing the same queue at the same moment, each on
+  their own device, like Spotify's. Open one from the Output sheet or
+  Settings › Navifind, give out the six-letter code, and anybody in it can add
+  songs, skip, seek or pause: the change reaches every device at once. The
+  proxy keeps the session and is the clock, so nothing is streamed between
+  phones and nobody's phone has to stay in front.
+- **Guests need no app and no account.** `https://<your proxy>/jam/<code>`
+  opens a page in any browser, with a QR code to scan for it, where a guest
+  searches the library and the web, adds to the queue and listens along; a
+  guest who has the app can open the session in it from there. Every player keeps
+  itself within a few tens of milliseconds of the session, correcting quietly
+  by playing a touch faster or slower rather than jumping.
+- `resonuls://jam/<code>` joins that session from a link, and so does the
+  page's own `https://<proxy>/jam/<code>` once the proxy publishes the app's
+  signing certificate under `/.well-known/assetlinks.json` (Android app
+  links): scanning the QR code then opens the app straight away. The host is
+  declared in `app.json` under `android.intentFilters`.
+
 ### More outputs
 
 - **Home Assistant**: the media players it knows, Chromecast, DLNA and Sonos

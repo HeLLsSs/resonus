@@ -57,6 +57,7 @@ import { localHttpAvailable } from '@/lib/localHttp';
 import { pushOnce } from '@/lib/pushOnce';
 import { useArtistPicker } from '@/store/artistPicker';
 import { useAuthStore } from '@/store/auth';
+import { useJam } from '@/store/jam';
 import { useJukebox } from '@/store/jukebox';
 import {
   currentSong,
@@ -244,7 +245,11 @@ export default function PlayerScreen() {
     return upnpConnectedDevice.name;
   }, [upnpConnectedDevice, upnpDevices]);
   const jukeboxActive = useJukebox((s) => s.active);
-  const remoteDevice = upnpDevice ?? (jukeboxActive ? t('Server speakers (Jukebox)') : null);
+  const jamCode = useJam((s) => s.session?.code ?? null);
+  // A Jam is not a device, but it is the same answer to the same question:
+  // where the sound is decided. Named here in the accent, like a device.
+  const remoteDevice =
+    upnpDevice ?? (jukeboxActive ? t('Server speakers (Jukebox)') : jamCode ? t('Jam {code}', { code: jamCode }) : null);
   const [outputOpen, setOutputOpen] = useState(false);
   // The speed sheet holds its own visibility (see `SheetModal`): opening it
   // repaints the modal and not this screen, which is the whole reason the

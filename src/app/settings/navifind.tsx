@@ -179,6 +179,14 @@ export default function NavifindSettings() {
         />
         {navifind ? (
           <>
+            <SettingRow
+              icon="people-outline"
+              label={t('Jam')}
+              description={t('Listen together, everyone on their own device.')}
+              chevron
+              onPress={() => router.push('/jam')}
+            />
+
             {/* A screen of its own because what is behind it is a credential
                 and a page of prose about where to find it, neither of which
                 belongs between two rows here. */}

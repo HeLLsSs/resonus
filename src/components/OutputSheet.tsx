@@ -44,6 +44,7 @@ import {
   type CastDevice,
 } from '@/store/googleCast';
 import { haConnect, haDisconnect, haSearch, useHomeAssistant } from '@/store/homeAssistant';
+import { useJam } from '@/store/jam';
 import { maConnect, maDisconnect, maSearch, useMusicAssistant } from '@/store/musicAssistant';
 import {
   jukeboxConnect,
@@ -51,6 +52,7 @@ import {
   refreshJukeboxAvailability,
   useJukebox,
 } from '@/store/jukebox';
+import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
 import {
   upnpAvailable,
@@ -308,6 +310,15 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     if (haId) await haDisconnect(true);
     const ok = await maConnect(player);
     if (!ok) toast(t("Couldn't complete the action"));
+  }
+
+  const jamCode = useJam((s) => s.session?.code ?? null);
+  const jamOffered = useSettings((s) => s.navifind);
+
+  /** The Jam screen: a session to open or join, or the one under way. */
+  function openJam() {
+    close();
+    router.push('/jam');
   }
 
   /** Nothing to pick from until Home Assistant has an address and a token: the row goes there. */
@@ -586,6 +597,22 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
                       />
                     );
                   })}
+                </>
+              ) : null}
+
+              {/* Not an output but the one thing here that is about who else
+                  hears it: everybody in the session, each on their own
+                  device. Only with the proxy that keeps sessions. */}
+              {jamOffered ? (
+                <>
+                  <Text style={styles.sectionTitle}>{t('Listen together')}</Text>
+                  <Row
+                    icon={<Ionicons name="people-outline" size={22} color={jamCode ? colors.accent : colors.text} />}
+                    label={jamCode ? t('Jam {code}', { code: jamCode }) : t('Start or join a Jam')}
+                    active={!!jamCode}
+                    onPress={openJam}
+                    action={<Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+                  />
                 </>
               ) : null}
 

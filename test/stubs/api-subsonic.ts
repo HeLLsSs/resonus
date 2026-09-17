@@ -2,7 +2,7 @@
  * `@/api/subsonic` without the network: the types, and the two things a
  * module under test calls. `getSong` answers out of `songsById`.
  */
-import type { Song } from '../../src/api/subsonic';
+import type { Song, SubsonicAuth } from '../../src/api/subsonic';
 
 export const COVER = { thumb: 200, card: 600, full: 1200 } as const;
 
@@ -25,4 +25,8 @@ export async function getSong(_auth: unknown, id: string): Promise<Song> {
 
 export function normalizeUrl(url: string): string {
   return url.trim().replace(/\/+$/, '');
+}
+
+export function authHeaders(auth: Pick<SubsonicAuth, 'headers'>): Record<string, string> {
+  return auth.headers ?? {};
 }
