@@ -124,9 +124,15 @@ appear when it is switched off.
 - **The same app on the web.** `scripts/build-web.sh` exports the app for
   the browser and the proxy serves it at `https://<proxy>/app`: sign in with
   your account and the library, the playlists, the YouTube tab, the mixes and
-  the Jam are there. What the browser cannot do is left out of it: casting,
-  DLNA, LinkPlay, Android Auto, the widget, the equaliser and downloads.
-  Playback is the browser's own, and a Jam is the same Jam.
+  the Jam are there, and the LinkPlay speakers, reached through the proxy.
+  What the browser cannot do is left out of it: casting, DLNA, Android Auto,
+  the widget, the equaliser and downloads. Playback is the browser's own,
+  and a Jam is the same Jam.
+- **Installed like an app, driven from the keyboard.** The page carries a
+  manifest, so a phone offers to put it on the home screen and opens it full
+  screen. Space plays and pauses, the arrows move ten seconds, shift and an
+  arrow change song, and the media keys and the system's media controls
+  drive the same player.
 - **What you played stays within reach.** A service worker keeps the app,
   the covers, the answers the library screens are built from and the songs
   that were played, within a budget, so the page opens and the recent songs

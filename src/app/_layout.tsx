@@ -26,9 +26,11 @@ import { Toast } from '@/components/Toast';
 import { UpdatePrompt } from '@/components/UpdatePrompt';
 import { installAppFont, setAppFont } from '@/lib/appFont';
 import { systemAccentAvailable } from '@/lib/materialYou';
+import { installKeys } from '@/lib/webMedia';
 import { queryClient } from '@/lib/query';
 import { useAuthStore } from '@/store/auth';
 import { anyDownloads, useDownloads } from '@/store/downloads';
+import { webTransport } from '@/store/player';
 import { APP_FONT_FAMILY, useSettings } from '@/store/settings';
 import { colors, themeMode, useTheme } from '@/theme';
 
@@ -105,6 +107,13 @@ export default function RootLayout() {
     });
     return () => sub.remove();
   }, [systemAccent]);
+
+  // In a browser, the keyboard drives the player: space, the arrows, shift
+  // and an arrow for the next or previous song.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    return installKeys(webTransport);
+  }, []);
 
   // Keep screen awake (setting). The native flag only acts with the app in
   // the foreground, so it doesn't waste extra battery in the background.

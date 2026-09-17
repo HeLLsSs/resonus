@@ -27,6 +27,7 @@ import { create } from 'zustand';
 
 import { CLIENT_NAME } from '@/api/subsonic';
 import { driftPlan, sameQueue } from '@/lib/jam';
+import { bindMediaSession } from '@/lib/webMedia';
 import {
   getAlbum,
   getArtist,
@@ -800,7 +801,21 @@ function applyLockScreen(p: AudioPlayer, song: Song) {
     showSkipPrevious: true,
     showSkipNext: true,
   });
+  // A browser's media keys: expo-audio has just bound them to the audio
+  // element, which knows no queue and no Jam. The store takes them over.
+  if (Platform.OS === 'web') bindMediaSession(webTransport);
 }
+
+/** The player store, as the browser's keys and media session drive it. */
+export const webTransport = {
+  isPlaying: () => usePlayerStore.getState().isPlaying,
+  toggle: () => usePlayerStore.getState().toggle(),
+  next: () => usePlayerStore.getState().next(),
+  previous: () => usePlayerStore.getState().previous(),
+  seekTo: (sec: number) => usePlayerStore.getState().seekTo(sec),
+  positionSec: () => usePlayerStore.getState().positionSec,
+  durationSec: () => usePlayerStore.getState().durationSec,
+};
 
 // ── What a radio says it is playing ─────────────────────────────────────────
 // A station is one item in the queue and stays there for hours, so the queue

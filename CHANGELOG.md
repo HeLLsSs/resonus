@@ -13,7 +13,7 @@ Releases before 0.2.1 are only listed on the
 
 - A Jam: several people hearing the same queue at the same moment, each on their own device, like Spotify's. The proxy keeps the session and is the clock; every phone follows it and corrects itself quietly, by playing a touch faster or slower rather than jumping, and anybody in it can add, skip, seek or pause. Opened from the output sheet or Settings › Navifind, joined by a six-letter code, by the QR code, or by the sessions under way listed on the Jam screen. Guests need no app and no account: `https://<proxy>/jam/<code>` is a page in any browser, and scanning the QR code opens the app where it is installed. The phone's sound can go through any of its outputs while it hosts, and a phone that only steers can be told not to play.
 - WiiM and the other LinkPlay speakers as an output of their own, over the speaker's API with LinkPlay's certificate pinned: found by mDNS or typed in by address, grouped by multiroom from the output sheet, one control per speaker. A speaker LinkPlay reaches is listed nowhere else. From a browser they are reached through the proxy.
-- The same app in a browser, served by the proxy at `/app`, with a service worker that keeps the app, the covers, the library screens and the songs played within reach when the network is not.
+- The same app in a browser, served by the proxy at `/app`, with a service worker that keeps the app, the covers, the library screens and the songs played within reach when the network is not. The page carries a manifest, so a phone offers to put it on the home screen; space, the arrows, the media keys and the system's media controls drive the player.
 
 ### Changed
 
