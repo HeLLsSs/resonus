@@ -135,6 +135,12 @@ function relayThrough(auth: SubsonicAuth): LinkPlayRelay {
     },
     async list() {
       const res = await fetch(url('list'), { headers: authHeaders(auth) });
+      if (res.status === 403) {
+        // The speakers are the host's: this account is not let at them
+        // (`LINKPLAY_USERS` on the proxy). For it, there are none.
+        setLinkPlayRelay(null);
+        return [];
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const { devices } = (await res.json()) as { devices: { name: string; host: string }[] };
       return devices;

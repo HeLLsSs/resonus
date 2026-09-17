@@ -124,7 +124,8 @@ appear when it is switched off.
 - **The same app on the web.** `scripts/build-web.sh` exports the app for
   the browser and the proxy serves it at `https://<proxy>/app`: sign in with
   your account and the library, the playlists, the YouTube tab, the mixes and
-  the Jam are there, and the LinkPlay speakers, reached through the proxy.
+  the Jam are there, and the LinkPlay speakers, reached through the proxy
+  by its administrator (see `LINKPLAY_USERS` in the proxy's `.env`).
   What the browser cannot do is left out of it: casting, DLNA, Android Auto,
   the widget, the equaliser and downloads. Playback is the browser's own,
   and a Jam is the same Jam.
