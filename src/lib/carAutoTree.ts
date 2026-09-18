@@ -44,7 +44,7 @@ import { useQueueHistory, type PastQueue } from '@/store/queueHistory';
 import { useSettings } from '@/store/settings';
 import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { type CarNode, type CarTree } from './carAuto';
-import { drawerLayout, fold, overflowsHome, resumeFraction, searchRows, tabLayout } from './carAutoLayout';
+import { drawerLayout, fold, overflowsHome, resumeFraction, searchRows, shelfId, tabLayout } from './carAutoLayout';
 import { allMixes, topGenres, type Mix } from './mixes';
 import { resolveSmartPlaylist, type SmartPlaylist } from './smartPlaylists';
 
@@ -854,8 +854,9 @@ async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promi
   // row that resolves when it is pressed rather than a folder that had to be
   // filled first (`handleBrowsePlay`). That is what makes twenty shelves and a
   // hundred and thirty tiles cost the one request the page already costs.
-  shelves.forEach((shelf, at) => {
-    const parent = `yt:shelf:${at}`;
+  const shelfIds = new Set<string>();
+  shelves.forEach((shelf) => {
+    const parent = shelfId(shelf.title, shelfIds);
     const rows: CarNode[] = [
       ...shelf.songs.map((song) => songNode(into, song, parent)),
       ...shelf.items.flatMap((card) => {
@@ -1575,14 +1576,23 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
       }
     }
     const ids = parent ? resolve.parentTracks.get(parent) : undefined;
-    if (ids && ids.length > 0) {
+    // Only while this parent still holds the row that was tapped. The car goes
+    // on showing the list it was given, and a shelf of the YouTube home page is
+    // rebuilt from a page that arrives in its own order, so the row can belong
+    // to a parent that has since lost it. Starting the list from the top then
+    // played a song nobody had asked for; unknown here, the track is resolved
+    // on its own below.
+    if (ids?.includes(mediaId)) {
       const songs = ids
         .map((id) => resolve.songById.get(songIdFromTrackMediaId(id)))
         .filter((s): s is Song => !!s);
-      const startIndex = Math.max(0, ids.indexOf(mediaId));
-      if (songs.length > 0) {
+      // Found by id rather than by position: a song the maps have lost is left
+      // out of the queue, and every row after it sits one place earlier than
+      // its place in `ids`.
+      const startIndex = songs.findIndex((s) => s.id === songId);
+      if (startIndex >= 0) {
         const [name, href] = sourceOf(parent);
-        await store.playQueue(songs, Math.min(startIndex, songs.length - 1), name, href);
+        await store.playQueue(songs, startIndex, name, href);
         return;
       }
     }

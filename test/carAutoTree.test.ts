@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { CarNode } from '@/lib/carAuto';
-import { drawerLayout, overflowsHome, resumeFraction, searchRows, tabLayout } from '@/lib/carAutoLayout';
+import { drawerLayout, overflowsHome, resumeFraction, searchRows, shelfId, tabLayout } from '@/lib/carAutoLayout';
 
 function row(id: string, title = id): CarNode {
   return { id, title, playable: true };
@@ -151,5 +151,30 @@ describe('searchRows', () => {
     const given = row('album:1', 'A');
     rows('a', [given], []);
     assert.equal(given.group, undefined);
+  });
+});
+
+describe('shelfId', () => {
+  it('is the same id wherever the shelf sits on the page', () => {
+    assert.equal(shelfId('Nouveautés', new Set()), shelfId('Nouveautés', new Set()));
+  });
+
+  it('carries nothing a track mediaId is split on', () => {
+    assert.equal(shelfId('Mixes | for you', new Set()), 'yt:shelf:mixes-for-you');
+  });
+
+  it('tells two shelves of one name apart', () => {
+    const taken = new Set<string>();
+    assert.equal(shelfId('Covers', taken), 'yt:shelf:covers');
+    assert.equal(shelfId('Covers', taken), 'yt:shelf:covers-2');
+  });
+
+  it('still names a shelf whose title is of no letters at all', () => {
+    assert.equal(shelfId('♪♪♪', new Set()), 'yt:shelf:untitled');
+  });
+
+  it('leaves no dangling dash on a title cut to length', () => {
+    const id = shelfId('a'.repeat(39) + ' and then some', new Set());
+    assert.equal(id, `yt:shelf:${'a'.repeat(39)}`);
   });
 });

@@ -391,11 +391,26 @@ export function startCarAutoSync(): void {
   // and then it arrives before the session is back; with the app already up
   // the wait is nothing, and the events keep their order through it.
   onPlay((e) => {
-    void whenProfileReady().then(() => {
+    void whenProfileReady().then(async () => {
       // Something is playing from the car, so the wait no longer applies: fill
       // the tree in now rather than at the end of the delay.
       scheduleDeep(0);
-      return handleBrowsePlay(e.mediaId, e.parentId);
+      const before = usePlayerStore.getState();
+      const was = before.queue[before.index]?.id;
+      await handleBrowsePlay(e.mediaId, e.parentId);
+      // The tapped row goes up on the car's screen the moment it is pressed,
+      // before any of this has run, so that a spinner is not all there is while
+      // it resolves (`applyTappedItem`). Nothing took it back down: a tap that
+      // ended up playing nothing left the car naming one song while the one
+      // before it went on playing, which reads as the app having lost the
+      // track rather than as a row that could not be resolved. Whatever is
+      // playing is sent again, so the screen and the speakers agree.
+      const now = usePlayerStore.getState();
+      if (now.queue[now.index]?.id === was) {
+        pushNowPlaying();
+        pushQueue();
+        pushState();
+      }
     });
   });
   // The car's search box. The native side has searched the tree it holds and

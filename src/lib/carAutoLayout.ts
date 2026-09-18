@@ -166,3 +166,37 @@ export function searchRows(
       return (groups.get(kind) ?? []).slice(0, MAX_PER_KIND).map((node) => ({ ...node, group: heading }));
     });
 }
+
+// ── The YouTube tab ──────────────────────────────────────────────────────────
+
+/** Long enough to tell two shelves apart, short enough that a tab of twenty of
+ *  them is still a small thing to send over the bridge. */
+const SHELF_SLUG_MAX = 40;
+
+/**
+ * A shelf of the YouTube home page, named after itself rather than after where
+ * it sat on the page.
+ *
+ * The page arrives in an order of its own every time it is asked for, and a
+ * rebuild runs within a minute of anything being played. Numbered by position,
+ * the row the car was showing belonged to another shelf by the time somebody
+ * tapped it, and what played was whatever now sat at the top of that slot, or
+ * nothing at all. The title travels with the shelf, so that is what the id is
+ * made of.
+ *
+ * Plain letters and digits only: a track's mediaId is split on `|` and a shelf
+ * can be called anything. `taken` carries the ids already handed out, so two
+ * shelves of one name are told apart by the order they came in, which is all
+ * there is left to tell them apart by.
+ */
+export function shelfId(title: string, taken: Set<string>): string {
+  const slug =
+    fold(title)
+      .replace(/[^a-z0-9]+/g, '-')
+      .slice(0, SHELF_SLUG_MAX)
+      .replace(/^-+|-+$/g, '') || 'untitled';
+  let id = `yt:shelf:${slug}`;
+  for (let n = 2; taken.has(id); n++) id = `yt:shelf:${slug}-${n}`;
+  taken.add(id);
+  return id;
+}
