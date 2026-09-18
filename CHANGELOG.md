@@ -7,6 +7,14 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.1.2] - 2026-09-18
+
+### Fixed
+
+- Tapping a song in a shelf of the YouTube tab in the car could play nothing at all, or a song nobody had asked for, while the car's screen named the one that had been pressed. A shelf of the YouTube home page was identified by where it sat on that page, and the page comes back in an order of its own every time it is asked for, so a rebuild left the rows the car was showing pointing at another shelf.
+- A row whose collection no longer holds it now plays the track that was tapped, on its own, instead of starting that collection from the top.
+- The car is told what is really playing when a tap resolves to nothing, instead of being left naming a song that never started.
+
 ## [1.1.1] - 2026-09-18
 
 ### Fixed
