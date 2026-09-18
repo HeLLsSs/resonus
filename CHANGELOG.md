@@ -7,6 +7,19 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.1.1] - 2026-09-18
+
+### Fixed
+
+- A speaker added to a LinkPlay group could stay silent while listed in the group: a follower that joins a leader already playing does not always pick the stream up, and pausing changes nothing. The leader is now moved to where it is once the follower is confirmed, which starts the stream over for the whole group, at the cost of a skip of up to a second on the leader.
+- The Jam broke entirely, on every device, when the proxy was deployed without `ANDROID_APP_LINKS` in its environment: the proxy answered every Jam request with a fatal error behind a 200. The setting is optional on the proxy now.
+
+### Changed
+
+- Adding a speaker to a LinkPlay group, or taking one out, is confirmed as soon as the leader lists the change, read every 300 ms, instead of after a fixed wait.
+- The LinkPlay speakers found are remembered between launches, so the output sheet lists them the moment it opens while the search that confirms them is still listening.
+- Opening or joining a Jam measures the clock while the session opens rather than before, and a queue at rest goes in with its paused state instead of being paused in a second round trip.
+
 ## [1.1.0] - 2026-09-18
 
 ### Added
