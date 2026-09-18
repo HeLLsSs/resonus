@@ -65,7 +65,7 @@ export type JamCommand =
   | { type: 'add'; songs: Song[]; where: 'next' | 'end' }
   | { type: 'remove'; index: number; id: string }
   | { type: 'move'; from: number; to: number }
-  | { type: 'replace'; songs: Song[]; index: number; position?: number }
+  | { type: 'replace'; songs: Song[]; index: number; position?: number; playing?: boolean }
   | { type: 'kick'; memberId: string };
 
 export class JamError extends Error {

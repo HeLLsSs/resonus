@@ -171,8 +171,8 @@ export async function startJam(): Promise<void> {
   if (isJamActive()) return;
   useJam.setState({ busy: true });
   try {
-    await syncClock();
-    let view = await createJam(auth(), auth().username);
+    // The clock is measured while the session opens: neither waits for the other.
+    let [, view] = await Promise.all([syncClock(), createJam(auth(), auth().username)]);
     const here = hooks?.snapshot();
     if (here && here.songs.length > 0) {
       // A queue longer than the session holds is cut around the song playing:
@@ -184,10 +184,11 @@ export async function startJam(): Promise<void> {
         songs,
         index: here.index - from,
         position: Math.round(here.positionSec * 1000),
+        playing: here.playing,
       });
-      // Paused here stays paused there: `replace` starts playing, which is
-      // right for a list somebody picked and wrong for one that was resting.
-      if (!here.playing) view = await jamCommand(auth(), view.token, { type: 'pause' });
+      // Paused here stays paused there. A proxy from before `playing` was
+      // part of `replace` starts playing regardless, and is told again.
+      if (!here.playing && view.session.playing) view = await jamCommand(auth(), view.token, { type: 'pause' });
     }
     enter(view);
   } finally {
@@ -202,8 +203,8 @@ export async function joinJamByCode(rawCode: string): Promise<void> {
   if (isJamActive()) await leaveJam();
   useJam.setState({ busy: true });
   try {
-    await syncClock();
-    enter(await joinJam(auth(), code, auth().username));
+    const [, view] = await Promise.all([syncClock(), joinJam(auth(), code, auth().username)]);
+    enter(view);
   } finally {
     useJam.setState({ busy: false });
   }

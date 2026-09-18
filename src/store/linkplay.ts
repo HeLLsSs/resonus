@@ -62,6 +62,11 @@ export const useLinkPlay = create<LinkPlayStoreState>(() => ({
 
 /** Where the addresses typed in by hand are kept, for every profile. */
 const STORAGE_KEY = 'resonus.linkplay.hosts';
+/**
+ * Where the speakers last found are kept: the sheet has them the moment it
+ * opens, while the search that confirms or drops them is still listening.
+ */
+const SEEN_KEY = 'resonus.linkplay.seen';
 /** How often the speaker is asked where it is. */
 const POLL_MS = 1_500;
 /** Polls in a row that go unanswered before the session is given up on. */
@@ -102,6 +107,7 @@ export function isLinkPlayConnected(): boolean {
 export function initLinkPlay(ev: RemoteEvents): void {
   events = ev;
   void hydrateManual();
+  void hydrateSeen();
   // In a browser the speakers are reached through the proxy, when there is
   // one: the relay follows the profile and the Navifind switch.
   if (!linkPlayDiscovers()) {
@@ -177,6 +183,26 @@ async function hydrateManual(): Promise<void> {
   }
 }
 
+async function hydrateSeen(): Promise<void> {
+  try {
+    const raw = await getItem(SEEN_KEY);
+    const seen = raw ? (JSON.parse(raw) as unknown) : [];
+    if (!Array.isArray(seen)) return;
+    merge(
+      seen
+        .filter((d): d is Pick<LinkPlayDevice, 'host' | 'name' | 'model' | 'uuid'> => typeof d?.host === 'string' && typeof d?.name === 'string')
+        .map((d) => ({ host: d.host, name: d.name, model: d.model ?? '', uuid: d.uuid ?? '', slave: false, manual: false })),
+    );
+  } catch {
+    // Nothing found yet.
+  }
+}
+
+/** Keeps what a search found, and drops from it what it did not find this time. */
+function persistSeen(found: LinkPlayDevice[]): void {
+  void setItem(SEEN_KEY, JSON.stringify(found.map(({ host, name, model, uuid }) => ({ host, name, model, uuid }))));
+}
+
 function persistManual(): void {
   const hosts = useLinkPlay
     .getState()
@@ -208,6 +234,10 @@ export async function linkPlaySearch(): Promise<void> {
     const described = await Promise.all([...hosts].map((host) => describe(host)));
     const devices = described.filter((d): d is LinkPlayDevice => d !== null);
     merge(devices);
+    // A remembered speaker that answers nobody any more goes.
+    const answering = new Set(devices.map((d) => d.host));
+    useLinkPlay.setState({ devices: useLinkPlay.getState().devices.filter((d) => d.manual || answering.has(d.host)) });
+    persistSeen(devices.filter((d) => !d.manual));
     void tellProxy(devices.filter((d) => !d.manual));
     if (isLinkPlayConnected()) await refreshSlaves();
   } finally {
@@ -464,10 +494,17 @@ export async function linkPlayJoin(host: string): Promise<boolean> {
   } catch {
     return false;
   }
-  // The speaker takes a moment to be listed by its leader.
-  await new Promise((r) => setTimeout(r, 1_500));
-  await refreshSlaves();
-  return useLinkPlay.getState().slaves.some((s) => s.host === host);
+  const joined = await slavesSettle((slaves) => slaves.some((s) => s.host === host));
+  // A speaker that joins a leader already playing is listed, yet now and
+  // then never picks the stream up: it sits silent in the group (seen on a
+  // WiiM Amp with a Sound Lite). Pausing and resuming changes nothing; a
+  // seek does, as the leader starts its stream over for the whole group.
+  // So the leader is moved to where it is, at the cost of a skip of up to
+  // a poll, and every speaker in the group is heard.
+  if (joined && lastPlaying && !loading) {
+    await ask(leader, cmd.seek(lastPositionSec)).catch(() => undefined);
+  }
+  return joined;
 }
 
 /** Lets this speaker go from the group. */
@@ -479,7 +516,23 @@ export async function linkPlayLeave(host: string): Promise<boolean> {
   } catch {
     return false;
   }
-  await new Promise((r) => setTimeout(r, 1_000));
-  await refreshSlaves();
-  return !useLinkPlay.getState().slaves.some((s) => s.host === host);
+  return slavesSettle((slaves) => !slaves.some((s) => s.host === host));
+}
+
+/** How often the leader's list is read after a change, and for how long at most. */
+const SLAVES_EVERY_MS = 300;
+const SLAVES_WAIT_MS = 3_000;
+
+/**
+ * The leader takes a moment to list a change to its group: reads its list
+ * until `done` says the change shows, or gives up. Returns whether it did.
+ */
+async function slavesSettle(done: (slaves: LinkPlaySlave[]) => boolean): Promise<boolean> {
+  const until = Date.now() + SLAVES_WAIT_MS;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, SLAVES_EVERY_MS));
+    await refreshSlaves();
+    if (done(useLinkPlay.getState().slaves)) return true;
+    if (Date.now() >= until) return false;
+  }
 }
