@@ -7,6 +7,18 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.2.0] - 2026-09-20
+
+### Added
+
+- One account, one music. Starting a song on a device stops whatever was playing on another device of the same account, and the one that stops says where the music went. The proxy holds a playing spot per account, since Subsonic has no way to tell a player anything. A Jam is left alone, several devices playing as one being the point of it, and a proxy that cannot be reached never stops you playing. It can be turned off in Settings › Navifind.
+- A search that finds nothing is tried again. The server matches a word exactly or by its start, so one letter wrong answered with an empty screen: the longest word is now cut back to its opening letters and asked again, and failing that the library the phone already holds is compared word by word, allowing a few edits, which finds artists and albums as well as songs and works offline. A "did you mean" line offers the closest name, and pressing it asks again, spelled right. Over cellular the library is only searched when it was already fetched for something else.
+
+### Fixed
+
+- A track that would not play could take the app with it: each failure was answered with a reload, and each reload failed, thousands of times a second on the web, until the server stopped answering anything at all. Two attempts are honoured now, a failure arriving while a reload is in flight is not counted twice, and pressing play gives a track that was given up on another go.
+- A song played in the browser is kept from the answer the player already received, instead of being fetched a second time behind the music, which meant two streams of one song from a server that only answers so many at once.
+
 ## [1.1.2] - 2026-09-18
 
 ### Fixed
