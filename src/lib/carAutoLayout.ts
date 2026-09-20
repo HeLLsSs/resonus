@@ -6,6 +6,7 @@
  * a store behind them.
  */
 import type { CarNode } from './carAuto';
+import { fold } from './text';
 
 /** One stretch of a tab: its rows, the heading over them and a ceiling. */
 export interface CarSection {
@@ -75,17 +76,6 @@ export function overflowsHome(count: number, homeMax: number): boolean {
 }
 
 // ── The search box ───────────────────────────────────────────────────────────
-
-/** Lowercase, unaccented and single-spaced, the way the native side folds what
- *  was said: "bjork" is Björk in both places. */
-export function fold(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/\p{M}+/gu, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 /** The kinds a search groups its rows under. */
 export type SearchKind = 'song' | 'album' | 'artist' | 'playlist';

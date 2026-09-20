@@ -351,6 +351,22 @@ export default function SearchScreen() {
           />
         ) : null}
 
+        {/* What the server could not answer, answered another way. The server
+            matches a word exactly or by its start, so one letter wrong finds
+            nothing at all; `api/data` then asks again more loosely and, failing
+            that, compares what was typed against the library itself. The rows
+            below are that answer, and this line is what keeps them honest. */}
+        {data?.suggestion ? (
+          <Pressable style={styles.suggestion} onPress={() => setQuery(data.suggestion ?? '')}>
+            <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
+            <Text style={styles.suggestionText}>
+              {t('Did you mean {name}?', { name: data.suggestion })}
+            </Text>
+          </Pressable>
+        ) : data?.approximate ? (
+          <Text style={styles.approximate}>{t('No exact match. Showing the closest.')}</Text>
+        ) : null}
+
         {data && data.artists.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('Artists')}</Text>
@@ -608,6 +624,20 @@ const styles = themed((colors) => ({
     fontWeight: '600',
     marginTop: spacing.md,
     marginBottom: spacing.xs,
+  },
+  /** The "did you mean" line: a row that reads as something to press, since
+   *  pressing it is what asks the question again, spelled right. */
+  suggestion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  suggestionText: { color: colors.accent, fontSize: fontSize.md, fontWeight: '600' },
+  approximate: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    paddingVertical: spacing.sm,
   },
   recentHeader: {
     flexDirection: 'row',

@@ -44,7 +44,8 @@ import { useQueueHistory, type PastQueue } from '@/store/queueHistory';
 import { useSettings } from '@/store/settings';
 import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { type CarNode, type CarTree } from './carAuto';
-import { drawerLayout, fold, overflowsHome, resumeFraction, searchRows, shelfId, tabLayout } from './carAutoLayout';
+import { drawerLayout, overflowsHome, resumeFraction, searchRows, shelfId, tabLayout } from './carAutoLayout';
+import { fold } from './text';
 import { allMixes, topGenres, type Mix } from './mixes';
 import { resolveSmartPlaylist, type SmartPlaylist } from './smartPlaylists';
 

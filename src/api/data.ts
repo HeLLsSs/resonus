@@ -17,11 +17,14 @@ import {
   readAlbumCache,
   writeAlbumCache,
 } from '@/store/libraries';
+import { broadenQuery, fuzzyLibrary, nameScore, queryWords } from '@/lib/fuzzySearch';
 import { hashKey } from '@/lib/localLibrary';
 import { bump } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
 import { getItem, setItem } from '@/lib/storage';
+import { fold } from '@/lib/text';
 import { useLastPlayed } from '@/store/lastPlayed';
+import { useNetworkType } from '@/store/networkType';
 import { useLibraryMirror } from '@/store/libraryMirror';
 import { useOfflineQueue, type PlayOp, type QueuePlaylist } from '@/store/offlineQueue';
 import { usePlayHistory } from '@/store/playHistory';
@@ -1753,7 +1756,17 @@ function searchHere(query: string): Promise<Subsonic.SearchResult> {
  * turning the whole search into an error would make the feature worse than not
  * having it.
  */
-export async function search(query: string): Promise<Subsonic.SearchResult> {
+export async function search(query: string): Promise<AppSearchResult> {
+  const asked = await searchEverywhere(query);
+  if (asked.artists.length + asked.albums.length + asked.songs.length > 0) return asked;
+  return approximateSearch(query);
+}
+
+/**
+ * What the servers answer, and nothing more. Split out so that the retries
+ * above it read as what they are: what happens when this found nothing.
+ */
+async function searchEverywhere(query: string): Promise<Subsonic.SearchResult> {
   if (isOffline()) return Local.search(query);
   const elsewhere = useSettings.getState().searchEveryServer
     ? otherServers()
@@ -1780,6 +1793,89 @@ export async function search(query: string): Promise<Subsonic.SearchResult> {
     songs: [...mine.songs, ...theirs.flatMap((t) => t.songs)],
   };
 }
+
+/** A search answer, with what it took to find it. */
+export interface AppSearchResult extends Subsonic.SearchResult {
+  /** The rows were not found by what was typed but by a retry, so the screen
+   *  can say so rather than pass them off as the answer to the question. */
+  approximate?: boolean;
+  /** The closest name in the library, for "did you mean". */
+  suggestion?: string;
+}
+
+/**
+ * The two retries, in the order they cost: the same question asked of the
+ * server more loosely, then the library itself compared letter by letter.
+ *
+ * Only ever reached with an empty answer behind it, which is what keeps a
+ * search that works from paying for any of this. The library is fetched once
+ * and kept for as long as the smart playlists keep it, so a run of misspelled
+ * searches costs one trip.
+ */
+async function approximateSearch(query: string): Promise<AppSearchResult> {
+  if (fold(query).length < MIN_APPROXIMATE) return EMPTY_SEARCH;
+  const broader = broadenQuery(query);
+  if (broader) {
+    const found = await searchEverywhere(broader).catch(() => EMPTY_SEARCH);
+    if (found.artists.length + found.albums.length + found.songs.length > 0) {
+      bump('search · found by asking more loosely');
+      return { ...found, approximate: true, suggestion: nearestName(found, query) };
+    }
+  }
+  // With the library in hand this is a fraction of a second of comparing.
+  // Without it, it is the whole library off the server, which is a great deal
+  // to spend on a word somebody mistyped — and far too much on a phone paying
+  // by the megabyte. So over cellular this only answers with a library that
+  // was already fetched for something else; the broadened retry above, which
+  // costs one request, is what answers out there.
+  const held = queryClient.getQueryData<Subsonic.Song[]>(['allSongs']);
+  if (!held && !isOffline() && useNetworkType.getState().cellular) {
+    bump('search · not fetching the library over cellular');
+    return EMPTY_SEARCH;
+  }
+  bump(held ? 'search · fuzzy over the library in hand' : 'search · fetched the library to search it');
+  const library = await queryClient
+    .fetchQuery({ queryKey: ['allSongs'], queryFn: getAllSongs, staleTime: ALL_SONGS_STALE_MS })
+    .catch(() => [] as Subsonic.Song[]);
+  if (library.length === 0) return EMPTY_SEARCH;
+  const found = fuzzyLibrary(library, query);
+  const count = found.artists.length + found.albums.length + found.songs.length;
+  bump(count > 0 ? 'search · found in the library' : 'search · not found anywhere');
+  if (count === 0) return EMPTY_SEARCH;
+  return { ...found, approximate: true };
+}
+
+/**
+ * Of what a loose retry turned up, the name closest to what was actually
+ * typed.
+ *
+ * Not simply the first row: the server ranked what it found against the stem
+ * the retry asked with, which is not the question anybody asked. Cutting
+ * "beatels" back to "beat" turns up "Beat It" as readily as the band, and only
+ * one of the two is worth offering as a correction.
+ */
+function nearestName(found: Subsonic.SearchResult, query: string): string | undefined {
+  const typed = queryWords(query);
+  const names = [
+    ...found.artists.map((a) => a.name),
+    ...found.albums.map((a) => a.name),
+    ...found.songs.map((s) => s.title),
+  ];
+  let best: { name: string; score: number } | undefined;
+  for (const name of names) {
+    const score = nameScore(name, typed);
+    if (score !== null && (!best || score < best.score)) best = { name, score };
+  }
+  return best?.name;
+}
+
+/** Below this, a retry is not worth making: two letters reach half a library
+ *  and an edit of them reaches the other half. */
+const MIN_APPROXIMATE = 3;
+
+/** How long the library is reused for, the same as the smart playlists, which
+ *  is also whose cache entry this is. */
+const ALL_SONGS_STALE_MS = 10 * 60 * 1000;
 
 const EMPTY_SEARCH: Subsonic.SearchResult = {
   artists: [],
