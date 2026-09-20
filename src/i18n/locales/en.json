@@ -1241,5 +1241,13 @@
   "The speaker couldn't play this song": "The speaker couldn't play this song",
   "LinkPlay": "LinkPlay",
   "Add a LinkPlay speaker by address…": "Add a LinkPlay speaker by address…",
-  "Nothing at that address answers as a LinkPlay speaker": "Nothing at that address answers as a LinkPlay speaker"
+  "Nothing at that address answers as a LinkPlay speaker": "Nothing at that address answers as a LinkPlay speaker",
+  "Did you mean {name}?": "Did you mean {name}?",
+  "No exact match. Showing the closest.": "No exact match. Showing the closest.",
+  "One device at a time": "One device at a time",
+  "Starting a song here stops whatever is playing on your other devices. A Jam is left alone.": "Starting a song here stops whatever is playing on your other devices. A Jam is left alone.",
+  "the browser": "the browser",
+  "the phone": "the phone",
+  "another device": "another device",
+  "Playing on {device}": "Playing on {device}"
 }

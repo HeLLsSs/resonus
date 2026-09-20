@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1236 of them.
+Every string the app can show, under the screen it shows up on. 1244 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -395,6 +395,15 @@ you are actually typing into, which is easier than reading it here.
 | `Sign in on your phone` |  |
 | `Unknown title` | Fallback when the file and the server have no title |
 
+## in playbackLock
+
+| String | What it is |
+| --- | --- |
+| `another device` |  |
+| `Playing on {device}` |  |
+| `the browser` |  |
+| `the phone` |  |
+
 ## Jam
 
 | String | What it is |
@@ -731,7 +740,9 @@ you are actually typing into, which is easier than reading it here.
 | `Artists` | A heading over a list of them, never a count |
 | `Clear all` | Throw away the whole list: the history, the queue, or what you searched for |
 | `Couldn't reach the server. Check your connection.` | Error on Home when the server does not answer at all |
+| `Did you mean {name}?` |  |
 | `In the lyrics` |  |
+| `No exact match. Showing the closest.` |  |
 | `Playlists` | A section on Home and in the library, and a folder in the car |
 | `Radio` | Internet radio stations. Most languages keep the word |
 | `Recent searches` | What was searched for before, kept on the phone |
@@ -1123,6 +1134,7 @@ you are actually typing into, which is easier than reading it here.
 | `Nothing to fetch at that link` |  |
 | `Offline: nothing to ask.` |  |
 | `On the proxy` |  |
+| `One device at a time` |  |
 | `Only the first 100 tracks came: Spotify shows no more of a playlist to anyone but its maker. If it holds more, make a copy of it on your Spotify account and import that one.` |  |
 | `Opens Spotify in a browser to ask for its permission.` |  |
 | `Sending…` |  |
@@ -1133,6 +1145,7 @@ you are actually typing into, which is easier than reading it here.
 | `Spotify only opens a playlist to the account that made it, so importing one needs your account branched here once. It stays on the proxy, for this profile alone.` |  |
 | `Spotify only opens the playlists the branched account made itself. Make a copy of it on that account, then import the copy.` |  |
 | `Spotify refused the proxy's own credentials.` |  |
+| `Starting a song here stops whatever is playing on your other devices. A Jam is left alone.` |  |
 | `That is gone from Spotify, or it is one of its own playlists — those are closed to apps.` |  |
 | `That Spotify link was not recognised` |  |
 | `The playlists you made are yours to import.` |  |

@@ -50,6 +50,8 @@ export default function NavifindSettings() {
   const offline = useAuthStore((s) => s.offline);
   const navifind = useSettings((s) => s.navifind);
   const setNavifind = useSettings((s) => s.setNavifind);
+  const exclusivePlayback = useSettings((s) => s.exclusivePlayback);
+  const setExclusivePlayback = useSettings((s) => s.setExclusivePlayback);
   const [url, setUrl] = useState('');
   const [importing, setImporting] = useState(false);
 
@@ -179,6 +181,21 @@ export default function NavifindSettings() {
         />
         {navifind ? (
           <>
+            {/* Not in the switch list above it: that one is about what the
+                proxy is for, and this is about what it does to the music
+                already playing somewhere else. */}
+            <SwitchList
+              options={[
+                {
+                  label: t('One device at a time'),
+                  description: t(
+                    'Starting a song here stops whatever is playing on your other devices. A Jam is left alone.',
+                  ),
+                  value: exclusivePlayback,
+                  onChange: setExclusivePlayback,
+                },
+              ]}
+            />
             <SettingRow
               icon="people-outline"
               label={t('Jam')}

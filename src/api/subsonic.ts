@@ -1822,6 +1822,70 @@ export async function youtubeLiked(auth: SubsonicAuth, count: number): Promise<S
   return (res.navifind?.liked?.entry ?? []).map(withoutSourceSuffix);
 }
 
+/**
+ * The account's playing spot: which device of this account is playing, now.
+ *
+ * Subsonic has no way to tell a player anything, so two devices on one account
+ * each played on, neither aware of the other (see `PlayingElsewhereCard`). The
+ * proxy holds a spot per account instead, and these are the three things a
+ * player does with it: take it when it starts, say it still has it while it
+ * plays, and hand it back when it stops. The answer always carries whoever
+ * holds the spot, so a player that has lost it finds out on its next beat.
+ */
+export interface PlaybackHolder {
+  /** The device holding the spot, as it identified itself. */
+  device: string;
+  /** What kind of thing it is, for a sentence somebody reads. */
+  name: string;
+  /** What it was playing when it last said anything. */
+  song: string;
+  /** The proxy's clock when it last said it, in milliseconds. */
+  at: number;
+  /** Whether that is this very device. */
+  mine: boolean;
+}
+
+async function playbackSpot(
+  auth: SubsonicAuth,
+  action: 'claim' | 'beat' | 'release',
+  device: string,
+  extra: { name?: string; song?: string } = {},
+): Promise<PlaybackHolder | null> {
+  const res = await request<{ navifind?: { playback?: PlaybackHolder | null } }>(
+    auth,
+    `navifind/playback/${action}.view`,
+    { device, ...extra },
+  );
+  return res.navifind?.playback ?? null;
+}
+
+/** Takes the spot: this device is playing now, whoever was before. */
+export function claimPlayback(
+  auth: SubsonicAuth,
+  device: string,
+  name: string,
+  song: string,
+): Promise<PlaybackHolder | null> {
+  return playbackSpot(auth, 'claim', device, { name, song });
+}
+
+/** Still playing. The answer says who really holds the spot. */
+export function beatPlayback(
+  auth: SubsonicAuth,
+  device: string,
+  song: string,
+): Promise<PlaybackHolder | null> {
+  return playbackSpot(auth, 'beat', device, { song });
+}
+
+/** Stopped. Hands the spot back, if this device still had it. */
+export function releasePlayback(
+  auth: SubsonicAuth,
+  device: string,
+): Promise<PlaybackHolder | null> {
+  return playbackSpot(auth, 'release', device);
+}
+
 /** What it keeps: the records and artists added to its library, as tiles. */
 export async function youtubeLibrary(
   auth: SubsonicAuth,

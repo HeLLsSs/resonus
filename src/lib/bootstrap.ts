@@ -18,6 +18,7 @@ import { startPerfLog } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
 import { startCarAutoSync } from '@/lib/carAutoSync';
+import { startPlaybackLock } from '@/store/playbackLock';
 import { startIntentsApi } from '@/lib/intentsApi';
 import { startNavifindWatch } from '@/lib/navifindWatch';
 import { startWidgetSync } from '@/lib/widgetSync';
@@ -214,4 +215,5 @@ export function startApp(): void {
   watchQueueRestore();
   startCarAutoSync();
   startWidgetSync();
+  startPlaybackLock();
 }

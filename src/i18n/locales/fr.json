@@ -1243,5 +1243,13 @@
   "The speaker couldn't play this song": "L’enceinte n’a pas pu lire ce titre",
   "LinkPlay": "LinkPlay",
   "Add a LinkPlay speaker by address…": "Ajouter une enceinte LinkPlay par son adresse…",
-  "Nothing at that address answers as a LinkPlay speaker": "Rien à cette adresse ne répond comme une enceinte LinkPlay"
+  "Nothing at that address answers as a LinkPlay speaker": "Rien à cette adresse ne répond comme une enceinte LinkPlay",
+  "Did you mean {name}?": "Vouliez-vous dire {name} ?",
+  "No exact match. Showing the closest.": "Aucune correspondance exacte. Voici les plus proches.",
+  "One device at a time": "Un seul appareil à la fois",
+  "Starting a song here stops whatever is playing on your other devices. A Jam is left alone.": "Lancer un titre ici arrête ce qui joue sur vos autres appareils. Un Jam n'est pas concerné.",
+  "the browser": "le navigateur",
+  "the phone": "le téléphone",
+  "another device": "un autre appareil",
+  "Playing on {device}": "Lecture sur {device}"
 }

@@ -801,6 +801,15 @@ interface SettingsState {
    */
   navifind: boolean;
   /**
+   * One account, one music: starting playback on a device stops whatever was
+   * playing on another of this account's (see `store/playbackLock.ts`).
+   *
+   * On by default, and only where the proxy is: it is the proxy that holds the
+   * spot, since Subsonic has no way to tell a player anything. A Jam is left
+   * alone, several devices playing as one being the whole point of it.
+   */
+  exclusivePlayback: boolean;
+  /**
    * The ListenBrainz user token the app sends loves with, and whose it is
    * (see `lib/listenBrainz.ts`). Both empty until a token has been checked,
    * and both go together: the name is what the screen shows and what the
@@ -1036,6 +1045,7 @@ interface SettingsState {
   setSpeedKeepsPitch: (value: boolean) => void;
   setHapticsEnabled: (value: boolean) => void;
   setNavifind: (value: boolean) => void;
+  setExclusivePlayback: (value: boolean) => void;
   /** Both at once, empty to forget: they are only ever set from a token that
    *  ListenBrainz has just said whose it is. */
   setListenBrainzLoves: (token: string, user: string) => void;
@@ -1178,6 +1188,7 @@ function snapshot(get: () => SettingsState) {
     speedKeepsPitch: s.speedKeepsPitch,
     hapticsEnabled: s.hapticsEnabled,
     navifind: s.navifind,
+    exclusivePlayback: s.exclusivePlayback,
     listenBrainzToken: s.listenBrainzToken,
     listenBrainzUser: s.listenBrainzUser,
     lyricsBackground: s.lyricsBackground,
@@ -1272,6 +1283,7 @@ const DEFAULTS = {
   playCache: true,
   playCacheGB: 2,
   searchEveryServer: false,
+  exclusivePlayback: true,
   language: 'en' as Language,
   showAudioQuality: false,
   showRating: false,
@@ -1627,6 +1639,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
     // Titles and badges are settled as the answers come in, so what is on
     // screen was read under the other setting: ask again.
     void queryClient.invalidateQueries();
+  },
+
+  setExclusivePlayback: (exclusivePlayback) => {
+    set({ exclusivePlayback });
+    persist(snapshot(get));
   },
 
   setListenBrainzLoves: (listenBrainzToken, listenBrainzUser) => {
@@ -2055,6 +2072,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           speedKeepsPitch: boolean;
           hapticsEnabled: boolean;
           navifind: boolean;
+          exclusivePlayback?: boolean;
           listenBrainzToken?: string;
           listenBrainzUser?: string;
           lyricsBackground: ScreenBackground;
