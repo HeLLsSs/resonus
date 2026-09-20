@@ -65,7 +65,7 @@ self.addEventListener('fetch', (event) => {
   } else if (COVER.test(url.pathname + url.search)) {
     event.respondWith(cacheFirst(COVERS, request, COVER_MAX_COUNT));
   } else if (STREAM.test(url.pathname + url.search)) {
-    event.respondWith(track(request));
+    event.respondWith(track(request, event));
   } else if (CACHEABLE_API.test(url.pathname + url.search)) {
     event.respondWith(networkFirst(API, request, API_MAX_COUNT));
   }
@@ -141,7 +141,7 @@ function trackKey(request) {
 
 const fetching = new Set();
 
-async function track(request) {
+async function track(request, event) {
   const cache = await caches.open(TRACKS);
   const key = trackKey(request);
   const whole = await cache.match(key);
@@ -149,24 +149,43 @@ async function track(request) {
     void touch(cache, key);
     return sliced(whole, request.headers.get('Range'));
   }
-  // Not kept yet: the player gets the network as it asked, and the whole
-  // song is fetched once behind it and kept for next time. Not a stream
-  // asked for from a second on (`timeOffset`): that is a piece of a song.
-  if (!fetching.has(key) && !/[?&]timeOffset=/.test(key)) {
-    fetching.add(key);
-    keep(cache, key).finally(() => fetching.delete(key));
+  const fresh = await fetch(request);
+  // A stream asked for from a second on is a piece of a song, not the song.
+  if (/[?&]timeOffset=/.test(key)) return fresh;
+  // The player asked for the whole song and the server gave it: that answer is
+  // the copy. Keeping it costs nothing, where fetching the song a second time
+  // behind the music means two streams of one song from a server that only
+  // answers so many at once, at the very moment the first one is starting.
+  if (fresh.status === 200) {
+    // Held against the event, not let loose: a worker is free to stop as soon
+    // as the response has been handed over, and a copy that was only being
+    // written on the side is then never written at all. The song is asked for
+    // again on the next listen, which is the second chance this no longer
+    // spends a request on.
+    event.waitUntil(keep(cache, key, fresh.clone()));
+    return fresh;
   }
-  return fetch(request);
+  // It arrived in pieces, so there is nothing whole to keep: the song is
+  // fetched once behind the music, and ranges are cut out of that from then on.
+  if (!fetching.has(key)) {
+    fetching.add(key);
+    event.waitUntil(
+      fetch(key)
+        .then((res) => (res.status === 200 ? keep(cache, key, res) : undefined))
+        .catch(() => {})
+        .finally(() => fetching.delete(key)),
+    );
+  }
+  return fresh;
 }
 
-async function keep(cache, key) {
+/** Puts a whole song in the cache, within the budget. */
+async function keep(cache, key, response) {
   try {
-    const whole = await fetch(key, { headers: { Range: '' } });
-    if (!whole.ok || whole.status !== 200) return;
-    const body = await whole.arrayBuffer();
+    const body = await response.arrayBuffer();
     if (body.byteLength === 0 || body.byteLength > TRACK_BUDGET_BYTES / 4) return;
     const headers = new Headers();
-    headers.set('Content-Type', whole.headers.get('Content-Type') || 'audio/mpeg');
+    headers.set('Content-Type', response.headers.get('Content-Type') || 'audio/mpeg');
     headers.set('Content-Length', String(body.byteLength));
     await cache.put(key, new Response(body, { status: 200, headers }));
     const index = await readIndex(cache);
@@ -174,7 +193,7 @@ async function keep(cache, key) {
     await evict(cache, index);
     await writeIndex(cache, index);
   } catch {
-    // No network, or a stream the server would not give whole: nothing kept.
+    // No network, or a body that stopped short: nothing kept.
   }
 }
 

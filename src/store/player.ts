@@ -59,6 +59,7 @@ import { attachBookmarks } from '@/lib/bookmarks';
 import type { Remap } from '@/lib/navidromeRemap';
 import { remapSong } from '@/lib/navidromeRemap';
 import { beat, bump, timed } from '@/lib/perfLog';
+import { freshRetries, onFailure, playingAgain, settled } from '@/lib/playbackRetry';
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
 import { recordPlay } from '@/lib/statsDb';
@@ -2764,13 +2765,9 @@ function maybeDetectStall(intendPlay: boolean, buffering: boolean, positionSec: 
 // is no longer readable both ended the same way, as silence waiting for
 // somebody to press the next track.
 
-/** Which track the attempts below belong to, and how many it has had. */
-let errorTrackId: string | null = null;
-let errorAttempts = 0;
-/** Both tries spent on `errorTrackId`: its errors are old news from here. */
-let errorGaveUp = false;
-/** Two: enough to ride out a hiccup, few enough not to retry a dead source. */
-const MAX_ERROR_ATTEMPTS = 2;
+/** How many goes the failing track has had, and what is owed to it next. The
+ *  rule itself is in `lib/playbackRetry`, which is where it can be read. */
+let retries = freshRetries();
 
 /**
  * The error in its own words, with anything that looks like an address taken
@@ -2799,25 +2796,20 @@ function onPlaybackError(message: string, wasPlaying: boolean): void {
   const song = st.queue[st.index];
   bump(`player · playback error (${errorTag(message)})`);
   if (!song) return;
-  if (errorTrackId !== song.id) {
-    errorTrackId = song.id;
-    errorAttempts = 0;
-    errorGaveUp = false;
-  }
   // The failed source stays in the player, and it reports the same error with
-  // every status until something replaces it: twice a second, each one a toast
-  // and a store write. Once the track is given up on, only a press of play is
-  // worth answering again, and that is the one case where `wasPlaying` holds.
-  if (errorGaveUp && !wasPlaying) return;
-  if (errorAttempts >= MAX_ERROR_ATTEMPTS) {
-    errorGaveUp = true;
+  // every status until something replaces it: twice a second. What that is
+  // worth — another go, a word, or nothing — is decided in one place, over a
+  // state that knows what is already being done about it.
+  const decided = onFailure(retries, song.id, Date.now());
+  retries = decided.state;
+  if (decided.act === 'wait') return;
+  if (decided.act === 'announce') {
     bump('player · gave up on the track');
     const said = tg("Couldn't play the song");
     usePlayerStore.setState({ isPlaying: false, isBuffering: false, playbackError: said });
     useToast.getState().show(said);
     return;
   }
-  errorAttempts++;
   // The other copy, and only the first time round: once it is marked, what just
   // failed IS the other copy, and swapping back would be a loop.
   if (!failedSource.has(song.id) && !song.url) {
@@ -2838,7 +2830,13 @@ function onPlaybackError(message: string, wasPlaying: boolean): void {
       failedSource.set(song.id, 'stream');
     }
   }
-  void reloadCurrent(st.positionSec, wasPlaying);
+  // Told when it is over, whichever way it went: until then, every failure
+  // the player keeps reporting belongs to the source this is replacing, and
+  // answering one with another reload is the loop itself.
+  const reloadingId = song.id;
+  void reloadCurrent(st.positionSec, wasPlaying).finally(() => {
+    retries = settled(retries, reloadingId);
+  });
 }
 
 /** Installs the current track again, at the second it had got to. */
@@ -2899,11 +2897,7 @@ function onStatus(status: AudioStatus) {
     return;
   }
   // Sound: whatever it took, this track is not the failing one any more.
-  if (status.playing && errorTrackId) {
-    errorTrackId = null;
-    errorAttempts = 0;
-    errorGaveUp = false;
-  }
+  if (status.playing) retries = playingAgain(retries);
   const buffering =
     intendPlay && !status.didJustFinish && (status.isBuffering || !status.isLoaded);
   // Only once loaded: while buffering the duration is still unknown and would
@@ -4366,6 +4360,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (canFade()) fadeVolume(p, vol, 0, stop);
       else stop();
     } else {
+      // Asked for by hand, which is the one thing that reopens a track this
+      // gave up on: without this, the button went quietly dead on a song that
+      // had failed twice, where it used to say so again (see `playingAgain`).
+      retries = playingAgain(retries);
       const ramp = canFade();
       // Start silent and ramp up: fade-in on resume. Backgrounded it starts at
       // its own volume instead, because nothing would raise it afterwards.
@@ -5004,9 +5002,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // What failed to play belonged to the queue that is going away, and song
     // ids are only unique within the account that issued them.
     failedSource.clear();
-    errorTrackId = null;
-    errorAttempts = 0;
-    errorGaveUp = false;
+    retries = freshRetries();
     set({
       queue: [],
       index: 0,
