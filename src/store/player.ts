@@ -878,7 +878,7 @@ function clearLockScreen() {
 // ── Remote output (UPnP/DLNA renderer, server jukebox, Google Cast, Home Assistant, Music Assistant) ──
 
 /** Active remote output, if any. */
-function remoteKind(): 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay' | null {
+export function remoteKind(): 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay' | null {
   if (isUpnpConnected()) return 'upnp';
   if (isJukeboxActive()) return 'jukebox';
   if (isCastConnected()) return 'cast';

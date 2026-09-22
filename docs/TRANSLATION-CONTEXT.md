@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1244 of them.
+Every string the app can show, under the screen it shows up on. 1249 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -618,6 +618,7 @@ you are actually typing into, which is easier than reading it here.
 | `Show cover` | Lyrics screen: the button that goes back to the cover art |
 | `Show less` | Folds it back |
 | `Show more` | Unfolds the rest of a text that was cut short |
+| `Speaker volume` |  |
 | `Start or join a Jam` |  |
 | `The Jam has ended` |  |
 | `The speaker's IP address on your network, as its own app shows it.` |  |
@@ -991,6 +992,7 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `Address` | The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box |
+| `Card in Home Assistant` |  |
 | `Couldn't reach Home Assistant` | The check got no answer; the reason may follow in brackets |
 | `Forget Home Assistant` | Clears the address and token |
 | `Home Assistant {version}: {n} media players can take a URL.` | The same with `{n}` players |
@@ -1003,10 +1005,13 @@ you are actually typing into, which is easier than reading it here.
 | `Lost contact with Home Assistant` | Toast when Home Assistant stops answering mid-session; the session ends and the phone plays on |
 | `Made at the bottom of your profile page in Home Assistant.` |  |
 | `Play on the speakers Home Assistant knows about: Music Assistant, Chromecast, DLNA and Sonos players among them. They join the output list once the address and a token are in.` |  |
+| `Press and hold to copy it.` |  |
 | `Save and test` | Keeps the address and token and checks them against Home Assistant at once |
 | `Something else is playing on this player` |  |
 | `Testing…` | While the check above runs |
+| `The Resonus integration adds a media player Home Assistant can browse and play from, on this phone. Setting it up asks for this identifier, which is how what is playing here finds its way back to the card.` |  |
 | `Use Home Assistant` |  |
+| `Webhook identifier` |  |
 
 ## Settings › Home buttons
 

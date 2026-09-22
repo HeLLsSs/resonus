@@ -15,13 +15,19 @@
  * since an address that answers but knows no player is the likelier mistake
  * than one that does not answer at all.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
 
 import { SettingRow, SettingsPage, settingsStyles, TextRow, SwitchList } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
 import { haVersion, HomeAssistantError, listPlayers, normalizeHaUrl } from '@/lib/homeAssistant';
-import { haDisconnect, setHomeAssistantConfig, setHomeAssistantEnabled, useHomeAssistant } from '@/store/homeAssistant';
+import {
+  ensureHaWebhookId,
+  haDisconnect,
+  setHomeAssistantConfig,
+  setHomeAssistantEnabled,
+  useHomeAssistant,
+} from '@/store/homeAssistant';
 import { colors, useTheme } from '@/theme';
 
 /** Room for a domain with a path in front of Home Assistant. */
@@ -37,11 +43,20 @@ export default function HomeAssistantSettings() {
   const enabled = useHomeAssistant((s) => s.enabled);
   const savedUrl = useHomeAssistant((s) => s.url);
   const savedToken = useHomeAssistant((s) => s.token);
+  const webhookId = useHomeAssistant((s) => s.webhookId);
+  const hydrated = useHomeAssistant((s) => s.hydrated);
   const [url, setUrl] = useState(savedUrl);
   const [token, setToken] = useState(savedToken);
   const [busy, setBusy] = useState(false);
   /** What the last check found, under the button, until the next one. */
   const [result, setResult] = useState<string | null>(null);
+
+  // Made the first time the screen is opened with the switch on, and kept:
+  // the integration on the other side is set up with it. Not before what is
+  // on disk is read, or the one read a moment later would replace it.
+  useEffect(() => {
+    if (enabled && hydrated) ensureHaWebhookId();
+  }, [enabled, hydrated]);
 
   const saveAndTest = async () => {
     if (busy) return;
@@ -138,6 +153,21 @@ export default function HomeAssistantSettings() {
           onPress={url.trim() && token.trim() && !busy ? () => void saveAndTest() : undefined}
         />
         {result ? <Text style={settingsStyles.sectionDescription}>{result}</Text> : null}
+        <Text style={settingsStyles.sectionTitle}>{t('Card in Home Assistant')}</Text>
+        <Text style={settingsStyles.sectionDescription}>
+          {t(
+            'The Resonus integration adds a media player Home Assistant can browse and play from, on this phone. Setting it up asks for this identifier, which is how what is playing here finds its way back to the card.',
+          )}
+        </Text>
+        <View style={[settingsStyles.cardBox, settingsStyles.textRow]}>
+          <View style={settingsStyles.rowLabelBox}>
+            <Text style={settingsStyles.rowLabel}>{t('Webhook identifier')}</Text>
+            <Text style={settingsStyles.rowDescription}>{t('Press and hold to copy it.')}</Text>
+          </View>
+          <Text selectable style={settingsStyles.rowValue}>
+            {webhookId}
+          </Text>
+        </View>
         {savedUrl || savedToken ? (
           <SettingRow
             icon="trash-outline"

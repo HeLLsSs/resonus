@@ -336,6 +336,14 @@ describe('the client', () => {
     await assert.rejects(listPlayers(config), (e: unknown) => e instanceof HomeAssistantError && e.kind === 'network');
   });
 
+  it('keeps a page out of the message', async () => {
+    http.answer = () => ({ status: 501, body: '<!DOCTYPE HTML><html><body>Unsupported method</body></html>' });
+    await assert.rejects(
+      playMedia(config, 'media_player.a', 'http://x/1.mp3', { title: 'One' }),
+      (e: unknown) => e instanceof HomeAssistantError && e.message === 'HTTP 501',
+    );
+  });
+
   it("reports Home Assistant's own reason for a refusal", async () => {
     http.answer = () => ({ status: 400, body: { message: 'Entity media_player.a does not support this service.' } });
     await assert.rejects(

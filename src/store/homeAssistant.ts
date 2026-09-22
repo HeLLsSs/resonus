@@ -31,6 +31,7 @@
  * Cast receiver does (see `remoteTrack.ts`). The address and token are the
  * user's, kept once for every profile in the phone's secure store.
  */
+import * as Crypto from 'expo-crypto';
 import { create } from 'zustand';
 
 import { type Song } from '@/api/backend';
@@ -74,6 +75,12 @@ interface HomeAssistantStoreState {
   /** The address and token, empty until set up; the same for every profile. */
   url: string;
   token: string;
+  /**
+   * The webhook the `resonus` integration listens on for what is playing
+   * (`lib/haBridge.ts`), generated here and typed into Home Assistant when
+   * the integration is set up. Empty until the screen is opened.
+   */
+  webhookId: string;
   hydrated: boolean;
   connected: boolean;
   entityId: string | null;
@@ -86,6 +93,7 @@ export const useHomeAssistant = create<HomeAssistantStoreState>(() => ({
   enabled: false,
   url: '',
   token: '',
+  webhookId: '',
   hydrated: false,
   connected: false,
   entityId: null,
@@ -218,11 +226,14 @@ export function initHomeAssistant(ev: RemoteEvents, queue: () => { queue: Song[]
 async function hydrateConfig(): Promise<void> {
   try {
     const raw = await getItem(STORAGE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as { enabled?: unknown; url?: unknown; token?: unknown }) : null;
+    const parsed = raw
+      ? (JSON.parse(raw) as { enabled?: unknown; url?: unknown; token?: unknown; webhookId?: unknown })
+      : null;
     useHomeAssistant.setState({
       enabled: parsed?.enabled === true,
       url: typeof parsed?.url === 'string' ? parsed.url : '',
       token: typeof parsed?.token === 'string' ? parsed.token : '',
+      webhookId: typeof parsed?.webhookId === 'string' ? parsed.webhookId : '',
       hydrated: true,
     });
   } catch {
@@ -245,8 +256,24 @@ export function setHomeAssistantEnabled(enabled: boolean): void {
 }
 
 function persistConfig(): void {
-  const { enabled, url, token } = useHomeAssistant.getState();
-  void setItem(STORAGE_KEY, JSON.stringify({ enabled, url, token }));
+  const { enabled, url, token, webhookId } = useHomeAssistant.getState();
+  void setItem(STORAGE_KEY, JSON.stringify({ enabled, url, token, webhookId }));
+}
+
+/**
+ * The webhook id, made on first ask and kept from then on: it is half of an
+ * address and the integration is set up with it, so one that changed would
+ * quietly stop the card from ever hearing about the music again. Short
+ * enough to be typed into Home Assistant by hand, long enough that nobody on
+ * the network guesses it.
+ */
+export function ensureHaWebhookId(): string {
+  const kept = useHomeAssistant.getState().webhookId;
+  if (kept) return kept;
+  const webhookId = `resonus_${Crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  useHomeAssistant.setState({ webhookId });
+  persistConfig();
+  return webhookId;
 }
 
 /** A song of ours the player is handed: `songId@index`, the same key Cast uses. */

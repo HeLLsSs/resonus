@@ -22,6 +22,7 @@ interface PlayerState {
   positionSec: number;
   durationSec: number;
   volume: number;
+  speed: number;
   streamInfo: StreamInfo | null;
   toggle: () => void;
   stopAndClear: () => Promise<undefined>;
@@ -51,6 +52,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
     positionSec: 0,
     durationSec: 0,
     volume: 1,
+    speed: 1,
     streamInfo: null,
     toggle: () => {
       note('toggle');
@@ -96,4 +98,9 @@ export function resetPlayer(): void {
     volume: 1,
     streamInfo: null,
   });
+}
+
+/** No speaker is ever on in a test: the phone is what plays. */
+export function remoteKind(): null {
+  return null;
 }

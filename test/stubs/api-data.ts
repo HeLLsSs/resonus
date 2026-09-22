@@ -12,6 +12,8 @@ export const data = {
   calls: [] as { name: string; args: unknown[] }[],
   /** `searchSongs` answers with these, whatever the query. */
   searchResults: [] as Song[],
+  /** `getSongsByIds` answers from these, by id. */
+  songs: [] as Song[],
   /** `getSimilarSongs` and `getRandomSongs` answer with these. */
   similar: [] as Song[],
   random: [] as Song[],
@@ -25,6 +27,7 @@ export const data = {
   reset(): void {
     this.calls = [];
     this.searchResults = [];
+    this.songs = [];
     this.similar = [];
     this.random = [];
     this.albums.clear();
@@ -43,6 +46,10 @@ async function call<T>(name: string, args: unknown[], answer: () => T): Promise<
 
 export function searchSongs(query: string, count?: number): Promise<Song[]> {
   return call('searchSongs', [query, count], () => data.searchResults.slice(0, count));
+}
+
+export function getSongsByIds(ids: string[]): Promise<Song[]> {
+  return call('getSongsByIds', [ids], () => data.songs.filter((s) => ids.includes(s.id)));
 }
 
 export function getSimilarSongs(id: string, count?: number): Promise<Song[]> {

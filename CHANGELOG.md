@@ -7,6 +7,25 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [Unreleased]
+
+### Added
+
+- Home Assistant can browse the library and start music on the phone, from
+  the media control card, with the `resonus` integration: see
+  [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md). What is playing is pushed
+  to a webhook Home Assistant holds open, and what the card asks for arrives
+  as an intent, so neither side polls the other.
+- A volume slider for the speaker that is playing, in the output sheet. It
+  was the hardware volume keys or nothing, and on the Jukebox not even those.
+- `play_song`, an intent that plays one track by id (docs/INTENTS.md).
+
+### Changed
+
+- The `volume` intent moves the phone's media volume, the one the hardware
+  keys move, rather than the app's own gain under it, which a phone at 30%
+  never let past 30%. With a speaker on it moves that speaker, as before.
+
 ## [1.2.0] - 2026-09-20
 
 ### Added

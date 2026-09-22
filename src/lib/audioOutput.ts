@@ -73,6 +73,16 @@ export function setMediaVolume(value: number): void {
   native?.setVolume(Math.round(value));
 }
 
+/**
+ * The media volume's every move, hardware keys included, for as long as the
+ * caller keeps the subscription: on its own, without the outputs and the
+ * poll that `useAudioOutput` adds for the sheet. Nothing, without the module.
+ */
+export function onMediaVolumeChanged(cb: (volume: MediaVolume) => void): () => void {
+  const sub = native?.addListener('volumeChanged', ({ value, max }) => cb({ value, max }));
+  return () => sub?.remove();
+}
+
 export function openSystemOutputPicker(): SystemOutputPicker {
   return native?.openSystemPicker() ?? '';
 }

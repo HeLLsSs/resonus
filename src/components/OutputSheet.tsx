@@ -67,6 +67,7 @@ import {
   refreshJukeboxAvailability,
   useJukebox,
 } from '@/store/jukebox';
+import { usePlayerStore } from '@/store/player';
 import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
 import {
@@ -164,6 +165,12 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   // back from the system a moment later, and handing the slider that stale
   // number mid-drag makes the thumb hop.
   const [liveVolume, setLiveVolume] = useState<number | null>(null);
+  // The volume of whatever is playing away from the phone, and the same
+  // hold on it while a finger is on the slider: what the speaker reports
+  // lands a moment later, through `onVolume`.
+  const remoteVolume = usePlayerStore((s) => s.volume);
+  const setRemoteVolume = usePlayerStore((s) => s.setVolume);
+  const [liveRemoteVolume, setLiveRemoteVolume] = useState<number | null>(null);
   const { dismiss, pan, backdropStyle, sheetStyle, onSheetLayout } = useBottomSheetAnim(
     visible,
     onClose,
@@ -619,6 +626,36 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
                     onSlidingComplete={(v) => {
                       setMediaVolume(v);
                       setLiveVolume(null);
+                    }}
+                    minimumTrackTintColor={accent}
+                    maximumTrackTintColor={colors.control}
+                    thumbTintColor={colors.knob}
+                  />
+                  <Ionicons name="volume-high-outline" size={20} color={colors.textSecondary} />
+                </View>
+              ) : null}
+
+              {/* The volume of the speaker that is playing, the same one the
+                  hardware keys drive while it plays. In the steps those keys
+                  use, which is also what keeps a drag from sending the speaker
+                  a command per pixel. */}
+              {!phoneActive ? (
+                <View style={styles.volumeRow}>
+                  <Ionicons name="volume-low-outline" size={20} color={colors.textSecondary} />
+                  <Slider
+                    style={styles.volumeSlider}
+                    accessibilityLabel={t('Speaker volume')}
+                    minimumValue={0}
+                    maximumValue={1}
+                    step={0.05}
+                    value={liveRemoteVolume ?? remoteVolume}
+                    onValueChange={(v) => {
+                      setLiveRemoteVolume(v);
+                      setRemoteVolume(v);
+                    }}
+                    onSlidingComplete={(v) => {
+                      setRemoteVolume(v);
+                      setLiveRemoteVolume(null);
                     }}
                     minimumTrackTintColor={accent}
                     maximumTrackTintColor={colors.control}

@@ -15,11 +15,13 @@
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { type StoreApi } from 'zustand';
 
-import { getAlbum, getArtist, getPlaylist, getStarred, getTopSongs, searchSongs } from '@/api/data';
+import { getAlbum, getArtist, getPlaylist, getSongsByIds, getStarred, getTopSongs, searchSongs } from '@/api/data';
 import { type Song } from '@/api/subsonic';
 import { tg } from '@/i18n';
+import { publishHaState } from '@/lib/haBridge';
 import { playShuffle } from '@/lib/playShuffle';
 import { queryClient } from '@/lib/query';
+import { setVolumeLevel } from '@/lib/volumeLevel';
 import { useAuthStore } from '@/store/auth';
 import { type RepeatMode, usePlayerStore } from '@/store/player';
 
@@ -176,7 +178,7 @@ async function run(command: IntentCommand): Promise<void> {
     }
     case 'volume': {
       const level = num(command, 'level');
-      if (level !== undefined) player.setVolume(Math.min(1, Math.max(0, level)));
+      if (level !== undefined) setVolumeLevel(level);
       return;
     }
     case 'shuffle':
@@ -200,6 +202,20 @@ async function run(command: IntentCommand): Promise<void> {
     case 'play_artist':
       await playContainer(name.slice('play_'.length), text(command, 'id'), flag(command, 'shuffle'));
       return;
+    case 'play_song': {
+      const id = text(command, 'id');
+      if (!id) {
+        console.warn('[intents] play_song: no id');
+        return;
+      }
+      const [song] = await getSongsByIds([id]);
+      if (!song) {
+        console.warn(`[intents] play_song: no song with id "${id}"`);
+        return;
+      }
+      await player.playQueue([song], 0, song.title);
+      return;
+    }
     case 'play_search': {
       const query = text(command, 'query');
       if (!query) return;
@@ -219,6 +235,12 @@ async function run(command: IntentCommand): Promise<void> {
     }
     case 'play_random':
       await playShuffle();
+      return;
+    case 'publish_state':
+      // Home Assistant asking what is playing, which it has no other way to
+      // find out: the push is one-way, so a house that restarted would show
+      // an idle card until the next track (see `lib/haBridge.ts`).
+      publishHaState(true);
       return;
     case 'sleep_timer': {
       // Whole minutes within reason: past a day the timeout would overflow

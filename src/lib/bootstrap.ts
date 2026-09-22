@@ -19,6 +19,7 @@ import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
 import { startCarAutoSync } from '@/lib/carAutoSync';
 import { startPlaybackLock } from '@/store/playbackLock';
+import { startHaBridge } from '@/lib/haBridge';
 import { startIntentsApi } from '@/lib/intentsApi';
 import { startNavifindWatch } from '@/lib/navifindWatch';
 import { startWidgetSync } from '@/lib/widgetSync';
@@ -92,6 +93,9 @@ function startOnce(): void {
   // Control from other apps (Tasker and the like, docs/INTENTS.md): the
   // phone's too, and its commands wait for the profile on their own.
   startIntentsApi();
+  // What is playing, on its way to the Home Assistant card
+  // (docs/HOME-ASSISTANT.md). Quiet until a house is set up.
+  startHaBridge();
   // Word from the Navifind proxy once what it was asked to fetch is in.
   startNavifindWatch();
 }

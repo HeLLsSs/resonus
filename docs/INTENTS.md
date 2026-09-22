@@ -21,15 +21,17 @@ or as text (`--es position 90`, `--es on true`).
 | `next`          |                                                   | Next track.                                               |
 | `previous`      |                                                   | Previous track.                                           |
 | `seek`          | `position` seconds                                | Jumps to that position in the current track.              |
-| `volume`        | `level` 0 to 1                                    | Sets the app's own volume, not the phone's.               |
+| `volume`        | `level` 0 to 1                                    | The phone's media volume, or the speaker's while one plays. |
 | `shuffle`       | `on` boolean                                      | Turns shuffle mode on or off.                             |
 | `repeat`        | `mode`: `off`, `all` or `one`                     | Sets the repeat mode.                                     |
 | `play_album`    | `id`, optional `shuffle` boolean                  | Plays the album with that id.                             |
 | `play_playlist` | `id`, optional `shuffle` boolean                  | Plays the playlist with that id.                          |
 | `play_artist`   | `id`, optional `shuffle` boolean                  | Plays the artist's popular songs, or the discography.     |
+| `play_song`     | `id`                                              | Plays that one song.                                      |
 | `play_search`   | `query`                                           | Plays the first song matching the search, the rest queued. |
 | `play_favorites`| optional `shuffle` boolean                        | Plays the starred songs.                                  |
 | `play_random`   |                                                   | Plays random songs from the library.                      |
+| `publish_state` |                                                   | Pushes what is playing to Home Assistant (docs/HOME-ASSISTANT.md). |
 | `sleep_timer`   | `minutes` (0 cancels, at most 600)                 | Starts or cancels the sleep timer.                        |
 
 An unknown command is ignored (with a warning in the JS log). The ids are the
@@ -60,9 +62,11 @@ adb shell am broadcast -p $PKG -a $A --es command play_album --es id 3f2b9c0e1a5
 adb shell am broadcast -p $PKG -a $A --es command play_album --es id 3f2b9c0e1a5d4e7f8b6c --ez shuffle true
 adb shell am broadcast -p $PKG -a $A --es command play_playlist --es id 7a1c2d3e-4f5b-6789-abcd-ef0123456789
 adb shell am broadcast -p $PKG -a $A --es command play_artist --es id 9e8d7c6b5a4f3e2d1c0b
+adb shell am broadcast -p $PKG -a $A --es command play_song --es id 5c4b3a2d1e0f
 adb shell am broadcast -p $PKG -a $A --es command play_search --es query "blue monday"
 adb shell am broadcast -p $PKG -a $A --es command play_favorites
 adb shell am broadcast -p $PKG -a $A --es command play_random
+adb shell am broadcast -p $PKG -a $A --es command publish_state
 adb shell am broadcast -p $PKG -a $A --es command sleep_timer --ei minutes 30
 adb shell am broadcast -p $PKG -a $A --es command sleep_timer --ei minutes 0
 ```

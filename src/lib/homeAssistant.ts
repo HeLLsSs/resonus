@@ -159,7 +159,9 @@ async function call<T>(config: HaConfig, path: string, body?: unknown): Promise<
     // and as plain text when a proxy in front of it did.
     const text = await res.text();
     if (!res.ok) {
-      let message = text || `HTTP ${res.status}`;
+      // A page is not a message: a proxy or a wrong address answers with a
+      // whole HTML document, and the status says as much as it does.
+      let message = text && !text.trimStart().startsWith('<') ? text : `HTTP ${res.status}`;
       try {
         const json = JSON.parse(text) as { message?: string };
         if (json?.message) message = json.message;

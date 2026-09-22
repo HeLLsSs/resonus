@@ -50,6 +50,7 @@ const STUBS = new Map([
   ['@/lib/query', 'lib-query.ts'],
   ['@/lib/storage', 'lib-storage.ts'],
   ['@/store/auth', 'store-auth.ts'],
+  ['@/store/homeAssistant', 'store-homeAssistant.ts'],
   ['@/store/autoDownloads', 'store-hydrated.ts'],
   ['@/store/equalizer', 'store-hydrated.ts'],
   ['@/store/pins', 'store-hydrated.ts'],
