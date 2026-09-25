@@ -17,6 +17,7 @@ import { CACHED_COVER, COVER, songCoverUrl, star, unstar, type Song } from '@/ap
 import { type Starred } from '@/api/subsonic';
 import {
   carAutoAvailable,
+  onCarBrowse,
   onCarConnected,
   onCarSearch,
   onPlay,
@@ -34,6 +35,7 @@ import {
   buildBrowseTree,
   carCoverUrl,
   carSearch,
+  fillCollection,
   handleBrowsePlay,
   knownCarCover,
   warmCarCover,
@@ -412,6 +414,10 @@ export function startCarAutoSync(): void {
         pushState();
       }
     });
+  });
+  // A list opened in the car that the build had not filled: its songs, now.
+  onCarBrowse((e) => {
+    void whenProfileReady().then(() => fillCollection(e.parentId));
   });
   // The car's search box. The native side has searched the tree it holds and
   // sends what it found along with the words, since the library itself can

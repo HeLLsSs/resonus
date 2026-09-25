@@ -141,6 +141,11 @@ export function onCarConnected(cb: () => void): { remove: () => void } | undefin
   return native?.addListener('connect', cb);
 }
 
+/** A car opened a collection the tree holds no songs for (`fillCollection`). */
+export function onCarBrowse(cb: (e: { parentId: string }) => void): { remove: () => void } | undefined {
+  return native?.addListener('browse', cb);
+}
+
 /**
  * Something typed in the car's search box. The nodes the native side already
  * has for it travel as JSON, the way the tree does: an event payload is a map

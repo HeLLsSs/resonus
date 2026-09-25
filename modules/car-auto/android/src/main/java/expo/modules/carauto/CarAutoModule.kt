@@ -24,7 +24,7 @@ class CarAutoModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("CarAuto")
 
-    Events("play", "transport", "connect", "search")
+    Events("play", "transport", "connect", "search", "browse")
 
     OnCreate {
       instance = this@CarAutoModule
@@ -165,6 +165,12 @@ class CarAutoModule : Module() {
      *  the last time somebody had the phone in their hand. */
     fun connected(context: Context) {
       deliver(context, "connect", emptyMap())
+    }
+
+    /** A collection the car opened that the tree has no songs for. JS fetches
+     *  them and pushes that one parent, and the car is told it changed. */
+    fun browse(context: Context, parentId: String) {
+      deliver(context, "browse", mapOf("parentId" to parentId))
     }
 
     /** The same, for a caller that must not start JS: the system's own media

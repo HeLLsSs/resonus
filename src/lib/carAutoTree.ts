@@ -43,7 +43,7 @@ import { usePlayHistory } from '@/store/playHistory';
 import { useQueueHistory, type PastQueue } from '@/store/queueHistory';
 import { useSettings } from '@/store/settings';
 import { useSmartPlaylists } from '@/store/smartPlaylists';
-import { type CarNode, type CarTree } from './carAuto';
+import { setNodes, type CarNode, type CarTree } from './carAuto';
 import { drawerLayout, overflowsHome, resumeFraction, searchRows, shelfId, tabLayout } from './carAutoLayout';
 import { fold } from './text';
 import { allMixes, topGenres, type Mix } from './mixes';
@@ -1600,8 +1600,22 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
     // Nothing in the maps for it. That is not a strange case: the car can
     // start this runtime itself and browse the tree written to disk by an
     // earlier one, while the maps that turn a row back into a song are built
-    // fresh each time and may not be ready yet. Giving up here is how a tap
-    // came to do nothing at all, now and then, with no way to tell why.
+    // fresh each time and may not be ready yet. The list the row came from is
+    // asked for again then, from the server or the cache, and played from the
+    // tapped song: a song alone was what the car got for a tap on a playlist,
+    // with the runtime having started for that very tap.
+    if (parent) {
+      const songs = await collectionSongs(parent).catch(() => [] as Song[]);
+      const at = songs.findIndex((s) => s.id === songId);
+      if (at >= 0) {
+        bump('car · list asked for again');
+        const [name, href] = sourceOf(parent);
+        await store.playQueue(songs, at, name, href);
+        return;
+      }
+    }
+    // Giving up here is how a tap came to do nothing at all, now and then,
+    // with no way to tell why.
     const single =
       resolve.songById.get(songId) ??
       (await data
@@ -1646,26 +1660,64 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
     return;
   }
 
-  let songs: Song[] = [];
-  try {
-    if (prefix === 'album') songs = (await albumDetail(id)).songs;
-    else if (prefix === 'playlist') songs = (await playlistDetail(id)).songs;
-    else if (prefix === 'favorites') songs = await starredSongs();
-    else if (prefix === 'artist') {
-      const { artist } = await data.getArtist(id);
-      songs = artist.name ? await data.getTopSongs(artist.name, 20) : [];
-    } else if (prefix === 'smart') {
-      // Resolved now rather than read off the tree: the rules are the list,
-      // and a random one is dealt afresh, as it is when it is opened on the
-      // phone. The library itself is the cached copy the tree was built from.
-      const list = useSmartPlaylists.getState().lists.find((l) => l.id === id);
-      if (list) songs = resolveSmartPlaylist(await allSongs(), list);
-    }
-  } catch {
-    songs = [];
-  }
+  const songs = await collectionSongs(mediaId).catch(() => [] as Song[]);
   if (songs.length > 0) {
     const [name, href] = sourceOf(mediaId);
     await store.playQueue(songs, 0, name, href);
   }
+}
+
+/** The collections being fetched for the car right now, so a car that asks
+ *  twice while the first answer is on its way does not cost two fetches. */
+const filling = new Set<string>();
+
+/**
+ * The songs of a collection the car opened and found empty, fetched now and
+ * pushed on their own, over the tree the car already has. Only the first few
+ * dozen albums and playlists get their songs at build time, and every other
+ * one opened onto nothing in the car until this. The rows go into the live
+ * maps too, so a tap on one of them queues the list as it does for a
+ * prefetched one.
+ */
+export async function fillCollection(parentId: string): Promise<void> {
+  if (filling.has(parentId)) return;
+  filling.add(parentId);
+  try {
+    const songs = await collectionSongs(parentId).catch(() => [] as Song[]);
+    if (songs.length === 0) return;
+    const rows = songs.map((s) => songNode(resolve, s, parentId));
+    resolve.parentTracks.set(parentId, rows.map((n) => n.id));
+    const nodes = { [parentId]: rows };
+    await resolveCachedArt(nodes);
+    bump('car · list fetched on request');
+    setNodes({ nodes, partial: true, profile: profileScopeId() });
+  } finally {
+    filling.delete(parentId);
+  }
+}
+
+/**
+ * The songs of a collection the tree has a row for, from the server or the
+ * cache: an album, a playlist, the favourites, an artist's popular songs, a
+ * smart playlist. What a tap on the collection queues, and what a tap on one
+ * of its songs queues behind that song. Nothing for a row that is not one.
+ */
+async function collectionSongs(collectionId: string): Promise<Song[]> {
+  const [prefix, ...rest] = collectionId.split(':');
+  const id = rest.join(':');
+  if (prefix === 'album') return (await albumDetail(id)).songs;
+  if (prefix === 'playlist') return (await playlistDetail(id)).songs;
+  if (prefix === 'favorites') return starredSongs();
+  if (prefix === 'artist') {
+    const { artist } = await data.getArtist(id);
+    return artist.name ? data.getTopSongs(artist.name, 20) : [];
+  }
+  if (prefix === 'smart') {
+    // Resolved now rather than read off the tree: the rules are the list,
+    // and a random one is dealt afresh, as it is when it is opened on the
+    // phone. The library itself is the cached copy the tree was built from.
+    const list = useSmartPlaylists.getState().lists.find((l) => l.id === id);
+    return list ? resolveSmartPlaylist(await allSongs(), list) : [];
+  }
+  return [];
 }

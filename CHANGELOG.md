@@ -7,6 +7,22 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [Unreleased]
+
+### Fixed
+
+- Android Auto: a song tapped in a playlist played alone, with nothing
+  after it, when the car had started the app itself and the maps that turn
+  a row back into its list were not built yet. The list is asked for again
+  and plays from the tapped song.
+
+### Added
+
+- Android Auto: a playlist or an album the build had not filled in opened
+  onto nothing in the car. Its songs are fetched the moment it is opened and
+  the car is told, so every list in the car can be browsed, not only the
+  first few dozen.
+
 ## [1.4.0] - 2026-09-25
 
 ### Added

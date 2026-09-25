@@ -273,6 +273,14 @@ class ResonusCarBrowserService : MediaLibraryService() {
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
       val children = BrowseTreeCache.getChildren(parentId)
       CarAutoLog.d("children of=$parentId have=${children.size} page=$page pageSize=$pageSize")
+      // A list the build never filled: only the first few dozen albums and
+      // playlists get their songs ahead of time (see `carAutoTree.ts`), and
+      // the rest opened onto nothing. The car gets what there is, which is
+      // nothing, and is told again once JS has fetched it. Not for the
+      // system's own media resumption, which only looks (see `onGetLibraryRoot`).
+      if (children.isEmpty() && BrowseTreeCache.isCollectionId(parentId) && browser.packageName !in PASSIVE_BROWSERS) {
+        CarAutoModule.browse(applicationContext, parentId)
+      }
       // Paged, like the search results and for the same reason (see `pageOf`).
       return Futures.immediateFuture(pageOf(children, page, pageSize, params))
     }

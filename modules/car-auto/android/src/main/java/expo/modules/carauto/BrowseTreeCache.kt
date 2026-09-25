@@ -335,8 +335,12 @@ object BrowseTreeCache {
     id.startsWith("playlist:") || id.startsWith("smart:") || id == "favorites"
 
   /** A thing with songs inside it that JS can queue whole. */
-  private fun BrowseNode.isCollection(): Boolean =
-    id.startsWith("album:") || id.startsWith("artist:") || isPlaylist()
+  private fun BrowseNode.isCollection(): Boolean = isCollectionId(id)
+
+  /** The same, for an id alone: what JS can fetch the songs of on request. */
+  fun isCollectionId(id: String): Boolean =
+    id.startsWith("album:") || id.startsWith("artist:") || id.startsWith("playlist:") ||
+      id.startsWith("smart:") || id == "favorites"
 
   private fun BrowseNode.canBePlayed(): Boolean = playable || isCollection()
 
