@@ -26,7 +26,7 @@ import { fetch } from 'expo/fetch';
 import { onMediaVolumeChanged } from '@/lib/audioOutput';
 import { volumeLevel } from '@/lib/volumeLevel';
 import { useHomeAssistant } from '@/store/homeAssistant';
-import { remoteKind, usePlayerStore, type RepeatMode, type StreamInfo } from '@/store/player';
+import { currentOutput, onOutputChanged, remoteKind, usePlayerStore, type CurrentOutput, type RepeatMode, type StreamInfo } from '@/store/player';
 
 /** Short enough that a house that is down doesn't hold a socket all day. */
 const TIMEOUT_MS = 5_000;
@@ -52,13 +52,18 @@ export interface HaBridgeState {
   volume: number;
   shuffle: boolean;
   repeat: RepeatMode;
+  /** Where it plays (`store/player.ts`, `currentOutput`): the card offers
+   *  the house's players and this device, and shows which one has it. */
+  outputId: string;
+  outputName: string;
 }
 
 /**
  * The player's state as the card wants it, with the volume as the outside
- * sees it (`lib/volumeLevel.ts`) handed in. Pure, so it can be tested.
+ * sees it (`lib/volumeLevel.ts`) and the output handed in. Pure, so it can be
+ * tested.
  */
-export function bridgeStateFrom(volume: number, state: {
+export function bridgeStateFrom(volume: number, output: CurrentOutput, state: {
   isPlaying: boolean;
   queue: { id: string; title: string; artist?: string; album?: string; albumId?: string; coverArt?: string; duration?: number; url?: string }[];
   index: number;
@@ -84,6 +89,8 @@ export function bridgeStateFrom(volume: number, state: {
     volume,
     shuffle: state.shuffle,
     repeat: state.repeat,
+    outputId: output.id,
+    outputName: output.name,
   };
 }
 
@@ -110,6 +117,9 @@ export function startHaBridge(): void {
   onMediaVolumeChanged(() => {
     if (!remoteKind()) publishHaState();
   });
+  // A speaker taken or left: the card's output changes, and so does its
+  // volume, which is now the speaker's.
+  onOutputChanged(() => publishHaState());
   usePlayerStore.subscribe((state, prev) => {
     if (
       state.queue !== prev.queue ||
@@ -148,7 +158,7 @@ export function publishHaState(force = false): void {
   const url = webhookUrl(useHomeAssistant.getState());
   if (!url) return;
   const player = usePlayerStore.getState();
-  const state = bridgeStateFrom(volumeLevel(), player);
+  const state = bridgeStateFrom(volumeLevel(), currentOutput(), player);
   // Where it got to on its own is not news: the card counts the seconds
   // between pushes by itself. Everything else is, the moment it happens —
   // nothing is held back for a quiet moment, since without a timer the last
@@ -182,6 +192,8 @@ function sameSong(a: HaBridgeState, b: HaBridgeState): boolean {
     a.duration === b.duration &&
     a.volume === b.volume &&
     a.shuffle === b.shuffle &&
-    a.repeat === b.repeat
+    a.repeat === b.repeat &&
+    a.outputId === b.outputId &&
+    a.outputName === b.outputName
   );
 }

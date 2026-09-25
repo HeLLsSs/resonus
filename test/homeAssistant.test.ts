@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'node:test';
 
 import {
+  findPlayer,
   handedIndexFor,
   handedTrackFor,
   HomeAssistantError,
@@ -310,6 +311,14 @@ describe('the client', () => {
     assert.equal(players.length, 1);
     assert.equal(http.calls[0].url, 'http://ha.local:8123/api/states');
     assert.equal(http.calls[0].headers.Authorization, 'Bearer secret');
+  });
+
+  it('finds one player by entity, and none in an entity that is not one', async () => {
+    http.answer = () => ({ status: 200, body: entity('media_player.a', { friendly_name: 'A', supported_features: PLAY_MEDIA }) });
+    const player = await findPlayer(config, 'media_player.a');
+    http.answer = () => ({ status: 200, body: entity('media_player.tv', { supported_features: 4 }) });
+    const notOne = await findPlayer(config, 'media_player.tv');
+    assert.deepEqual([http.calls[0].url, player?.name, notOne], ['http://ha.local:8123/api/states/media_player.a', 'A', null]);
   });
 
   it('hands a player a URL as music, with a queue instruction only when asked', async () => {

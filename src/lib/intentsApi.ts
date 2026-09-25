@@ -23,7 +23,8 @@ import { playShuffle } from '@/lib/playShuffle';
 import { queryClient } from '@/lib/query';
 import { setVolumeLevel } from '@/lib/volumeLevel';
 import { useAuthStore } from '@/store/auth';
-import { type RepeatMode, usePlayerStore } from '@/store/player';
+import { haConnect, haPlayerById, useHomeAssistant } from '@/store/homeAssistant';
+import { leaveRemoteOutputs, type RepeatMode, usePlayerStore } from '@/store/player';
 
 /** A command as the broadcast carried it: `command` and every other extra. */
 type IntentCommand = Record<string, string | number | boolean>;
@@ -242,6 +243,31 @@ async function run(command: IntentCommand): Promise<void> {
       // an idle card until the next track (see `lib/haBridge.ts`).
       publishHaState(true);
       return;
+    case 'output': {
+      // Where to play, as the Home Assistant card picks it: this phone, or
+      // one of the house's players by entity id. The other outputs the sheet
+      // offers are found on the network by the phone and have no id a card
+      // could hold.
+      const id = text(command, 'id');
+      if (id === 'phone') {
+        await leaveRemoteOutputs();
+        return;
+      }
+      if (!id.startsWith('media_player.')) {
+        console.warn(`[intents] output: "${id}" is neither phone nor a Home Assistant media player`);
+        return;
+      }
+      const { connected, entityId } = useHomeAssistant.getState();
+      if (connected && entityId === id) return;
+      const target = await haPlayerById(id);
+      if (!target) {
+        console.warn(`[intents] output: no player "${id}" a URL can be handed to, or Home Assistant is not set up here`);
+        return;
+      }
+      await leaveRemoteOutputs(true, 'ha');
+      await haConnect(target);
+      return;
+    }
     case 'sleep_timer': {
       // Whole minutes within reason: past a day the timeout would overflow
       // and fire at once, which is the opposite of what was asked.

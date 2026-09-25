@@ -32,6 +32,7 @@ or as text (`--es position 90`, `--es on true`).
 | `play_favorites`| optional `shuffle` boolean                        | Plays the starred songs.                                  |
 | `play_random`   |                                                   | Plays random songs from the library.                      |
 | `publish_state` |                                                   | Pushes what is playing to Home Assistant (docs/HOME-ASSISTANT.md). |
+| `output`        | `id`: `phone`, or a Home Assistant `media_player` entity id | Moves the music to this phone, or to that player of the house's. |
 | `sleep_timer`   | `minutes` (0 cancels, at most 600)                 | Starts or cancels the sleep timer.                        |
 
 An unknown command is ignored (with a warning in the JS log). The ids are the
@@ -67,6 +68,8 @@ adb shell am broadcast -p $PKG -a $A --es command play_search --es query "blue m
 adb shell am broadcast -p $PKG -a $A --es command play_favorites
 adb shell am broadcast -p $PKG -a $A --es command play_random
 adb shell am broadcast -p $PKG -a $A --es command publish_state
+adb shell am broadcast -p $PKG -a $A --es command output --es id media_player.kitchen
+adb shell am broadcast -p $PKG -a $A --es command output --es id phone
 adb shell am broadcast -p $PKG -a $A --es command sleep_timer --ei minutes 30
 adb shell am broadcast -p $PKG -a $A --es command sleep_timer --ei minutes 0
 ```

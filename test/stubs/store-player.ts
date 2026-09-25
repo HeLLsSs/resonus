@@ -87,6 +87,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => {
 /** Back to a silent player with nothing written down. */
 export function resetPlayer(): void {
   playerCalls.length = 0;
+  leaveCalls.length = 0;
+  output.id = 'phone';
+  output.name = '';
   usePlayerStore.setState({
     queue: [],
     index: 0,
@@ -100,7 +103,42 @@ export function resetPlayer(): void {
   });
 }
 
+export type RemoteKind = 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay';
+
+export interface CurrentOutput {
+  id: string;
+  name: string;
+}
+
 /** No speaker is ever on in a test: the phone is what plays. */
 export function remoteKind(): null {
   return null;
+}
+
+/** What `currentOutput` answers; a test moves the music by setting it. */
+export const output: CurrentOutput = { id: 'phone', name: '' };
+
+export function currentOutput(): CurrentOutput {
+  return { ...output };
+}
+
+/** Every `leaveRemoteOutputs` call, as it was made. */
+export const leaveCalls: { silent: boolean; keep?: RemoteKind }[] = [];
+
+export async function leaveRemoteOutputs(silent = false, keep?: RemoteKind): Promise<void> {
+  leaveCalls.push({ silent, keep });
+}
+
+const outputListeners = new Set<() => void>();
+
+export function onOutputChanged(listener: () => void): () => void {
+  outputListeners.add(listener);
+  return () => {
+    outputListeners.delete(listener);
+  };
+}
+
+/** What the real store does when a speaker is taken or left. */
+export function outputChanged(): void {
+  outputListeners.forEach((listener) => listener());
 }

@@ -67,7 +67,7 @@ import {
   refreshJukeboxAvailability,
   useJukebox,
 } from '@/store/jukebox';
-import { usePlayerStore } from '@/store/player';
+import { leaveRemoteOutputs, type RemoteKind, usePlayerStore } from '@/store/player';
 import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
 import {
@@ -309,24 +309,10 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     return () => clearInterval(id);
   }, [visible]);
 
-  async function pickPhone() {
-    if (upnpId) await upnpDisconnect();
-    else if (jukeboxActive) await jukeboxDisconnect();
-    else if (castId) await castDisconnect();
-    else if (haId) await haDisconnect();
-    else if (maId) await maDisconnect();
-    else if (lpHost) await linkPlayDisconnect();
-  }
+  const pickPhone = () => leaveRemoteOutputs();
 
   /** Every other remote output let go quietly, before this one takes over. */
-  async function leaveOtherRemotes(keep: 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay') {
-    if (upnpId && keep !== 'upnp') await upnpDisconnect(true);
-    if (jukeboxActive && keep !== 'jukebox') await jukeboxDisconnect(true);
-    if (castId && keep !== 'cast') await castDisconnect(true);
-    if (haId && keep !== 'ha') await haDisconnect(true);
-    if (maId && keep !== 'ma') await maDisconnect(true);
-    if (lpHost && keep !== 'linkplay') await linkPlayDisconnect(true);
-  }
+  const leaveOtherRemotes = (keep: RemoteKind) => leaveRemoteOutputs(true, keep);
 
   async function pickLinkPlay(device: LinkPlayDevice) {
     if (device.host === lpHost) return;

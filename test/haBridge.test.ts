@@ -6,14 +6,16 @@
 import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'node:test';
 
-import { bridgeStateFrom, publishHaState, webhookUrl } from '@/lib/haBridge';
+import { bridgeStateFrom, publishHaState, startHaBridge, webhookUrl } from '@/lib/haBridge';
 import { useHomeAssistant } from '@/store/homeAssistant';
 
 import { http } from './stubs/expo-fetch';
-import { usePlayerStore } from './stubs/store-player';
+import { output, outputChanged, usePlayerStore } from './stubs/store-player';
+
+const PHONE = { id: 'phone', name: '' };
 
 /** A queue of one, playing, with the state the card would draw. */
-function playing(fields: Partial<Parameters<typeof bridgeStateFrom>[1]> = {}) {
+function playing(fields: Partial<Parameters<typeof bridgeStateFrom>[2]> = {}) {
   return {
     isPlaying: true,
     queue: [{ id: '7', title: 'Blue Monday', artist: 'New Order', album: 'Power', albumId: 'a1', duration: 450 }],
@@ -29,7 +31,7 @@ function playing(fields: Partial<Parameters<typeof bridgeStateFrom>[1]> = {}) {
 
 describe('bridgeStateFrom', () => {
   it('reads the song the queue is on', () => {
-    assert.equal(bridgeStateFrom(0.6, playing()).title, 'Blue Monday');
+    assert.equal(bridgeStateFrom(0.6, PHONE, playing()).title, 'Blue Monday');
   });
 
   it('lets a radio name what it is playing over the station', () => {
@@ -37,19 +39,24 @@ describe('bridgeStateFrom', () => {
       queue: [{ id: '7', title: 'FIP', url: 'http://radio/stream' }],
       streamInfo: { title: 'Blue Monday', artist: 'New Order' },
     });
-    assert.equal(bridgeStateFrom(0.6, state).title, 'Blue Monday');
+    assert.equal(bridgeStateFrom(0.6, PHONE, state).title, 'Blue Monday');
   });
 
   it('falls back to the song duration when nothing is loaded yet', () => {
-    assert.equal(bridgeStateFrom(0.6, playing({ durationSec: 0 })).duration, 450);
+    assert.equal(bridgeStateFrom(0.6, PHONE, playing({ durationSec: 0 })).duration, 450);
   });
 
   it('carries the volume it is handed, not the gain', () => {
-    assert.equal(bridgeStateFrom(0.3, playing()).volume, 0.3);
+    assert.equal(bridgeStateFrom(0.3, PHONE, playing()).volume, 0.3);
   });
 
   it('rounds the position to the second', () => {
-    assert.equal(bridgeStateFrom(0.6, playing({ positionSec: 12.7 })).position, 13);
+    assert.equal(bridgeStateFrom(0.6, PHONE, playing({ positionSec: 12.7 })).position, 13);
+  });
+
+  it('says where it plays', () => {
+    const state = bridgeStateFrom(0.6, { id: 'media_player.kitchen', name: 'Kitchen' }, playing());
+    assert.deepEqual([state.outputId, state.outputName], ['media_player.kitchen', 'Kitchen']);
   });
 });
 
@@ -105,6 +112,14 @@ describe('publishHaState', () => {
     usePlayerStore.setState({ isPlaying: false });
     publishHaState();
     assert.equal(http.calls.length, 1);
+  });
+
+  it('pushes a move to a speaker', () => {
+    startHaBridge();
+    output.id = 'media_player.kitchen';
+    output.name = 'Kitchen';
+    outputChanged();
+    assert.equal((http.calls[0]?.body as { outputId?: string })?.outputId, 'media_player.kitchen');
   });
 
   it('pushes to the webhook', () => {

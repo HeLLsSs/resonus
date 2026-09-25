@@ -7,6 +7,18 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [Unreleased]
+
+### Added
+
+- Home Assistant can pick where the music plays: the card's source, and a
+  `select` entity for a dashboard, list this phone and the house's media
+  players, the same ones the output sheet offers. Picking one arrives as the
+  `output` intent (docs/INTENTS.md), and what plays where is pushed back.
+- Home Assistant can search the library from the media browser, answered by
+  the integration from the music server; see
+  [docs/HOME-ASSISTANT.md](docs/HOME-ASSISTANT.md).
+
 ## [1.3.0] - 2026-09-22
 
 ### Added

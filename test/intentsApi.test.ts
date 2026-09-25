@@ -15,7 +15,8 @@ import { data } from './stubs/api-data';
 import { intentsApi } from './stubs/expo-modules-core';
 import { playShuffleCalls } from './stubs/lib-playShuffle';
 import { serverProfile, useAuthStore } from './stubs/store-auth';
-import { playerCalls, resetPlayer, usePlayerStore } from './stubs/store-player';
+import { ha, useHomeAssistant } from './stubs/store-homeAssistant';
+import { leaveCalls, playerCalls, resetPlayer, usePlayerStore } from './stubs/store-player';
 
 const settle = () => new Promise((r) => setTimeout(r, 0));
 
@@ -32,6 +33,8 @@ startIntentsApi();
 beforeEach(() => {
   resetPlayer();
   data.reset();
+  ha.reset();
+  useHomeAssistant.setState({ connected: false, entityId: null });
   intentsApi.sent = [];
   useAuthStore.setState({ auth: serverProfile(), hydrating: false });
 });
@@ -147,6 +150,40 @@ describe('shuffle and repeat', () => {
     }
     assert.equal(usePlayerStore.getState().repeat, 'off');
     assert.deepEqual(names(), []);
+  });
+});
+
+describe('output', () => {
+  const kitchen = { entityId: 'media_player.kitchen', name: 'Kitchen', state: 'idle', canEnqueue: false, canClearPlaylist: false, canSeek: false, musicAssistant: false };
+
+  it('brings the music back to the phone, out loud', async () => {
+    await send({ command: 'output', id: 'phone' });
+    assert.deepEqual(leaveCalls, [{ silent: false, keep: undefined }]);
+  });
+
+  it('hands the music to the house player it names, leaving the others quietly', async () => {
+    ha.players.set(kitchen.entityId, kitchen);
+    await send({ command: 'output', id: 'media_player.kitchen' });
+    assert.deepEqual([leaveCalls, ha.connected], [[{ silent: true, keep: 'ha' }], [kitchen]]);
+  });
+
+  it('leaves a player it is already on alone', async () => {
+    ha.players.set(kitchen.entityId, kitchen);
+    useHomeAssistant.setState({ connected: true, entityId: 'media_player.kitchen' });
+    await send({ command: 'output', id: 'media_player.kitchen' });
+    assert.deepEqual([leaveCalls, ha.connected], [[], []]);
+  });
+
+  it('does nothing for a player the house does not have, or an id that is not one', async () => {
+    const original = console.warn;
+    console.warn = () => {};
+    try {
+      await send({ command: 'output', id: 'media_player.attic' });
+      await send({ command: 'output', id: 'toaster' });
+    } finally {
+      console.warn = original;
+    }
+    assert.deepEqual([leaveCalls, ha.connected], [[], []]);
   });
 });
 

@@ -37,6 +37,7 @@ import { create } from 'zustand';
 import { type Song } from '@/api/backend';
 import { tg } from '@/i18n';
 import {
+  findPlayer,
   handedIndexFor,
   handedTrackFor,
   HomeAssistantError,
@@ -326,6 +327,20 @@ export async function haSearch(): Promise<void> {
     // keep the previous list
   } finally {
     useHomeAssistant.setState({ searching: false });
+  }
+}
+
+/**
+ * One of the house's players by entity id, or null when Home Assistant is not
+ * set up, does not answer, or has no such player. The `output` intent's way
+ * in (`lib/intentsApi.ts`): the card names the player, the phone looks it up.
+ */
+export async function haPlayerById(entityId: string): Promise<HaPlayer | null> {
+  if (!haConfigured()) return null;
+  try {
+    return await findPlayer(haConfig(), entityId);
+  } catch {
+    return null;
   }
 }
 

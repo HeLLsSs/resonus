@@ -78,6 +78,7 @@ import {
   isCastConnected,
   loadCastQueue,
   syncCastQueue,
+  useGoogleCast,
   type CastQueueState,
 } from './googleCast';
 import { useDownloads } from './downloads';
@@ -91,6 +92,7 @@ import {
   isHaConnected,
   loadHaQueue,
   syncHaQueue,
+  useHomeAssistant,
 } from './homeAssistant';
 import {
   initMusicAssistant,
@@ -102,6 +104,7 @@ import {
   maSeek,
   maSetVolume,
   syncMaQueue,
+  useMusicAssistant,
 } from './musicAssistant';
 import { useEqualizer } from './equalizer';
 import {
@@ -118,11 +121,13 @@ import { initJam, isJamActive, jamSend, leaveJam } from './jam';
 import {
   initLinkPlay,
   isLinkPlayConnected,
+  linkPlayDisconnect,
   linkPlayLoad,
   linkPlayPause,
   linkPlayPlay,
   linkPlaySeek,
   linkPlaySetVolume,
+  useLinkPlay,
 } from './linkplay';
 import { useLastPlayed } from './lastPlayed';
 import { useNetworkType } from './networkType';
@@ -145,6 +150,7 @@ import {
   upnpSetCrossfade,
   upnpSetSleepTimer,
   upnpSetVolume,
+  useUpnp,
   type RemoteEvents,
 } from './upnp';
 import {
@@ -878,7 +884,9 @@ function clearLockScreen() {
 // ── Remote output (UPnP/DLNA renderer, server jukebox, Google Cast, Home Assistant, Music Assistant) ──
 
 /** Active remote output, if any. */
-export function remoteKind(): 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay' | null {
+export type RemoteKind = 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay';
+
+export function remoteKind(): RemoteKind | null {
   if (isUpnpConnected()) return 'upnp';
   if (isJukeboxActive()) return 'jukebox';
   if (isCastConnected()) return 'cast';
@@ -886,6 +894,73 @@ export function remoteKind(): 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkp
   if (isMaConnected()) return 'ma';
   if (isLinkPlayConnected()) return 'linkplay';
   return null;
+}
+
+/** Where the music is going: `phone`, or a remote output by id and name. */
+export interface CurrentOutput {
+  /**
+   * `phone` for the phone itself; a Home Assistant player's entity id, which
+   * is what the Home Assistant card can pick again (`lib/haBridge.ts`); the
+   * kind of output for the rest, which nothing outside the phone picks.
+   */
+  id: string;
+  /** The output's own name; empty for the phone, whose name the reader knows. */
+  name: string;
+}
+
+/** What is playing the music right now, named the way the output sheet names it. */
+export function currentOutput(): CurrentOutput {
+  switch (remoteKind()) {
+    case 'ha': {
+      const { entityId, players } = useHomeAssistant.getState();
+      return { id: entityId ?? 'ha', name: players.find((p) => p.entityId === entityId)?.name ?? entityId ?? '' };
+    }
+    case 'cast': {
+      const { deviceId, devices } = useGoogleCast.getState();
+      return { id: 'cast', name: devices.find((d) => d.id === deviceId)?.name ?? '' };
+    }
+    case 'upnp': {
+      const { deviceId, devices } = useUpnp.getState();
+      return { id: 'upnp', name: devices.find((d) => d.id === deviceId)?.name ?? '' };
+    }
+    case 'ma': {
+      const { playerId, players } = useMusicAssistant.getState();
+      return { id: 'ma', name: players.find((p) => p.playerId === playerId)?.name ?? '' };
+    }
+    case 'linkplay': {
+      const { host, devices } = useLinkPlay.getState();
+      return { id: 'linkplay', name: devices.find((d) => d.host === host)?.name ?? host ?? '' };
+    }
+    case 'jukebox':
+      return { id: 'jukebox', name: 'Jukebox' };
+    default:
+      return { id: 'phone', name: '' };
+  }
+}
+
+/**
+ * Every remote output let go, but for `keep`: quietly, before another takes
+ * over, or not, so the song is picked back up on the phone. What the output
+ * sheet does before a row is followed, and what the `output` intent does for
+ * a card that has no rows (`lib/intentsApi.ts`).
+ */
+export async function leaveRemoteOutputs(silent = false, keep?: RemoteKind): Promise<void> {
+  if (isUpnpConnected() && keep !== 'upnp') await upnpDisconnect(silent);
+  if (isJukeboxActive() && keep !== 'jukebox') await jukeboxDisconnect(silent);
+  if (isCastConnected() && keep !== 'cast') await castDisconnect(silent);
+  if (isHaConnected() && keep !== 'ha') await haDisconnect(silent);
+  if (isMaConnected() && keep !== 'ma') await maDisconnect(silent);
+  if (isLinkPlayConnected() && keep !== 'linkplay') await linkPlayDisconnect(silent);
+}
+
+const outputListeners = new Set<() => void>();
+
+/** Told each time the music moves to a remote output or back to the phone. */
+export function onOutputChanged(listener: () => void): () => void {
+  outputListeners.add(listener);
+  return () => {
+    outputListeners.delete(listener);
+  };
 }
 
 /**
@@ -3645,6 +3720,7 @@ let remoteEvents: RemoteEvents | null = null;
 export function initRemoteIntegration() {
   const events: RemoteEvents = {
     onConnected: () => {
+      outputListeners.forEach((listener) => listener());
       // Transfers the current track to the device and silences the local player.
       const { queue, index, positionSec, isPlaying, sleepEndsAt } = usePlayerStore.getState();
       cutCrossfade();
@@ -3703,6 +3779,7 @@ export function initRemoteIntegration() {
       adoptCastSession();
     },
     onDisconnected: (lastPositionSec) => {
+      outputListeners.forEach((listener) => listener());
       castResumeAwaitingQueue = false;
       // The casting media session is already closed by `upnpDisconnect` and
       // `castDisconnect` (covers silent disconnects too). Here we just return

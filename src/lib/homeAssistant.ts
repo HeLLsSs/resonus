@@ -404,6 +404,16 @@ export async function listPlayers(config: HaConfig): Promise<HaPlayer[]> {
   return playersFrom(await call<unknown>(config, '/api/states'));
 }
 
+/**
+ * One player by entity, read the way `listPlayers` reads them all; null for
+ * an entity that is not a player a URL can be handed to. For a caller that
+ * holds the id and not the list, which is what a Home Assistant card sends.
+ */
+export async function findPlayer(config: HaConfig, entityId: string): Promise<HaPlayer | null> {
+  const players = playersFrom([await call<unknown>(config, `/api/states/${encodeURIComponent(entityId)}`)]);
+  return players[0] ?? null;
+}
+
 export async function playerState(config: HaConfig, entityId: string): Promise<HaPlayerState> {
   return playerStateFrom(await call<unknown>(config, `/api/states/${encodeURIComponent(entityId)}`));
 }
