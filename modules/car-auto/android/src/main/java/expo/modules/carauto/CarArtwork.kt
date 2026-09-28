@@ -70,6 +70,7 @@ internal object CarArtwork {
     "ic_car_genres" to R.drawable.ic_car_genres,
     "ic_car_home" to R.drawable.ic_car_home,
     "ic_car_library" to R.drawable.ic_car_library,
+    "ic_car_play" to R.drawable.ic_car_play,
     "ic_car_playlists" to R.drawable.ic_car_playlists,
     "ic_car_queue" to R.drawable.ic_car_queue,
     "ic_car_recent" to R.drawable.ic_car_recent,

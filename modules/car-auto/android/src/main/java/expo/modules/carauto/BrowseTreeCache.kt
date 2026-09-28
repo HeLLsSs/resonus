@@ -164,6 +164,9 @@ object BrowseTreeCache {
     val hits = ArrayList<Pair<BrowseNode, Int>>()
     for ((_, children) in nodes) {
       for (node in children) {
+        // The "Play all" and "Shuffle" rows at the top of every list: dozens
+        // of them, all called the same, and none of them what was asked for.
+        if (node.isListAction()) continue
         if (!seen.add(dedupeKey(node))) continue
         val score = score(node, q, tokens)
         if (score > 0) hits.add(node to score)
@@ -319,7 +322,10 @@ object BrowseTreeCache {
    * came from, so the whole album still gets queued behind it.
    */
   private fun intoSomethingToPlay(node: BrowseNode): BrowseNode =
-    if (node.playable) node else nodes[node.id]?.firstOrNull { it.playable } ?: node
+    if (node.playable) node else nodes[node.id]?.firstOrNull { it.playable && !it.isListAction() } ?: node
+
+  /** One of the two rows at the top of a list (`songRows` in `carAutoTree.ts`). */
+  private fun BrowseNode.isListAction(): Boolean = id.startsWith("playall:") || id.startsWith("shuffled:")
 
   private fun firstPlayableCollection(): BrowseNode? {
     for ((_, children) in nodes) {
@@ -340,7 +346,7 @@ object BrowseTreeCache {
   /** The same, for an id alone: what JS can fetch the songs of on request. */
   fun isCollectionId(id: String): Boolean =
     id.startsWith("album:") || id.startsWith("artist:") || id.startsWith("playlist:") ||
-      id.startsWith("smart:") || id == "favorites"
+      id.startsWith("smart:") || id.startsWith("yt:pl:") || id == "yt:liked" || id == "favorites"
 
   private fun BrowseNode.canBePlayed(): Boolean = playable || isCollection()
 

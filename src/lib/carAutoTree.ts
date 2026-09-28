@@ -256,6 +256,31 @@ function songNode(into: Resolve, s: Song, parentId: string): CarNode {
   };
 }
 
+/** The two rows at the top of a collection (`songRows`); `BrowseTreeCache.kt` knows the prefixes too. */
+const PLAY_ALL = 'playall:';
+const PLAY_SHUFFLED = 'shuffled:';
+
+/**
+ * A collection's rows in the car: its songs, with a way to play the whole
+ * of it and a way to play it shuffled at the top, since a folder of songs
+ * has no button of its own and tapping a song plays from that song. The
+ * two rows resolve on their own (`handleBrowsePlay`); only the songs go
+ * into `parentTracks`, which is what a tapped song queues.
+ */
+function songRows(into: Resolve, parent: string, songs: Song[]): CarNode[] {
+  const rows = songs.map((s) => songNode(into, s, parent));
+  into.parentTracks.set(parent, rows.map((n) => n.id));
+  if (rows.length < 2) return rows;
+  // Named apart from Home's `shuffle:favorites` and from a search: dozens of
+  // rows all called "Shuffle" would answer "play shuffle" before Home's own
+  // (the native side leaves these two out of its ranking by their prefix).
+  return [
+    { id: `${PLAY_ALL}${parent}`, title: tg('Play all'), artworkUrl: icon('ic_car_play'), playable: true },
+    { id: `${PLAY_SHUFFLED}${parent}`, title: tg('Shuffle'), artworkUrl: icon('ic_car_shuffle'), playable: true },
+    ...rows,
+  ];
+}
+
 function albumNode(into: Resolve, a: Album): CarNode {
   into.nodeTitles.set(`album:${a.id}`, a.name);
   return {
@@ -824,8 +849,7 @@ async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promi
   const rows: CarNode[] = [];
   const shelfRows: CarNode[] = [];
   if (liked.length > 0) {
-    tree['yt:liked'] = liked.map((song) => songNode(into, song, 'yt:liked'));
-    into.parentTracks.set('yt:liked', tree['yt:liked'].map((n) => n.id));
+    tree['yt:liked'] = songRows(into, 'yt:liked', liked);
     rows.push({
       id: 'yt:liked',
       title: tg('Liked songs'),
@@ -900,9 +924,7 @@ async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promi
   await mapConcurrent(playlists.slice(0, MAX_YOUTUBE_PLAYLISTS), CONCURRENCY, async (list) => {
     const parent = `yt:pl:${list.id}`;
     try {
-      const songs = await data.youtubePlaylistSongs(list.id, YOUTUBE_TRACKS);
-      tree[parent] = songs.map((song) => songNode(into, song, parent));
-      into.parentTracks.set(parent, tree[parent].map((n) => n.id));
+      tree[parent] = songRows(into, parent, await data.youtubePlaylistSongs(list.id, YOUTUBE_TRACKS));
     } catch {
       tree[parent] = [];
     }
@@ -1070,8 +1092,7 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
   const orderedPlaylists = byLastPlayed(playlists, (p) => `/playlist/${p.id}`);
   tree['lib:playlists'] = [favoritesNode, ...orderedPlaylists.map((p) => playlistNode(into, p))];
 
-  tree['favorites'] = starred.songs.map((s) => songNode(into, s, 'favorites'));
-  into.parentTracks.set('favorites', tree['favorites'].map((n) => n.id));
+  tree['favorites'] = songRows(into, 'favorites', starred.songs);
 
   const starredAlbums = byLastPlayed(starred.albums, (a) => `/album/${a.id}`);
   tree['lib:albums'] = starredAlbums.map((a) => albumNode(into, a));
@@ -1180,9 +1201,7 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
   await mapConcurrent(Array.from(playlistIds).slice(0, MAX_PREFETCH_PLAYLISTS), CONCURRENCY, async (id) => {
     const parent = `playlist:${id}`;
     try {
-      const { songs } = await playlistDetail(id);
-      tree[parent] = songs.map((s) => songNode(into, s, parent));
-      into.parentTracks.set(parent, tree[parent].map((n) => n.id));
+      tree[parent] = songRows(into, parent, (await playlistDetail(id)).songs);
     } catch {
       keep(parent);
     }
@@ -1195,10 +1214,8 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
   // each list; the rest can be empty until someone asks for it (#50).
   await mapConcurrent(Array.from(albumIds).slice(0, MAX_PREFETCH_ALBUMS), CONCURRENCY, async (id) => {
     try {
-      const { songs } = await albumDetail(id);
       const parent = `album:${id}`;
-      tree[parent] = songs.map((s) => songNode(into, s, parent));
-      into.parentTracks.set(parent, tree[parent].map((n) => n.id));
+      tree[parent] = songRows(into, parent, (await albumDetail(id)).songs);
     } catch {
       keep(`album:${id}`);
     }
@@ -1210,19 +1227,12 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
       const { artist, albums } = await data.getArtist(id);
       const top = artist.name ? await data.getTopSongs(artist.name, 10).catch(() => [] as Song[]) : [];
       const parent = `artist:${id}`;
-      const children: CarNode[] = [
-        ...top.map((s) => songNode(into, s, parent)),
-        ...albums.map((a) => albumNode(into, a)),
-      ];
-      tree[parent] = children;
-      into.parentTracks.set(parent, children.filter((n) => n.playable).map((n) => n.id));
+      tree[parent] = [...songRows(into, parent, top), ...albums.map((a) => albumNode(into, a))];
       for (const a of albums.slice(0, MAX_ARTIST_ALBUMS)) {
         const ap = `album:${a.id}`;
         if (!tree[ap]) {
           try {
-            const { songs } = await albumDetail(a.id);
-            tree[ap] = songs.map((s) => songNode(into, s, ap));
-            into.parentTracks.set(ap, tree[ap].map((n) => n.id));
+            tree[ap] = songRows(into, ap, (await albumDetail(a.id)).songs);
           } catch {
             keep(ap);
           }
@@ -1245,10 +1255,7 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
       const library = await allSongs();
       for (const list of smartLists) {
         const parent = `smart:${list.id}`;
-        tree[parent] = resolveSmartPlaylist(library, list)
-          .slice(0, MAX_SMART_SONGS)
-          .map((s) => songNode(into, s, parent));
-        into.parentTracks.set(parent, tree[parent].map((n) => n.id));
+        tree[parent] = songRows(into, parent, resolveSmartPlaylist(library, list).slice(0, MAX_SMART_SONGS));
       }
     } catch {
       smartLists.forEach((list) => keep(`smart:${list.id}`));
@@ -1545,20 +1552,14 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
   // video becomes the one song. Fetched at the press rather than ahead of
   // time, which is what lets the tab carry every shelf of the home page for
   // the cost of the one request that drew it.
-  if (mediaId.startsWith('yt:pl:') || mediaId.startsWith('yt:v:')) {
-    const isList = mediaId.startsWith('yt:pl:');
-    const id = mediaId.slice(isList ? 'yt:pl:'.length : 'yt:v:'.length);
-    const name = resolve.nodeTitles.get(mediaId) ?? '';
-    const songs = await (isList
-      ? data.youtubePlaylistSongs(id, YOUTUBE_TRACKS)
-      : data.getSongsByIds([id])
-    ).catch(() => [] as Song[]);
+  if (mediaId.startsWith('yt:v:')) {
+    const songs = await data.getSongsByIds([mediaId.slice('yt:v:'.length)]).catch(() => [] as Song[]);
     if (songs.length === 0) {
       bump('car · youtube tile resolved to nothing');
       return;
     }
-    bump(isList ? 'car · youtube list played' : 'car · youtube track played');
-    await store.playQueue(songs, 0, name || 'YouTube');
+    bump('car · youtube track played');
+    await store.playQueue(songs, 0, resolve.nodeTitles.get(mediaId) || 'YouTube');
     return;
   }
 
@@ -1660,6 +1661,18 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
     return;
   }
 
+  // The two rows at the top of a collection: the whole of it, in its order
+  // or dealt once, the way the phone's own play and shuffle buttons do.
+  if (mediaId.startsWith(PLAY_ALL) || mediaId.startsWith(PLAY_SHUFFLED)) {
+    const dealt = mediaId.startsWith(PLAY_SHUFFLED);
+    const collection = mediaId.slice(dealt ? PLAY_SHUFFLED.length : PLAY_ALL.length);
+    const songs = await collectionSongs(collection).catch(() => [] as Song[]);
+    if (songs.length === 0) return;
+    const [name, href] = sourceOf(collection);
+    await store.playQueue(songs, 0, name, href, dealt ? { shuffled: true } : undefined);
+    return;
+  }
+
   const songs = await collectionSongs(mediaId).catch(() => [] as Song[]);
   if (songs.length > 0) {
     const [name, href] = sourceOf(mediaId);
@@ -1685,9 +1698,7 @@ export async function fillCollection(parentId: string): Promise<void> {
   try {
     const songs = await collectionSongs(parentId).catch(() => [] as Song[]);
     if (songs.length === 0) return;
-    const rows = songs.map((s) => songNode(resolve, s, parentId));
-    resolve.parentTracks.set(parentId, rows.map((n) => n.id));
-    const nodes = { [parentId]: rows };
+    const nodes = { [parentId]: songRows(resolve, parentId, songs) };
     await resolveCachedArt(nodes);
     bump('car · list fetched on request');
     setNodes({ nodes, partial: true, profile: profileScopeId() });
@@ -1699,8 +1710,9 @@ export async function fillCollection(parentId: string): Promise<void> {
 /**
  * The songs of a collection the tree has a row for, from the server or the
  * cache: an album, a playlist, the favourites, an artist's popular songs, a
- * smart playlist. What a tap on the collection queues, and what a tap on one
- * of its songs queues behind that song. Nothing for a row that is not one.
+ * smart playlist, a YouTube list. What a tap on the collection queues, and
+ * what a tap on one of its songs queues behind that song. Nothing for a row
+ * that is not one.
  */
 async function collectionSongs(collectionId: string): Promise<Song[]> {
   const [prefix, ...rest] = collectionId.split(':');
@@ -1718,6 +1730,11 @@ async function collectionSongs(collectionId: string): Promise<Song[]> {
     // phone. The library itself is the cached copy the tree was built from.
     const list = useSmartPlaylists.getState().lists.find((l) => l.id === id);
     return list ? resolveSmartPlaylist(await allSongs(), list) : [];
+  }
+  // The YouTube tab's lists, as many tracks as a list in the car holds.
+  if (prefix === 'yt') {
+    if (id === 'liked') return data.youtubeLikedSongs(YOUTUBE_TRACKS);
+    if (id.startsWith('pl:')) return data.youtubePlaylistSongs(id.slice('pl:'.length), YOUTUBE_TRACKS);
   }
   return [];
 }
