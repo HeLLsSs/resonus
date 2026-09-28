@@ -7,6 +7,35 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.5.0] - 2026-09-28
+
+### Added
+
+- Android Auto: every list of songs in the car, a playlist, an album, the
+  favourites, a smart playlist or a YouTube list, opens with two rows at
+  the top, "Play all" and "Shuffle", the way the phone's own screens have
+  their two buttons. Tapping a song still plays from that song.
+
+### Fixed
+
+- A song broken part-way through went round for ever: every reload played
+  its first second before seeking back to the break, and that second was
+  taken as the song having recovered, so the two goes it was allowed never
+  ran out. A reloaded song now has to sound for ten seconds before its
+  failures are forgotten; a song that breaks again is given up on, with a
+  word, after its two goes, and the next song plays. Three passed over in
+  a row and the fourth stops the queue instead, since that is not one bad
+  file.
+
+### Changed
+
+- A Jam plays on the phone that opened it, and only there: the phones that
+  join it are silent and steer, as the browser page's guests are. Each can
+  still switch "Play on this phone" on to hear it too.
+- A Jam has one volume, held by the session: the volume keys of any phone
+  in it, the slider on the Jam screen and the browser page all move the
+  device that plays. Needs the Navifind proxy from the same date.
+
 ## [1.4.1] - 2026-09-25
 
 ### Fixed
