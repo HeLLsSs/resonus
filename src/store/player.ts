@@ -59,7 +59,7 @@ import { attachBookmarks } from '@/lib/bookmarks';
 import type { Remap } from '@/lib/navidromeRemap';
 import { remapSong } from '@/lib/navidromeRemap';
 import { beat, bump, timed } from '@/lib/perfLog';
-import { freshRetries, onFailure, playingAgain, settled } from '@/lib/playbackRetry';
+import { freshRetries, onFailure, playingAgain, settled, skipping, soundHeld } from '@/lib/playbackRetry';
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
 import { recordPlay } from '@/lib/statsDb';
@@ -2860,11 +2860,10 @@ function errorTag(message: string): string {
 
 /**
  * Answers a playback failure: the other copy of the song if it has one, a
- * second go at the same one if it does not, and the truth if neither sounds.
- *
- * Deliberately not the next track. A failure that skips walks a whole album in
- * silence, and the one thing the person watching needs to know is that this
- * song is not playing, which a toast says and an advancing queue hides.
+ * second go at the same one if it does not, and the truth if neither sounds,
+ * followed by the next track, so a bad file does not end the evening. A few
+ * bad files in a row do (`MAX_SKIPS`): walking a whole album in silence with
+ * a toast per song would hide that nothing plays at all.
  */
 function onPlaybackError(message: string, wasPlaying: boolean): void {
   const st = usePlayerStore.getState();
@@ -2880,6 +2879,23 @@ function onPlaybackError(message: string, wasPlaying: boolean): void {
   if (decided.act === 'wait') return;
   if (decided.act === 'announce') {
     bump('player · gave up on the track');
+    // On to the next one, alone: in a Jam the session decides what plays,
+    // and a song on repeat has no next one but itself. Nor has the last
+    // playable song of a queue on repeat, which `nextIndex` answers with
+    // itself: reloading the track just given up on would be the loop again,
+    // and a silent one, since its failures are old news from here.
+    const next = isJamActive() || st.repeat === 'one' ? null : nextIndex(false);
+    const ni = next != null && next !== st.index ? next : null;
+    const onward = ni == null ? null : skipping(retries);
+    if (onward && ni != null) {
+      retries = onward;
+      useToast.getState().show(tg("Couldn't play the song, on to the next"));
+      pushHistory();
+      // Playing if it was meant to be: a failure met while paused is not a
+      // reason to start the sound.
+      void loadIndex(ni, wasPlaying);
+      return;
+    }
     const said = tg("Couldn't play the song");
     usePlayerStore.setState({ isPlaying: false, isBuffering: false, playbackError: said });
     useToast.getState().show(said);
@@ -2971,8 +2987,10 @@ function onStatus(status: AudioStatus) {
     onPlaybackError(status.error, intendPlay);
     return;
   }
-  // Sound: whatever it took, this track is not the failing one any more.
-  if (status.playing) retries = playingAgain(retries);
+  // Sound, for long enough: the track is not the failing one any more. Not
+  // at the first second, which every reload plays before seeking back to
+  // where it failed (see `soundHeld`).
+  if (status.playing) retries = soundHeld(retries, Date.now(), prev.queue[prev.index]?.id);
   const buffering =
     intendPlay && !status.didJustFinish && (status.isBuffering || !status.isLoaded);
   // Only once loaded: while buffering the duration is still unknown and would

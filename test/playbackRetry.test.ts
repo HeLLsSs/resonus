@@ -12,7 +12,11 @@ import {
   onFailure,
   playingAgain,
   RETRY_DELAY_MS,
+  MAX_SKIPS,
   settled,
+  skipping,
+  SOUND_HELD_MS,
+  soundHeld,
 } from '@/lib/playbackRetry';
 
 /** A failure, with the reload it asks for carried through to its end. */
@@ -100,6 +104,64 @@ describe('playingAgain', () => {
   it('leaves a state with nothing counted in it alone', () => {
     const s = freshRetries();
     assert.equal(playingAgain(s), s);
+  });
+});
+
+describe('soundHeld', () => {
+  it('does not forgive a track for the second it plays before seeking back to where it failed', () => {
+    let s = freshRetries();
+    let at = 1000;
+    // A track broken at the same place, reloaded and sounding briefly each time.
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      s = fail(s, at).state;
+      s = soundHeld(s, at + 800, 's1');
+      at += RETRY_DELAY_MS;
+    }
+    assert.equal(fail(s, at).act, 'announce');
+  });
+
+  it('forgives a track that has sounded for a while since its reload', () => {
+    let s = fail(freshRetries(), 1000).state;
+    s = soundHeld(s, 1000 + SOUND_HELD_MS, 's1');
+    assert.equal(s.attempts, 0);
+  });
+
+  it('leaves a state with nothing counted in it alone', () => {
+    const s = freshRetries();
+    assert.equal(soundHeld(s, 99_999, 's1'), s);
+  });
+
+  it('lets go of a track given up on as soon as another one sounds, keeping the count of skips', () => {
+    let s = freshRetries();
+    let at = 1000;
+    for (let i = 0; i <= MAX_ATTEMPTS; i++) {
+      s = fail(s, at).state;
+      at += RETRY_DELAY_MS;
+    }
+    s = skipping(s)!;
+    s = soundHeld(s, at + 500, 's2');
+    assert.deepEqual([s.gaveUp, s.skipped, onFailure(s, 's1', at + 600).act], [false, 1, 'retry']);
+  });
+});
+
+describe('skipping', () => {
+  it('passes over a few bad tracks in a row, then stops', () => {
+    let s = freshRetries();
+    for (let i = 0; i < MAX_SKIPS; i++) {
+      const next = skipping(s);
+      assert.notEqual(next, null, `skip ${i + 1}`);
+      s = next!;
+      // The next track's own failures start from nothing, but remember the skips.
+      s = onFailure(s, `s${i + 2}`, 1000 * (i + 1)).state;
+    }
+    assert.equal(skipping(s), null);
+  });
+
+  it('forgets the skips once a track has sounded for a while', () => {
+    let s = skipping(freshRetries())!;
+    s = fail(s, 1000, 's2').state;
+    s = soundHeld(s, 1000 + SOUND_HELD_MS, 's2');
+    assert.equal(s.skipped, 0);
   });
 });
 
