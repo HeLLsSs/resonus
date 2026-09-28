@@ -95,18 +95,20 @@ appear when it is switched off.
 
 ### Listening together
 
-- **A Jam**: several people hearing the same queue at the same moment, each on
-  their own device, like Spotify's. Open one from the Output sheet or
-  Settings › Navifind, give out the six-letter code, and anybody in it can add
-  songs, skip, seek or pause: the change reaches every device at once. The
-  proxy keeps the session and is the clock, so nothing is streamed between
-  phones and nobody's phone has to stay in front.
+- **A Jam**: one queue, steered by everybody, like Spotify's. Open one from
+  the Output sheet or Settings › Navifind, give out the six-letter code, and
+  anybody in it can add songs, skip, seek, pause or set the volume: the
+  change reaches every device at once. The phone that opened the Jam is the
+  one that plays it; the phones that join are silent remotes, their volume
+  keys included, unless they switch "Play on this phone" on to hear it too.
+  The proxy keeps the session and is the clock, so nothing is streamed
+  between phones and nobody's phone has to stay in front.
 - **Guests need no app and no account.** `https://<your proxy>/jam/<code>`
   opens a page in any browser, with a QR code to scan for it, where a guest
-  searches the library and the web, adds to the queue and listens along; a
-  guest who has the app can open the session in it from there. Every player keeps
-  itself within a few tens of milliseconds of the session, correcting quietly
-  by playing a touch faster or slower rather than jumping.
+  searches the library and the web, adds to the queue and sets the volume; a
+  guest who has the app can open the session in it from there. A device that
+  does play keeps itself within a few tens of milliseconds of the session,
+  correcting quietly by playing a touch faster or slower rather than jumping.
 - **The host's sound can go anywhere.** In a Jam the phone can play through
   any of its outputs: a Chromecast, a Home Assistant or Music Assistant
   player, a WiiM group. The session still decides what plays and when; the

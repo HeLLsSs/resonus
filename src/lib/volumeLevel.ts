@@ -9,7 +9,7 @@
  * Without the module (web, iOS) the gain is all there is, and it is what
  * moves.
  */
-import { audioOutputAvailable, getMediaVolume, setMediaVolume } from '@/lib/audioOutput';
+import { audioOutputAvailable, getMediaVolume, onMediaVolumeChanged, setMediaVolume } from '@/lib/audioOutput';
 import { remoteKind, usePlayerStore } from '@/store/player';
 
 /** Whether the level is the phone's media volume rather than a speaker's or the gain. */
@@ -33,4 +33,35 @@ export function setVolumeLevel(level: number): void {
     return;
   }
   usePlayerStore.getState().setVolume(clamped);
+}
+
+/**
+ * One step of the level: what a press of the keys moves it by on the phone,
+ * and what a slider on a speaker moves in, which has no steps of its own.
+ */
+export function volumeStep(): number {
+  if (phonesOwn()) {
+    const { max } = getMediaVolume();
+    return max > 0 ? 1 / max : 1;
+  }
+  return 0.05;
+}
+
+/**
+ * Every move of the level `volumeLevel` reads, from whichever side is
+ * playing: the hardware keys while the phone is, the player's own volume
+ * while a speaker is (or the gain, without the module). Handed the new
+ * level. The return stops listening.
+ */
+export function onVolumeLevelChanged(cb: (level: number) => void): () => void {
+  const stopMedia = onMediaVolumeChanged(({ value, max }) => {
+    if (phonesOwn() && max > 0) cb(value / max);
+  });
+  const stopStore = usePlayerStore.subscribe((state, prev) => {
+    if (state.volume !== prev.volume && !phonesOwn()) cb(state.volume);
+  });
+  return () => {
+    stopMedia();
+    stopStore();
+  };
 }

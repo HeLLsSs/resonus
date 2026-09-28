@@ -23,10 +23,9 @@
 // goes out with the screen off as often as not.
 import { fetch } from 'expo/fetch';
 
-import { onMediaVolumeChanged } from '@/lib/audioOutput';
-import { volumeLevel } from '@/lib/volumeLevel';
+import { onVolumeLevelChanged, volumeLevel } from '@/lib/volumeLevel';
 import { useHomeAssistant } from '@/store/homeAssistant';
-import { currentOutput, onOutputChanged, remoteKind, usePlayerStore, type CurrentOutput, type RepeatMode, type StreamInfo } from '@/store/player';
+import { currentOutput, onOutputChanged, usePlayerStore, type CurrentOutput, type RepeatMode, type StreamInfo } from '@/store/player';
 
 /** Short enough that a house that is down doesn't hold a socket all day. */
 const TIMEOUT_MS = 5_000;
@@ -111,12 +110,9 @@ let lastSent: { state: HaBridgeState; at: number } | null = null;
 export function startHaBridge(): void {
   if (started) return;
   started = true;
-  // The phone's own volume moves under the hardware keys as well, which the
-  // player store never hears about. Only while the phone is what plays: a
-  // key pressed with a speaker on moves that speaker, through the store.
-  onMediaVolumeChanged(() => {
-    if (!remoteKind()) publishHaState();
-  });
+  // The volume as the card shows it: the phone's own under the hardware
+  // keys while the phone plays, the speaker's while one does.
+  onVolumeLevelChanged(() => publishHaState());
   // A speaker taken or left: the card's output changes, and so does its
   // volume, which is now the speaker's.
   onOutputChanged(() => publishHaState());
@@ -126,7 +122,6 @@ export function startHaBridge(): void {
       state.index !== prev.index ||
       state.isPlaying !== prev.isPlaying ||
       state.streamInfo !== prev.streamInfo ||
-      state.volume !== prev.volume ||
       state.shuffle !== prev.shuffle ||
       state.repeat !== prev.repeat ||
       seeked(state.positionSec, state.isPlaying, state.speed)

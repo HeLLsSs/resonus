@@ -21,6 +21,7 @@ import { startCarAutoSync } from '@/lib/carAutoSync';
 import { startPlaybackLock } from '@/store/playbackLock';
 import { startHaBridge } from '@/lib/haBridge';
 import { startIntentsApi } from '@/lib/intentsApi';
+import { startJamVolume } from '@/lib/jamVolume';
 import { startNavifindWatch } from '@/lib/navifindWatch';
 import { startWidgetSync } from '@/lib/widgetSync';
 import { useAuthStore } from '@/store/auth';
@@ -96,6 +97,8 @@ function startOnce(): void {
   // What is playing, on its way to the Home Assistant card
   // (docs/HOME-ASSISTANT.md). Quiet until a house is set up.
   startHaBridge();
+  // A Jam's volume, from the keys of any phone in it to the one that plays.
+  startJamVolume();
   // Word from the Navifind proxy once what it was asked to fetch is in.
   startNavifindWatch();
 }

@@ -12,6 +12,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import Slider from '@react-native-community/slider';
+import { Ionicons } from '@expo/vector-icons';
 
 import { SettingRow, SettingsPage, settingsStyles, SwitchList, TextRow } from '@/components/SettingsUI';
 import { useAccent } from '@/hooks/useAccent';
@@ -20,7 +22,7 @@ import { authHeaders } from '@/api/subsonic';
 import { cleanCode, JamError, jamPageUrl, jamQrUrl, listJams } from '@/lib/jam';
 import { navifindActive } from '@/lib/navifind';
 import { useAuthStore } from '@/store/auth';
-import { endJam, isJamHost, joinJamByCode, leaveJam, setJamListenHere, startJam, useJam } from '@/store/jam';
+import { endJam, isJamHost, jamReportVolume, joinJamByCode, leaveJam, setJamListenHere, startJam, useJam } from '@/store/jam';
 import { useToast } from '@/store/toast';
 import { fontSize, spacing, useTheme } from '@/theme';
 
@@ -29,6 +31,8 @@ const CODE_MAX = 8;
 const QR_SIZE = 200;
 /** How often the list of sessions under way is asked for while this screen is up. */
 const OPEN_EVERY_MS = 10_000;
+/** How long the slider keeps the finger's level while the session has not answered with it. */
+const LIVE_VOLUME_MAX_MS = 2_000;
 
 export default function JamScreen() {
   const colors = useTheme();
@@ -43,6 +47,24 @@ export default function JamScreen() {
   const me = useJam((s) => s.me);
   const busy = useJam((s) => s.busy);
   const listenHere = useJam((s) => s.listenHere);
+  // Undefined with a proxy from before the session had a volume: no slider then.
+  const sessionVolume = useJam((s) => s.session?.volume);
+  // The slider's value from the finger touching it until the session answers
+  // with a level near it: handed the session's stale number in between, the
+  // thumb hopped back and then forward.
+  const [liveVolume, setLiveVolume] = useState<number | null>(null);
+  // When the finger first moved it: the hold runs from there, not from the
+  // session's last word, or others moving the volume would keep it held.
+  const liveSince = useRef(0);
+  useEffect(() => {
+    if (liveVolume === null) return;
+    // Let go once the session is near it, or once a command that never came
+    // back has had its chance: the session's own number is then the truth.
+    const landed = sessionVolume !== undefined && Math.abs(sessionVolume - liveVolume) < 0.03;
+    const left = Math.max(0, liveSince.current + LIVE_VOLUME_MAX_MS - Date.now());
+    const timer = setTimeout(() => setLiveVolume(null), landed ? 0 : left);
+    return () => clearTimeout(timer);
+  }, [liveVolume, sessionVolume]);
   const [code, setCode] = useState(params.code ? cleanCode(params.code) : '');
   const canJam = navifindActive() && !!auth && !offline;
   const host = isJamHost();
@@ -123,11 +145,39 @@ export default function JamScreen() {
               </Pressable>
             </View>
 
+            {/* The volume of the Jam, wherever it plays: the device that
+                opened it follows this, and so do the volume keys of every
+                phone in it. In twentieths, so a drag is not a command per
+                pixel. */}
+            {sessionVolume !== undefined ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.sm }}>
+                <Ionicons name="volume-low-outline" size={20} color={colors.textSecondary} />
+                <Slider
+                  style={{ flex: 1, height: 32 }}
+                  accessibilityLabel={t('Jam volume')}
+                  minimumValue={0}
+                  maximumValue={1}
+                  step={0.05}
+                  value={liveVolume ?? sessionVolume}
+                  onValueChange={(v) => {
+                    if (liveVolume === null) liveSince.current = Date.now();
+                    setLiveVolume(v);
+                    jamReportVolume(v, false);
+                  }}
+                  onSlidingComplete={(v) => jamReportVolume(v, false)}
+                  minimumTrackTintColor={accent}
+                  maximumTrackTintColor={colors.control}
+                  thumbTintColor={colors.knob}
+                />
+                <Ionicons name="volume-high-outline" size={20} color={colors.textSecondary} />
+              </View>
+            ) : null}
+
             <SwitchList
               options={[
                 {
                   label: t('Play on this phone'),
-                  description: t('Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.'),
+                  description: t('The phone that opened the Jam plays it; the ones that join are silent and steer, volume keys included. On, this phone plays too.'),
                   value: listenHere,
                   onChange: setJamListenHere,
                 },

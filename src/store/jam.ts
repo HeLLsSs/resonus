@@ -52,6 +52,8 @@ const RETRY_MS = 2_000;
 const SESSION_MAX_QUEUE = 500;
 /** Of a queue too long for it, how much of what was already played is kept. */
 const KEEP_BEHIND = 50;
+/** The least time between two volume commands from a slider or the keys. */
+const VOLUME_EVERY_MS = 300;
 
 /** What the player lends the session: the way to move it without asking it. */
 export interface JamHooks {
@@ -84,9 +86,10 @@ interface JamState {
   /** Opening or joining a session right now. */
   busy: boolean;
   /**
-   * Whether this phone plays the music, or only shows and steers it: the
-   * phone in your hand while the speakers are on the computer that opened
-   * the session. Kept across sessions, since it is about the phone.
+   * Whether this phone plays the music, or only shows and steers it. The
+   * one that opened the session plays; the ones that join it are silent, a
+   * remote in the hand for the speakers that are elsewhere, unless they ask
+   * to hear it here too. Decided on entering, and a switch for the rest.
    */
   listenHere: boolean;
 }
@@ -103,6 +106,97 @@ export const useJam = create<JamState>(() => ({
 export function setJamListenHere(listen: boolean): void {
   useJam.setState({ listenHere: listen });
   hooks?.silence(!listen);
+}
+
+/** The session's volume, 0..1; undefined for a proxy from before it had one. */
+export function jamVolume(): number | undefined {
+  return useJam.getState().session?.volume;
+}
+
+/** This device's own level, for the session's volume to be read from and applied to (`lib/jamVolume.ts`). */
+export interface JamVolumeDevice {
+  /** Moves the device's level: the phone's media volume, or the speaker's. */
+  apply: (level: number) => void;
+  /** The level right now. */
+  read: () => number;
+  /** The size of one step of the level, which is what the keys move by. */
+  step: () => number;
+}
+
+let device: JamVolumeDevice | null = null;
+/**
+ * The level this device is known to be at: what the session last had applied
+ * here, or what the device itself last said. What comes back from applying a
+ * level lands on the device's own grid, up to half a step away, and that is
+ * not a move to report; a key press is a whole step from it.
+ */
+let knownLevel = -1;
+/** The device's level before the session's was put on it, given back on leaving. */
+let levelBefore: number | null = null;
+let volumeTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingVolume: number | null = null;
+
+export function setJamVolumeDevice(d: JamVolumeDevice): void {
+  device = d;
+}
+
+/** The music moved to a speaker or back to the phone: the level is another
+ *  thing's now, and the session's is put on it afresh. */
+export function jamForgetLevel(): void {
+  knownLevel = -1;
+}
+
+/** A level as the proxy keeps it, with two decimals. */
+function toProxyLevel(level: number): number {
+  return Math.round(level * 100) / 100;
+}
+
+/** Whether two levels are the same to the proxy. */
+function sameLevel(a: number, b: number): boolean {
+  return toProxyLevel(a) === toProxyLevel(b);
+}
+
+function nearKnown(level: number): boolean {
+  return knownLevel >= 0 && Math.abs(level - knownLevel) <= (device?.step() ?? 0.05) / 2 + 1e-6;
+}
+
+/**
+ * This device's volume moved: the session is told, so the device that plays
+ * follows. The first move goes at once and the ones right behind it wait
+ * their turn, the last value winning. `fromDevice` is a move read off the
+ * device itself, the keys or a speaker, which is the one kind that can be the
+ * session's own volume landing here and settling on the device's grid;
+ * nothing goes out for that. A slider's move is meant, whatever its size.
+ */
+export function jamReportVolume(level: number, fromDevice = true): void {
+  const held = jamVolume();
+  // A proxy from before the session had a volume would refuse the command,
+  // with a toast for every press of a key.
+  if (!token || held === undefined) return;
+  if (fromDevice && nearKnown(level)) {
+    // The device's grid answering the level it was set to: remembered as
+    // where the device really is, so the next key press counts from there.
+    knownLevel = level;
+    return;
+  }
+  knownLevel = level;
+  if (sameLevel(level, held)) return;
+  if (volumeTimer) {
+    pendingVolume = level;
+    return;
+  }
+  sendVolume(level);
+  volumeTimer = setTimeout(() => {
+    volumeTimer = null;
+    const next = pendingVolume;
+    pendingVolume = null;
+    const now = jamVolume();
+    if (next !== null && token && now !== undefined && !sameLevel(next, now)) sendVolume(next);
+  }, VOLUME_EVERY_MS);
+}
+
+function sendVolume(level: number): void {
+  void jamSend({ type: 'volume', level: toProxyLevel(level) });
 }
 
 let hooks: JamHooks | null = null;
@@ -190,7 +284,14 @@ export async function startJam(): Promise<void> {
       // part of `replace` starts playing regardless, and is told again.
       if (!here.playing && view.session.playing) view = await jamCommand(auth(), view.token, { type: 'pause' });
     }
-    enter(view);
+    // The session opens at this device's own level, not at full volume: it
+    // is the level everybody hears, and this is the device they hear.
+    let level: number | undefined;
+    if (view.session.volume !== undefined && device) {
+      level = device.read();
+      view = await jamCommand(auth(), view.token, { type: 'volume', level: toProxyLevel(level) });
+    }
+    enter(view, level);
   } finally {
     useJam.setState({ busy: false });
   }
@@ -246,11 +347,16 @@ export async function jamSend(command: JamCommand): Promise<void> {
   }
 }
 
-function enter(view: JamView): void {
+/** `ownLevel`: the level this device is at, when the session was just opened at it. */
+function enter(view: JamView, ownLevel?: number): void {
   stop();
   const gen = ++generation;
   token = view.token;
-  hooks?.silence(!useJam.getState().listenHere);
+  knownLevel = ownLevel ?? -1;
+  // The one that opened it plays; the rest are silent until they ask.
+  const listen = view.me === view.session.hostId;
+  useJam.setState({ listenHere: listen });
+  hooks?.silence(!listen);
   hooks?.armed();
   take(view);
   // A profile that goes away takes its session with it: the token was the
@@ -294,6 +400,14 @@ function stop(): void {
   appStateSub = null;
   unsubAuth?.();
   unsubAuth = null;
+  if (volumeTimer) clearTimeout(volumeTimer);
+  volumeTimer = null;
+  pendingVolume = null;
+  knownLevel = -1;
+  // A phone that only steered had the session's level put on it for its
+  // keys' sake; what plays on it now, alone, plays at its own level again.
+  if (levelBefore !== null && !useJam.getState().listenHere) device?.apply(levelBefore);
+  levelBefore = null;
   hooks?.silence(false);
   useJam.setState({ session: null, me: '', addedBy: [] });
   hooks?.armed();
@@ -306,8 +420,26 @@ function positionAt(session: JamSession): () => number {
 /** A session as the proxy just told it: kept, and put into the player. */
 function take(view: JamView): void {
   const { songs, addedBy } = splitQueue(view.session.queue);
+  const before = useJam.getState();
   useJam.setState({ session: view.session, me: view.me, addedBy });
+  // The host left and the session fell to this phone: the music was coming
+  // out of the phone that left, and somebody has to play it now.
+  if (before.session && before.session.hostId !== view.me && view.session.hostId === view.me && !before.listenHere) {
+    setJamListenHere(true);
+  }
   void hooks?.follow(songs, view.session.index, view.session.playing, positionAt(view.session));
+  // The session's volume, on every device in it: on the one that plays it
+  // is the sound, on the others it is what their keys start from. Not from
+  // a proxy that has none: that would be full volume everywhere.
+  // Not while a move of this device's own is still on its way out: the
+  // answer to the first of a burst would pull the level back before the
+  // last of it lands.
+  const level = view.session.volume;
+  if (level !== undefined && pendingVolume === null && !nearKnown(level)) {
+    if (levelBefore === null && device) levelBefore = device.read();
+    knownLevel = level;
+    device?.apply(level);
+  }
 }
 
 /** Waits on the session for as long as we are in it. */

@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1249 of them.
+Every string the app can show, under the screen it shows up on. 1252 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -388,6 +388,7 @@ you are actually typing into, which is easier than reading it here.
 | `Nothing downloaded` |  |
 | `Offline, only downloads can play` |  |
 | `Pinned` |  |
+| `Play all` |  |
 | `Recently added` | A sort order, and a section: newest first (in Favorites, last favorited first) |
 | `Recents` | Library section and its sort order: recently opened items |
 | `Resonuls has no account on this phone yet` |  |
@@ -420,6 +421,7 @@ you are actually typing into, which is easier than reading it here.
 | `For everybody.` | The line under “End the Jam”, explaining it |
 | `Host` |  |
 | `Jam needs a server account` |  |
+| `Jam volume` |  |
 | `Jams under way` |  |
 | `Join` |  |
 | `Join a Jam` |  |
@@ -427,12 +429,12 @@ you are actually typing into, which is easier than reading it here.
 | `Leave the Jam` |  |
 | `Listen together, everyone on their own device, all hearing the same thing at the same moment. Anyone can add songs, skip or pause. A browser can join with the code, no account needed.` |  |
 | `No Jam with that code` |  |
-| `Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.` | The line under “Play on this phone”, explaining it |
 | `Play on this phone` |  |
 | `QR code to join from a browser` |  |
 | `Share the link` |  |
 | `Start a Jam` |  |
 | `The Jam has ended` |  |
+| `The phone that opened the Jam plays it; the ones that join are silent and steer, volume keys included. On, this phone plays too.` | The line under “Play on this phone”, explaining it |
 | `What is playing here becomes what everybody hears.` | The line under “Start a Jam”, explaining it |
 | `What is playing keeps playing, on this phone alone.` | The line under “Leave the Jam”, explaining it |
 
@@ -1711,6 +1713,7 @@ you are actually typing into, which is easier than reading it here.
 | `Couldn't load albums.` | Error on the screen, with a Retry button |
 | `Couldn't load songs.` | Error on the screen, with a Retry button |
 | `Couldn't play the song` | Toast: the app could not start it at all |
+| `Couldn't play the song, on to the next` | Toast: the same, and the queue moves on to the next song by itself |
 | `Create` | The confirm button of the new-playlist dialog. A verb |
 | `Date added` |  |
 | `Default` | Sorting pill: what you get when nothing is sorted, which is the order the server keeps its songs in. Not alphabetical, and not Resonus deciding. On a playlist it is the order the list came in, which is the one you made by dragging the songs if it is an ordinary playlist and the one its rules produced if it is a smart one — hence a word that is true of both rather than "custom" or "pre-defined" |

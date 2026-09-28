@@ -1237,7 +1237,6 @@
   "Listen together, everyone on their own device.": "Écouter ensemble, chacun sur son appareil.",
   "Added by {name}": "Ajouté par {name}",
   "Play on this phone": "Jouer sur ce téléphone",
-  "Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.": "Désactivé, ce téléphone se contente d’afficher et de piloter le Jam : pour le téléphone dans la main quand les enceintes sont sur l’ordinateur qui l’a ouvert.",
   "Jams under way": "Jams en cours",
   "{name}'s Jam": "Jam de {name}",
   "Join {name}'s Jam": "Rejoindre le Jam de {name}",
@@ -1256,5 +1255,9 @@
   "the browser": "le navigateur",
   "the phone": "le téléphone",
   "another device": "un autre appareil",
-  "Playing on {device}": "Lecture sur {device}"
+  "Playing on {device}": "Lecture sur {device}",
+  "The phone that opened the Jam plays it; the ones that join are silent and steer, volume keys included. On, this phone plays too.": "Le téléphone qui a ouvert le Jam le joue ; ceux qui le rejoignent sont muets et le pilotent, touches de volume comprises. Activé, ce téléphone joue aussi.",
+  "Jam volume": "Volume du Jam",
+  "Play all": "Tout lire",
+  "Couldn't play the song, on to the next": "Impossible de lire le titre, passage au suivant"
 }

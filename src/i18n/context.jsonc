@@ -349,6 +349,7 @@
     "Couldn't find anything to mix with this song": "Toast: the server had nothing similar to carry on with",
     "This song can't be cast": "Toast: the speaker or TV will not take this file",
     "Couldn't play the song": "Toast: the app could not start it at all",
+    "Couldn't play the song, on to the next": "Toast: the same, and the queue moves on to the next song by itself",
 
     // ── Empty states and errors that offer another go ────────────────────────
     "Retry": "The button on an error message: try again. A verb",

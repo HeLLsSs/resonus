@@ -1235,7 +1235,6 @@
   "Listen together, everyone on their own device.": "Listen together, everyone on their own device.",
   "Added by {name}": "Added by {name}",
   "Play on this phone": "Play on this phone",
-  "Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.": "Off, this phone only shows and steers the Jam: for the phone in your hand while the speakers are on the computer that opened it.",
   "Jams under way": "Jams under way",
   "{name}'s Jam": "{name}'s Jam",
   "Join {name}'s Jam": "Join {name}'s Jam",
@@ -1254,5 +1253,9 @@
   "the browser": "the browser",
   "the phone": "the phone",
   "another device": "another device",
-  "Playing on {device}": "Playing on {device}"
+  "Playing on {device}": "Playing on {device}",
+  "The phone that opened the Jam plays it; the ones that join are silent and steer, volume keys included. On, this phone plays too.": "The phone that opened the Jam plays it; the ones that join are silent and steer, volume keys included. On, this phone plays too.",
+  "Jam volume": "Jam volume",
+  "Play all": "Play all",
+  "Couldn't play the song, on to the next": "Couldn't play the song, on to the next"
 }

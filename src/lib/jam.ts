@@ -48,6 +48,9 @@ export interface JamSession {
   anchorPos: number;
   /** Where the server says the track was as it answered. */
   positionMs: number;
+  /** The session's volume, 0..1: what the device that plays applies, and
+   *  what anyone in the session may set. Missing from a proxy before it. */
+  volume?: number;
 }
 
 /** What every answer carries: the session, who we are in it, and the time it was sent. */
@@ -66,6 +69,7 @@ export type JamCommand =
   | { type: 'remove'; index: number; id: string }
   | { type: 'move'; from: number; to: number }
   | { type: 'replace'; songs: Song[]; index: number; position?: number; playing?: boolean }
+  | { type: 'volume'; level: number }
   | { type: 'kick'; memberId: string };
 
 export class JamError extends Error {
