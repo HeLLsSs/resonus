@@ -20,6 +20,10 @@
     <intent>
       <action android:name="android.intent.action.TTS_SERVICE" />
     </intent>
+    <!-- The phone's speech dialog, for the ride screen's voice button. -->
+    <intent>
+      <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+    </intent>
     <!-- The navigation apps ride mode can bring up after the ride screen
          (NAVIGATION_APPS in RideModeModule): the same list, or the app
          cannot tell whether one is installed. -->

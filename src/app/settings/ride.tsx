@@ -13,11 +13,13 @@
  * asked when the floating player is switched on, which is also what lets
  * the app come up on its own over the navigation app.
  */
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 
 import { SelectList, SettingRow, SettingsPage, settingsStyles, SliderRow, SwitchList } from '@/components/SettingsUI';
+import { getRadioStations } from '@/api/subsonic';
 import { useT } from '@/i18n';
 import {
   canDrawOverlays,
@@ -30,6 +32,7 @@ import {
   type EmptyQueueAction,
   type OverlaySize,
 } from '@/lib/rideMode';
+import { useAuthStore } from '@/store/auth';
 import { useRideMode } from '@/store/rideMode';
 import { useTheme } from '@/theme';
 
@@ -47,6 +50,13 @@ export default function RideSettings() {
   // the system's own screen, which this one has no way of hearing from.
   const [overlayAllowed, setOverlayAllowed] = useState(canDrawOverlays);
   const [navigationApps] = useState(getNavigationApps);
+  // The same query the radio screen keeps, so a station added there is here.
+  const auth = useAuthStore((s) => s.auth);
+  const stations = useQuery({
+    queryKey: ['radioStations'],
+    queryFn: () => getRadioStations(auth!),
+    enabled: !!auth,
+  });
 
   const ask = async () => {
     const granted = await requestBluetoothPermission();
@@ -183,6 +193,25 @@ export default function RideSettings() {
             ]}
             value={navigationApps.some((app) => app.package === config.navigationApp) ? config.navigationApp : ''}
             onChange={(navigationApp) => setConfig({ navigationApp })}
+          />
+        ) : null}
+        {/* Only with stations to choose from: the button on the ride screen
+            is there when a station is, and not otherwise. */}
+        {stations.data && stations.data.length > 0 ? (
+          <SelectList
+            label={t('Radio station')}
+            description={t('The station the Radio button of the ride screen plays.')}
+            options={[
+              { value: '', label: t('None') },
+              ...stations.data.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+            value={stations.data.some((s) => s.id === config.radioStationId) ? config.radioStationId : ''}
+            onChange={(radioStationId) =>
+              setConfig({
+                radioStationId,
+                radioStationName: stations.data?.find((s) => s.id === radioStationId)?.name ?? '',
+              })
+            }
           />
         ) : null}
         <SettingRow

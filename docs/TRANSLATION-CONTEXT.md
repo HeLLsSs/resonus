@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1287 of them.
+Every string the app can show, under the screen it shows up on. 1293 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -609,7 +609,6 @@ you are actually typing into, which is easier than reading it here.
 | `PLAYING FROM` | Small label above the cover, followed by the name of the album, playlist or mix it is playing from, or by `Queue` while the song is one that was added to the queue by hand. Written in capitals by the design, so it can be capitals in your language too, or not, whichever reads right |
 | `Previous` | Player control: the previous track (accessibility label) |
 | `Queue` | The list of songs waiting to play. Not a playlist |
-| `Radio` | Internet radio stations. Most languages keep the word |
 | `Remove from the group` | The − beside `Add to the group`, and the same in reverse: it takes that room out of the group so it stops playing along. Read out by the screen reader, never shown, and Sonos only |
 | `Repeat` | Start again at the end |
 | `Search again` |  |
@@ -722,7 +721,6 @@ you are actually typing into, which is easier than reading it here.
 | `Find a station` | The search box's placeholder on the radio screen |
 | `No radio stations` | Empty state heading |
 | `Pin to top` | Keep this at the top of its list, above everything else. `Unpin` undoes it |
-| `Radio` | Internet radio stations. Most languages keep the word |
 | `Remove “{name}” from your server?` | Dialog title: stations live on the server, so this deletes it for everybody |
 | `Remove cover` | Screen reader label for the small x on a chosen picture |
 | `Station name` | The name field when adding an internet radio station |
@@ -739,11 +737,15 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `{title}, by {artist}` | What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it |
+| `Battery at {n} %` | Read out loud in the helmet when the phone's battery reaches 20, 10 and 5 %. `{n}` is the level |
 | `Exit ride mode` |  |
 | `Next` | Player control: the next track (accessibility label) |
+| `No radio station chosen` |  |
+| `Nothing found for {query}` | Read out loud after a voice search that found nothing. `{query}` is what was said |
 | `Nothing playing` | The ride screen with an empty queue: the title's place |
 | `Previous` | Player control: the previous track (accessibility label) |
 | `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
+| `Voice` | The ride screen's big microphone button: say a song, an artist or a command |
 | `Volume down` |  |
 | `Volume up` |  |
 
@@ -760,7 +762,6 @@ you are actually typing into, which is easier than reading it here.
 | `In the lyrics` |  |
 | `No exact match. Showing the closest.` |  |
 | `Playlists` | A section on Home and in the library, and a folder in the car |
-| `Radio` | Internet radio stations. Most languages keep the word |
 | `Recent searches` | What was searched for before, kept on the phone |
 | `Song` | In search results, the little word under a result saying what kind of thing it is |
 | `What do you want to listen to?` | The placeholder in the search box, worded as a question |
@@ -1415,12 +1416,14 @@ you are actually typing into, which is easier than reading it here.
 | `Open ride mode` |  |
 | `Play, pause and skip over Waze or any other app. Needs permission to draw over other apps, asked when switched on.` |  |
 | `Play, pause and skip over Waze or any other app. Tap the title to come back here.` |  |
+| `Radio station` |  |
 | `Resume playback` |  |
 | `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
 | `Ride mode starts on its own when the chosen Bluetooth device connects, and stops when it disconnects. Pair the intercom with the phone first.` |  |
 | `Shuffle all` | One of the values of “With an empty queue” |
 | `Start when this device connects` |  |
 | `The media volume set when ride mode starts on its own, so it is not left where the kitchen had it.` | The line under “Volume at the start”, explaining it |
+| `The station the Radio button of the ride screen plays.` | The line under “Radio station”, explaining it |
 | `Volume at the start` |  |
 | `What starts when there is nothing to resume.` | The line under “With an empty queue”, explaining it |
 | `What was playing starts again when the intercom connects.` | The line under “Resume playback”, explaining it |
@@ -1811,6 +1814,7 @@ you are actually typing into, which is easier than reading it here.
 | `Play next` | Action: put this song right after the one playing, without clearing the rest |
 | `Playing next` | The toast that says `Play next` worked. Not the same string, and not a heading |
 | `Playlist name` | The name field when making or renaming a playlist |
+| `Radio` | Internet radio stations. Most languages keep the word |
 | `Random` |  |
 | `Rate {n} stars` | Read out by the screen reader for each star. `{n}` is which star it is |
 | `Remove` | Take something out of a list. Deleting for good is `Delete` |

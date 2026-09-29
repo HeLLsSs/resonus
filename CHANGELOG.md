@@ -7,6 +7,17 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [Unreleased]
+
+### Added
+
+- Ride mode: a Voice button on the ride screen, through the phone's own
+  speech dialog, for a song, an artist or a word ("next", "pause",
+  "favourites", "shuffle", "radio", in French or English); a Radio button
+  for the station chosen in the settings; the phone's battery read out in
+  the helmet at 20, 10 and 5 %; and the music brought back after a phone
+  call when the phone has not brought it back itself.
+
 ## [1.6.0] - 2026-09-29
 
 ### Added

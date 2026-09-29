@@ -39,6 +39,9 @@ export interface RideConfig {
   startVolume: number;
   /** The floating player's buttons. */
   overlaySize: OverlaySize;
+  /** The station the ride screen's radio button plays; empty for no button. */
+  radioStationId: string;
+  radioStationName: string;
 }
 
 export type OverlaySize = 'normal' | 'large';
@@ -92,10 +95,21 @@ interface NativeRideMode {
   setShowWhenLocked: (on: boolean) => void;
   setScreenBrightness: (level: number) => void;
   setActive: (on: boolean) => void;
+  canListen: () => boolean;
+  listen: () => Promise<string>;
   addListener: {
     (event: 'intercom', cb: (e: IntercomEvent) => void): { remove: () => void };
     (event: 'action', cb: (e: { action: RideAction }) => void): { remove: () => void };
+    (event: 'call', cb: (e: { inCall: boolean }) => void): { remove: () => void };
+    (event: 'battery', cb: (e: BatteryEvent) => void): { remove: () => void };
   };
+}
+
+/** The battery as the system last reported it. */
+export interface BatteryEvent {
+  /** 0 to 100. */
+  level: number;
+  charging: boolean;
 }
 
 const native = requireOptionalNativeModule<NativeRideMode>('RideMode');
@@ -115,6 +129,8 @@ export const NO_RIDE_CONFIG: RideConfig = {
   navigationApp: '',
   startVolume: 0,
   overlaySize: 'normal',
+  radioStationId: '',
+  radioStationName: '',
 };
 
 export function getRideConfig(): RideConfig {
@@ -215,6 +231,24 @@ export function setScreenBrightness(level: number): void {
 /** Tells the quick settings tile whether ride mode is on. */
 export function setRideActive(on: boolean): void {
   native?.setActive(on);
+}
+
+/** Whether the phone can turn speech into text (Google's app, on most phones). */
+export function canListen(): boolean {
+  return native?.canListen() ?? false;
+}
+
+/** Brings up the phone's speech dialog; what was said, or empty for nothing. */
+export function listen(): Promise<string> {
+  return native?.listen() ?? Promise.resolve('');
+}
+
+export function onCall(cb: (inCall: boolean) => void): { remove: () => void } | undefined {
+  return native?.addListener('call', (e) => cb(e.inCall));
+}
+
+export function onBattery(cb: (e: BatteryEvent) => void): { remove: () => void } | undefined {
+  return native?.addListener('battery', cb);
 }
 
 export function onIntercom(cb: (e: IntercomEvent) => void): { remove: () => void } | undefined {

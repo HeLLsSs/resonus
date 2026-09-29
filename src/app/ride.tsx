@@ -26,8 +26,9 @@ import { COVER, songCoverUrl } from '@/api/data';
 import { Cover } from '@/components/Cover';
 import { useT } from '@/i18n';
 import { haptic } from '@/lib/haptics';
-import { setScreenBrightness } from '@/lib/rideMode';
+import { canListen, setScreenBrightness } from '@/lib/rideMode';
 import { activateRide, deactivateRide } from '@/lib/rideSync';
+import { listenAndPlay, playRideRadio } from '@/lib/rideVoice';
 import { onVolumeLevelChanged, setVolumeLevel, volumeLevel, volumeStep } from '@/lib/volumeLevel';
 import { currentSong, useLiveInfo, usePlayerStore } from '@/store/player';
 import { useRideMode } from '@/store/rideMode';
@@ -95,6 +96,15 @@ export default function RideScreen() {
   const next = usePlayerStore((s) => s.next);
   const previous = usePlayerStore((s) => s.previous);
   const active = useRideMode((s) => s.active);
+  const radioName = useRideMode((s) => s.config.radioStationName);
+  const [voice] = useState(canListen);
+  const [listening, setListening] = useState(false);
+  const askVoice = () => {
+    if (listening) return;
+    setListening(true);
+    haptic('medium');
+    void listenAndPlay().finally(() => setListening(false));
+  };
 
   // Opened by hand, from the settings or a shortcut: that is ride mode on.
   // Opened by the intercom it already is, and this does nothing.
@@ -221,6 +231,40 @@ export default function RideScreen() {
               </View>
               <BigButton icon="volume-high" label={t('Volume up')} size={VOLUME} onPress={() => bump(1)} />
             </View>
+            {/* The two ways to music with no list: a word said into the
+                helmet, and the one station chosen in the settings. Each only
+                when the phone, or the settings, can answer for it. */}
+            {voice || radioName ? (
+              <View style={styles.shortcuts}>
+                {voice ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('Voice')}
+                    onPress={askVoice}
+                    style={({ pressed }) => [styles.shortcut, (pressed || listening) && { opacity: 0.7 }]}
+                  >
+                    <Ionicons name="mic" size={36} color={WHITE} />
+                    <Text style={styles.shortcutText}>{t('Voice')}</Text>
+                  </Pressable>
+                ) : null}
+                {radioName ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={radioName}
+                    onPress={() => {
+                      haptic('medium');
+                      void playRideRadio();
+                    }}
+                    style={({ pressed }) => [styles.shortcut, pressed && { opacity: 0.7 }]}
+                  >
+                    <Ionicons name="radio" size={36} color={WHITE} />
+                    <Text style={styles.shortcutText} numberOfLines={1}>
+                      {radioName}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </View>
       </GestureDetector>
@@ -258,6 +302,19 @@ const styles = StyleSheet.create({
   volumeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md },
   volumeBar: { flex: 1, height: 12, borderRadius: 6, backgroundColor: BUTTON, overflow: 'hidden' },
   volumeFill: { height: '100%', backgroundColor: WHITE },
+  shortcuts: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },
+  shortcut: {
+    flex: 1,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: BUTTON,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  shortcutText: { color: WHITE, fontSize: 22, fontWeight: '700', flexShrink: 1 },
   exit: {
     position: 'absolute',
     right: spacing.md,

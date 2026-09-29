@@ -28,6 +28,9 @@ internal data class RideConfig(
   val startVolume: Double,
   /** The floating player's buttons: "normal" or "large". */
   val overlaySize: String,
+  /** The station the ride screen's radio button plays; empty for no button. */
+  val radioStationId: String,
+  val radioStationName: String,
 ) {
   /** Whether a connection is worth looking at: an intercom has been chosen. */
   val autoStart: Boolean
@@ -50,6 +53,8 @@ internal data class RideConfig(
       .putString(KEY_NAVIGATION_APP, navigationApp)
       .putFloat(KEY_START_VOLUME, startVolume.toFloat())
       .putString(KEY_OVERLAY_SIZE, overlaySize)
+      .putString(KEY_RADIO_ID, radioStationId)
+      .putString(KEY_RADIO_NAME, radioStationName)
       .apply()
   }
 
@@ -63,6 +68,8 @@ internal data class RideConfig(
     "navigationApp" to navigationApp,
     "startVolume" to startVolume,
     "overlaySize" to overlaySize,
+    "radioStationId" to radioStationId,
+    "radioStationName" to radioStationName,
   )
 
   companion object {
@@ -76,6 +83,8 @@ internal data class RideConfig(
     private const val KEY_NAVIGATION_APP = "navigationApp"
     private const val KEY_START_VOLUME = "startVolume"
     private const val KEY_OVERLAY_SIZE = "overlaySize"
+    private const val KEY_RADIO_ID = "radioStationId"
+    private const val KEY_RADIO_NAME = "radioStationName"
     /** Whether ride mode is on, as JS last said; what the quick settings tile shows. */
     private const val KEY_ACTIVE = "active"
 
@@ -91,6 +100,8 @@ internal data class RideConfig(
         navigationApp = prefs.getString(KEY_NAVIGATION_APP, null).orEmpty(),
         startVolume = prefs.getFloat(KEY_START_VOLUME, 0f).toDouble(),
         overlaySize = prefs.getString(KEY_OVERLAY_SIZE, null).orEmpty().ifEmpty { "normal" },
+        radioStationId = prefs.getString(KEY_RADIO_ID, null).orEmpty(),
+        radioStationName = prefs.getString(KEY_RADIO_NAME, null).orEmpty(),
       )
     }
 

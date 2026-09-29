@@ -1294,5 +1294,11 @@
   "Large, for thick gloves": "Grande, pour les gants épais",
   "Volume at the start": "Volume au départ",
   "The media volume set when ride mode starts on its own, so it is not left where the kitchen had it.": "Le volume média réglé quand le mode moto démarre tout seul, pour ne pas le laisser là où la cuisine l'avait mis.",
-  "Leave as is": "Laisser tel quel"
+  "Leave as is": "Laisser tel quel",
+  "Voice": "Voix",
+  "Radio station": "Station de radio",
+  "The station the Radio button of the ride screen plays.": "La station que joue le bouton Radio de l'écran moto.",
+  "No radio station chosen": "Aucune station de radio choisie",
+  "Nothing found for {query}": "Rien trouvé pour {query}",
+  "Battery at {n} %": "Batterie à {n} %"
 }

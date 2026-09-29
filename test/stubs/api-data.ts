@@ -117,3 +117,8 @@ export function songCoverUrl(song: Song, size?: number): string | undefined {
 export function getGenres(): Promise<Genre[]> {
   return call('getGenres', [], () => []);
 }
+
+/** A search that finds nothing: the modules under test only parse what to search for. */
+export async function search(_query: string): Promise<{ songs: Song[]; albums: Album[]; artists: unknown[] }> {
+  return { songs: [], albums: [], artists: [] };
+}

@@ -27,6 +27,17 @@ Ride mode on means:
   phone's text-to-speech engine, in the phone's language, with the same audio
   usage as a navigation app's prompts so it goes where they go and the music
   dips under it.
+- **Voice and Radio.** Two wide buttons under the volume. Voice brings up the
+  phone's own speech dialog (Google's, on most phones; the app records
+  nothing itself): say a song or an artist and the songs found play, or one
+  of "next", "pause", "previous", "favourites", "shuffle", "radio", in
+  French or English. Radio plays the station chosen as **Radio station** in
+  the settings, and the button is only there when one is.
+- **The battery read out** in the helmet at 20, 10 and 5 %, while not
+  charging, when announcements are on.
+- **The music back after a call.** The phone gives the audio back on its
+  own when a call ends and the player follows; when it has not within a
+  few seconds, ride mode starts it again.
 - **The app over the lock screen.** A phone locked in a pocket shows the ride
   screen without being unlocked, and every screen of the app is reachable
   that way while ride mode is on. It stops with it.
@@ -72,6 +83,15 @@ mode**, the **Ride mode** launcher shortcut (long press on the app icon), or
 the link `resonuls://ride`. The **Ride mode** tile of the quick settings
 shade (edit the shade to add it) starts and stops it the way the intercom
 does, from anywhere.
+
+## Google Assistant
+
+"Hey Google, play X on Resonus" is Google's call, not the app's: on the
+phone the Assistant only drives the media apps it knows, and a client of
+your own server is not among them. In Android Auto it works, since the car
+sends the words to the app's own search. The Voice button is what works
+everywhere: the phone's speech dialog turns the words into text and the
+app does the rest.
 
 ## Why Waze does not list Resonus
 

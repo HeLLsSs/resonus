@@ -292,6 +292,9 @@
     "With an empty queue": "Setting: what ride mode starts when the intercom connects and there is no queue to resume",
     "Nothing": "One of its choices: start nothing. Also the fallback value elsewhere",
     "Navigation app": "Setting: the app (Waze, Maps…) brought to the front when the intercom connects",
+    "Voice": "The ride screen's big microphone button: say a song, an artist or a command",
+    "Battery at {n} %": "Read out loud in the helmet when the phone's battery reaches 20, 10 and 5 %. `{n}` is the level",
+    "Nothing found for {query}": "Read out loud after a voice search that found nothing. `{query}` is what was said",
 
     // ── Diagnostics: the server id repair switch ────────────────────────────
     "Server id repair": "Section title in the hidden Diagnostics screen, above the switch below",

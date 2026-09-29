@@ -1292,5 +1292,11 @@
   "Large, for thick gloves": "Large, for thick gloves",
   "Volume at the start": "Volume at the start",
   "The media volume set when ride mode starts on its own, so it is not left where the kitchen had it.": "The media volume set when ride mode starts on its own, so it is not left where the kitchen had it.",
-  "Leave as is": "Leave as is"
+  "Leave as is": "Leave as is",
+  "Voice": "Voice",
+  "Radio station": "Radio station",
+  "The station the Radio button of the ride screen plays.": "The station the Radio button of the ride screen plays.",
+  "No radio station chosen": "No radio station chosen",
+  "Nothing found for {query}": "Nothing found for {query}",
+  "Battery at {n} %": "Battery at {n} %"
 }

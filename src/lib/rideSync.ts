@@ -24,6 +24,8 @@ import {
   announcement,
   canDrawOverlays,
   hideRideOverlay,
+  onBattery,
+  onCall,
   onIntercom,
   onRideAction,
   openNavigationApp,
@@ -65,6 +67,22 @@ let overlayShown = false;
 let announced = '';
 
 let lostTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Whether the music was going when a call came in, so it can be brought back after. */
+let playingBeforeCall = false;
+
+/**
+ * How long after a call ends before the music is looked at: the phone
+ * gives the audio focus back on its own, and the player follows a moment
+ * later. Only when it has not is the music started again from here.
+ */
+const AFTER_CALL_MS = 2_500;
+
+/** The battery levels read out, high to low, each once per ride while not charging. */
+const BATTERY_WARNINGS = [20, 10, 5];
+
+/** The levels already read out this ride. */
+let batteryWarned = new Set<number>();
 
 /**
  * Puts the floating player up or takes it down, to match: ride mode on,
@@ -129,6 +147,7 @@ export async function activateRide(from: 'intercom' | 'intent' | 'manual'): Prom
   useRideMode.setState({ active: true });
   setRideActive(true);
   setDuckOthers(true);
+  batteryWarned = new Set();
   // A phone locked in a pocket: the ride screen is worth nothing behind the
   // lock screen. Every screen of the app is reachable that way while ride
   // mode is on, which is the point of it and stops with it.
@@ -218,6 +237,33 @@ export function startRideSync(): void {
       hideRideOverlay();
       syncOverlay();
     }
+  });
+
+  // A call in the middle of the ride: what was playing comes back after,
+  // when the phone has not brought it back itself.
+  onCall((inCall) => {
+    if (!useRideMode.getState().active) return;
+    if (inCall) {
+      playingBeforeCall = usePlayerStore.getState().isPlaying;
+      return;
+    }
+    if (!playingBeforeCall) return;
+    playingBeforeCall = false;
+    setTimeout(() => {
+      const state = usePlayerStore.getState();
+      if (useRideMode.getState().active && !state.isPlaying && state.queue.length > 0) state.toggle();
+    }, AFTER_CALL_MS);
+  });
+
+  // The battery going down on a mount with no charger: said once at each
+  // step, in the helmet, where the screen is not being looked at.
+  onBattery(({ level, charging }) => {
+    const { active, config } = useRideMode.getState();
+    if (!active || !config.announce || charging) return;
+    const step = BATTERY_WARNINGS.find((w) => level <= w && !batteryWarned.has(w));
+    if (step === undefined) return;
+    for (const w of BATTERY_WARNINGS) if (w >= step) batteryWarned.add(w);
+    speak(tg('Battery at {n} %', { n: level }));
   });
 
   onRideAction((action) => {

@@ -36,3 +36,8 @@ export function authParams(auth: SubsonicAuth): URLSearchParams {
   if (auth.password !== undefined) return new URLSearchParams({ ...base, p: `enc:${auth.password}` });
   return new URLSearchParams({ ...base, t: auth.token, s: auth.salt });
 }
+
+/** No stations: the modules under test only choose whether to ask for one. */
+export async function getRadioStations(_auth: SubsonicAuth): Promise<never[]> {
+  return [];
+}

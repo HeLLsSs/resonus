@@ -3,15 +3,21 @@ package expo.modules.ridemode
 import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.media.AudioManager
+import android.os.BatteryManager
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.speech.RecognizerIntent
 import android.util.Log
 import android.view.WindowManager
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
@@ -28,6 +34,8 @@ class RideConfigRecord : Record {
   @Field val navigationApp: String = ""
   @Field val startVolume: Double = 0.0
   @Field val overlaySize: String = "normal"
+  @Field val radioStationId: String = ""
+  @Field val radioStationName: String = ""
 }
 
 /** What the floating player shows, as JS pushes it. */
@@ -58,6 +66,10 @@ class RideModeModule : Module() {
    * not exist yet when JS asks.
    */
   @Volatile private var showWhenLocked = false
+  /** The `listen` call waiting for the speech dialog to come back, if any. */
+  private var listening: Promise? = null
+  private var modeListener: AudioManager.OnModeChangedListener? = null
+  private var batteryReceiver: BroadcastReceiver? = null
 
   private val context: Context
     get() = appContext.reactContext ?: throw IllegalStateException("React context is not available")
@@ -65,12 +77,13 @@ class RideModeModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("RideMode")
 
-    Events("intercom", "action")
+    Events("intercom", "action", "call", "battery")
 
     OnCreate { instance = this@RideModeModule }
 
     OnDestroy {
       observing = false
+      unwatch()
       main.post {
         speaker?.shutdown()
         speaker = null
@@ -79,9 +92,28 @@ class RideModeModule : Module() {
       if (instance === this@RideModeModule) instance = null
     }
 
-    OnStartObserving { observing = true }
+    OnStartObserving {
+      observing = true
+      watchCalls()
+      watchBattery()
+    }
 
-    OnStopObserving { observing = false }
+    OnStopObserving {
+      observing = false
+      unwatch()
+    }
+
+    // The speech dialog closing, with what was said or nothing.
+    OnActivityResult { _, payload ->
+      if (payload.requestCode != REQUEST_SPEECH) return@OnActivityResult
+      val heard = if (payload.resultCode == Activity.RESULT_OK) {
+        payload.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull().orEmpty()
+      } else {
+        ""
+      }
+      listening?.resolve(heard)
+      listening = null
+    }
 
     OnActivityEntersForeground { main.post { applyShowWhenLocked() } }
 
@@ -98,7 +130,36 @@ class RideModeModule : Module() {
         navigationApp = record.navigationApp,
         startVolume = record.startVolume,
         overlaySize = record.overlaySize,
+        radioStationId = record.radioStationId,
+        radioStationName = record.radioStationName,
       ).save(context)
+    }
+
+    /** Whether the phone has something to turn speech into text: Google's app, on most phones. */
+    Function("canListen") {
+      speechIntent().resolveActivity(context.packageManager) != null
+    }
+
+    /**
+     * Brings up the phone's own speech dialog and answers with what was
+     * said, or an empty string for nothing, a dismissal, or no dialog to
+     * bring up. The phone's app records, not this one, which is what keeps
+     * the microphone permission out of the manifest.
+     */
+    AsyncFunction("listen") { promise: Promise ->
+      val activity = appContext.currentActivity
+      if (activity == null || speechIntent().resolveActivity(context.packageManager) == null) {
+        promise.resolve("")
+        return@AsyncFunction
+      }
+      listening?.resolve("")
+      listening = promise
+      runCatching { activity.startActivityForResult(speechIntent(), REQUEST_SPEECH) }
+        .onFailure {
+          Log.w(Intercom.TAG, "could not open the speech dialog: ${it.message}")
+          listening = null
+          promise.resolve("")
+        }
     }
 
     /** Whether ride mode is on, for the quick settings tile to show. */
@@ -201,6 +262,56 @@ class RideModeModule : Module() {
     Function("takePendingIntercom") { Intercom.take() }
   }
 
+  private fun speechIntent(): Intent =
+    Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+      .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+      .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+
+  /**
+   * A phone call starting and ending, read off the audio mode, which needs
+   * no permission and covers calls through any app. Android 12 and later;
+   * before that there is no listener and calls are not reported.
+   */
+  private fun watchCalls() {
+    if (Build.VERSION.SDK_INT < 31 || modeListener != null) return
+    val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+    val listener = AudioManager.OnModeChangedListener { mode ->
+      val inCall = mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION
+      sendEvent("call", mapOf("inCall" to inCall))
+    }
+    modeListener = listener
+    audio.addOnModeChangedListener({ main.post(it) }, listener)
+  }
+
+  /** The battery's level and whether it is charging, at every change the system reports. */
+  private fun watchBattery() {
+    if (batteryReceiver != null) return
+    val receiver = object : BroadcastReceiver() {
+      override fun onReceive(context: Context, intent: Intent) {
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+        if (level < 0 || scale <= 0) return
+        sendEvent("battery", mapOf("level" to level * 100 / scale, "charging" to (plugged != 0)))
+      }
+    }
+    val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+    if (Build.VERSION.SDK_INT >= 33) {
+      context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    } else {
+      context.registerReceiver(receiver, filter)
+    }
+    batteryReceiver = receiver
+  }
+
+  private fun unwatch() {
+    val audio = appContext.reactContext?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    modeListener?.let { listener -> if (Build.VERSION.SDK_INT >= 31) audio?.removeOnModeChangedListener(listener) }
+    modeListener = null
+    batteryReceiver?.let { receiver -> runCatching { appContext.reactContext?.unregisterReceiver(receiver) } }
+    batteryReceiver = null
+  }
+
   private fun applyShowWhenLocked() {
     val activity: Activity = appContext.currentActivity ?: return
     if (Build.VERSION.SDK_INT >= 27) {
@@ -232,6 +343,8 @@ class RideModeModule : Module() {
   }
 
   companion object {
+    private const val REQUEST_SPEECH = 0x51DE
+
     /**
      * The navigation apps offered, by package. The manifest declares each
      * under `<queries>`, which is what lets the app see whether one is

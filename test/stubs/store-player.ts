@@ -142,3 +142,6 @@ export function onOutputChanged(listener: () => void): () => void {
 export function outputChanged(): void {
   outputListeners.forEach((listener) => listener());
 }
+
+/** The favourites as a queue source, the same tag the real store uses. */
+export const SOURCE_FAVORITES = '@@favorites';
