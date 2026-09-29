@@ -34,6 +34,8 @@ or as text (`--es position 90`, `--es on true`).
 | `publish_state` |                                                   | Pushes what is playing to Home Assistant (docs/HOME-ASSISTANT.md). |
 | `output`        | `id`: `phone`, or a Home Assistant `media_player` entity id | Moves the music to this phone, or to that player of the house's. |
 | `sleep_timer`   | `minutes` (0 cancels, at most 600)                 | Starts or cancels the sleep timer.                        |
+| `ride_on`       |                                                   | Starts ride mode the way the intercom does (docs/RIDE-MODE.md). |
+| `ride_off`      |                                                   | Stops ride mode.                                          |
 
 An unknown command is ignored (with a warning in the JS log). The ids are the
 server's: the same ones the app's share links and `resonuls://play/album/<id>`
@@ -72,6 +74,7 @@ adb shell am broadcast -p $PKG -a $A --es command output --es id media_player.ki
 adb shell am broadcast -p $PKG -a $A --es command output --es id phone
 adb shell am broadcast -p $PKG -a $A --es command sleep_timer --ei minutes 30
 adb shell am broadcast -p $PKG -a $A --es command sleep_timer --ei minutes 0
+adb shell am broadcast -p $PKG -a $A --es command ride_on
 ```
 
 The full receiver name, for tools that want it: `-n

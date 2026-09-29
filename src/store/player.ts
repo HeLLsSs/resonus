@@ -354,25 +354,48 @@ useEqualizer.subscribe((st, prev) => {
   for (const p of players) if (p) useEqualizer.getState().attach(p.audioSessionId);
 });
 
+/**
+ * Whether the music dips under another app's passing sound rather than
+ * pausing for it. Off, a navigation prompt pauses the song and resumes it
+ * after; on, the song goes on at half volume under the prompt. Ride mode
+ * turns it on (`src/lib/rideSync.ts`): on a bike the prompts come every
+ * minute and a song that stops for each one is no song.
+ */
+let duckOthers = false;
+
+/**
+ * The audio mode as expo-audio wants it. `shouldPlayInBackground` or it
+ * pauses on minimize; `doNotMix` for exclusive focus, which is what ties the
+ * lock screen controls to us, `duckOthers` when the music is to dip instead.
+ * `playsInSilentMode` because the ringer switch is about interruptions, not
+ * about the album somebody pressed play on: SDK 56 checks it inside
+ * `play()`, so on a phone set to vibrate the button did nothing at all.
+ */
+function applyAudioMode() {
+  return setAudioModeAsync({
+    interruptionMode: duckOthers ? 'duckOthers' : 'doNotMix',
+    shouldPlayInBackground: true,
+    playsInSilentMode: true,
+  });
+}
+
 /** Configures audio mode (exclusive focus) only once. */
 async function ensureAudioMode() {
   if (audioModeReady) return;
   audioModeReady = true;
   try {
-    // `shouldPlayInBackground` or expo-audio pauses on minimize; `doNotMix` for
-    // exclusive focus, which is what ties the lock screen controls to us.
-    // `playsInSilentMode` because the ringer switch is about interruptions, not
-    // about the album somebody pressed play on: SDK 56 checks it inside
-    // `play()`, so on a phone set to vibrate the button did nothing at all.
-    await setAudioModeAsync({
-      interruptionMode: 'doNotMix',
-      shouldPlayInBackground: true,
-      playsInSilentMode: true,
-    });
+    await applyAudioMode();
     await setIsAudioActiveAsync(true);
   } catch {
     // ignore
   }
+}
+
+/** Ducking under other apps' sounds on or off; applied at once if the mode is already set. */
+export function setDuckOthers(on: boolean): void {
+  if (duckOthers === on) return;
+  duckOthers = on;
+  if (audioModeReady) applyAudioMode().catch(() => {});
 }
 
 /**

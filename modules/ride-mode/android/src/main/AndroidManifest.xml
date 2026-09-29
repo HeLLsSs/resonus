@@ -1,0 +1,64 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Which Bluetooth device just connected: from Android 12 the system only
+       hands the connection broadcasts, and the name of the device in them, to
+       an app holding this. Asked on the ride mode settings screen, when an
+       intercom is chosen. Before 12 the plain Bluetooth permission does the
+       same and is granted with the install. -->
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <uses-permission
+    android:name="android.permission.BLUETOOTH"
+    android:maxSdkVersion="30" />
+  <!-- The floating player over other apps (see RideOverlay). Granted by the
+       user on the system's own screen, never at install; plugins/
+       withTrimmedPermissions.js used to strip it from the app's manifest and
+       leaves it in now that something asks for it. -->
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+  <!-- Package visibility (Android 11+): without this the app cannot see the
+       phone's text-to-speech engine and every announcement fails silently. -->
+  <queries>
+    <intent>
+      <action android:name="android.intent.action.TTS_SERVICE" />
+    </intent>
+    <!-- The navigation apps ride mode can bring up after the ride screen
+         (NAVIGATION_APPS in RideModeModule): the same list, or the app
+         cannot tell whether one is installed. -->
+    <package android:name="com.waze" />
+    <package android:name="com.google.android.apps.maps" />
+    <package android:name="com.calimoto.calimoto" />
+    <package android:name="gr.talent.kurviger" />
+    <package android:name="net.osmand" />
+    <package android:name="net.osmand.plus" />
+    <package android:name="com.sygic.aura" />
+    <package android:name="com.here.app.maps" />
+    <package android:name="com.tomtom.gplay.navapp" />
+  </queries>
+
+  <application>
+    <!-- The "Ride mode" tile of the quick settings shade (see RideTileService).
+         The permission is what lets only the system bind it. -->
+    <service
+      android:name="expo.modules.ridemode.RideTileService"
+      android:exported="true"
+      android:icon="@drawable/ic_ride_tile"
+      android:label="@string/ride_tile_label"
+      android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+      <intent-filter>
+        <action android:name="android.service.quicksettings.action.QS_TILE" />
+      </intent-filter>
+    </service>
+    <!-- Bluetooth connections, for starting ride mode when the intercom is
+         the device that connected. Declared here rather than registered at
+         runtime so the system starts the process for it when the app is not
+         running; both actions are on Android's list of broadcasts that still
+         reach a manifest receiver. Exported because the system is the sender. -->
+    <receiver
+      android:name="expo.modules.ridemode.IntercomReceiver"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+        <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

@@ -1,0 +1,7 @@
+<resources>
+  <string name="ride_previous">Précédent</string>
+  <string name="ride_play_pause">Lecture ou pause</string>
+  <string name="ride_next">Suivant</string>
+  <string name="ride_open">Ouvrir le mode moto</string>
+  <string name="ride_tile_label">Mode moto</string>
+</resources>

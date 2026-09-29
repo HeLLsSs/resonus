@@ -1,0 +1,8 @@
+<resources>
+  <!-- Content descriptions of the floating player's buttons, for a screen reader. -->
+  <string name="ride_previous">Previous</string>
+  <string name="ride_play_pause">Play or pause</string>
+  <string name="ride_next">Next</string>
+  <string name="ride_open">Open ride mode</string>
+  <string name="ride_tile_label">Ride mode</string>
+</resources>

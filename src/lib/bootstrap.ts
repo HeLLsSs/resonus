@@ -23,6 +23,7 @@ import { startHaBridge } from '@/lib/haBridge';
 import { startIntentsApi } from '@/lib/intentsApi';
 import { startJamVolume } from '@/lib/jamVolume';
 import { startNavifindWatch } from '@/lib/navifindWatch';
+import { startRideSync } from '@/lib/rideSync';
 import { startWidgetSync } from '@/lib/widgetSync';
 import { useAuthStore } from '@/store/auth';
 import { useAutoDownloads } from '@/store/autoDownloads';
@@ -223,4 +224,5 @@ export function startApp(): void {
   startCarAutoSync();
   startWidgetSync();
   startPlaybackLock();
+  startRideSync();
 }

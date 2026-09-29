@@ -1,0 +1,26 @@
+// See the note in modules/audio-eq/android/build.gradle: the plugin is what
+// brings the compiler plugin the module DSL needs from SDK 56 on.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.ridemode'
+version = '0.0.1'
+
+android {
+  namespace "expo.modules.ridemode"
+  defaultConfig {
+    versionCode 1
+    versionName "0.0.1"
+  }
+}
+
+dependencies {
+  // Bluetooth, the overlay window and text to speech are the framework's;
+  // the one dependency is React Native itself, for the host the receiver
+  // starts when the intercom connects with no JavaScript running (see
+  // JsRuntime.kt). The version is the app's: the React Native gradle plugin
+  // resolves it for every project.
+  implementation 'com.facebook.react:react-android'
+}

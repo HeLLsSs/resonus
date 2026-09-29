@@ -237,6 +237,17 @@ async function run(command: IntentCommand): Promise<void> {
     case 'play_random':
       await playShuffle();
       return;
+    case 'ride_on':
+    case 'ride_off': {
+      // Ride mode from a tag on the bike or a Tasker profile, the way the
+      // intercom starts it (docs/RIDE-MODE.md). Loaded here rather than at
+      // the top: the ride module brings the router with it, which nothing
+      // else here needs.
+      const ride = await import('@/lib/rideSync');
+      if (name === 'ride_on') await ride.activateRide('intent');
+      else ride.deactivateRide();
+      return;
+    }
     case 'publish_state':
       // Home Assistant asking what is playing, which it has no other way to
       // find out: the push is one-way, so a house that restarted would show

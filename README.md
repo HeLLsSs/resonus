@@ -161,6 +161,13 @@ appear when it is switched off.
   itself. So a server behind custom headers casts like any other, and the phone
   does not have to stay awake for the music to go on.
 
+### Ride mode
+
+- **The app for a motorbike** ([docs/RIDE-MODE.md](docs/RIDE-MODE.md)): big
+  buttons a glove can hit, a floating player over Waze or any other app,
+  each new song read out in the helmet, and all of it started on its own
+  when the helmet's intercom connects. Android only.
+
 ### Android Auto
 
 - **Search reaches the whole library**, not only the browse tree the phone had

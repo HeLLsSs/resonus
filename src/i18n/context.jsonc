@@ -280,6 +280,19 @@
     "New playlist": "Row at the top of the playlist picker, and the button on an empty library: make one",
     "Added to “{name}”": "Toast. `{name}` is the playlist's name",
     "{n} added to “{name}”": "Toast when several songs went in at once. `{n}` is a count of songs",
+    // ── Ride mode (Settings › Ride mode, and the ride screen) ───────────────
+    "Ride mode": "The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut",
+    "Intercom": "Section title: the helmet's Bluetooth intercom (Cardo, Sena…), the device that starts ride mode when it connects",
+    "None": "The choice of no intercom at all in that list: ride mode never starts by itself",
+    "On the road": "Section title over the three switches of what ride mode does once it is on",
+    "Floating player": "A small player drawn over whatever app is in front (Waze), with play, pause and next",
+    "Announce songs": "Each new song's title and artist read out loud by the phone",
+    "{title}, by {artist}": "What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it",
+    "Nothing playing": "The ride screen with an empty queue: the title's place",
+    "With an empty queue": "Setting: what ride mode starts when the intercom connects and there is no queue to resume",
+    "Nothing": "One of its choices: start nothing. Also the fallback value elsewhere",
+    "Navigation app": "Setting: the app (Waze, Maps…) brought to the front when the intercom connects",
+
     // ── Diagnostics: the server id repair switch ────────────────────────────
     "Server id repair": "Section title in the hidden Diagnostics screen, above the switch below",
     "Repair the offline library": "The switch itself. Navidrome 0.64 gives every song a new id, and the downloads on the phone still hold the old ones; this is what rewrites them so the music stays playable",

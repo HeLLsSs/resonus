@@ -1,11 +1,13 @@
 /**
  * Config plugin: the launcher shortcuts behind a long press on the app icon.
  *
- * Four of them, static, each a deep link the app already understands or that
+ * Six of them, static, each a deep link the app already understands or that
  * `src/app/+native-intent.ts` turns into an action:
  *
+ *   For you       resonuls://play/foryou
  *   Shuffle all   resonuls://play/random
  *   Favourites    resonuls://play/favorites
+ *   Ride mode     resonuls://ride
  *   Resume        resonuls://play/resume
  *   Search        resonuls://search
  *
@@ -68,6 +70,19 @@ const SHORTCUTS = [
       fr: ['Favoris', 'Vos favoris en aléatoire'],
       es: ['Favoritos', 'Tus favoritos en aleatorio'],
       ca: ['Preferits', 'Els teus preferits en aleatori'],
+    },
+  },
+  {
+    id: 'ride',
+    link: 'resonuls://ride',
+    // Material's two_wheeler: the ride screen, big buttons for a glove.
+    glyph:
+      'M19.44,9.03L15.41,5H11v2h3.59l2,2H5c-2.8,0 -5,2.2 -5,5s2.2,5 5,5c2.46,0 4.45,-1.69 4.9,-4h1.65l2.77,-2.77c-0.21,0.54 -0.32,1.14 -0.32,1.77 0,2.8 2.2,5 5,5s5,-2.2 5,-5c0,-2.65 -1.97,-4.77 -4.56,-4.97zM7.82,15C7.4,16.15 6.28,17 5,17c-1.63,0 -3,-1.37 -3,-3s1.37,-3 3,-3c1.28,0 2.4,0.85 2.82,2H5v2h2.82zM19,17c-1.66,0 -3,-1.34 -3,-3s1.34,-3 3,-3 3,1.34 3,3 -1.34,3 -3,3z',
+    labels: {
+      en: ['Ride mode', 'Big buttons, for the bike'],
+      fr: ['Mode moto', 'De gros boutons, pour la moto'],
+      es: ['Modo moto', 'Botones grandes, para la moto'],
+      ca: ['Mode moto', 'Botons grans, per a la moto'],
     },
   },
   {

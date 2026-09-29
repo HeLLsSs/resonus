@@ -6,3 +6,10 @@ export const AppState = {
   currentState: 'active' as const,
   addEventListener: (_event: string, _cb: (state: string) => void) => ({ remove: () => {} }),
 };
+
+/** `PermissionsAndroid` as ride mode asks it: nothing is ever granted in a test. */
+export const PermissionsAndroid = {
+  PERMISSIONS: { BLUETOOTH_CONNECT: 'android.permission.BLUETOOTH_CONNECT' },
+  RESULTS: { GRANTED: 'granted' },
+  request: async (_permission: string) => 'denied',
+};

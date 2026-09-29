@@ -217,6 +217,10 @@ export default function RootLayout() {
                 <Stack.Screen name="settings/account" />
                 <Stack.Screen name="settings/theme" />
                 <Stack.Screen name="settings/about" />
+                <Stack.Screen name="settings/ride" />
+                {/* Ride mode: a screen that covers the app, opened by hand or
+                    by the intercom (see `src/lib/rideSync.ts`). */}
+                <Stack.Screen name="ride" />
               </Stack.Protected>
               <Stack.Protected guard={offline && !offlineSource && !hasDownloads}>
                 <Stack.Screen name="offline" />

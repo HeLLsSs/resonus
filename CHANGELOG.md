@@ -7,6 +7,25 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [Unreleased]
+
+### Added
+
+- Ride mode, for a motorbike (docs/RIDE-MODE.md): a black and white screen
+  of buttons a glove can hit, with the screen kept on and a flick to skip;
+  a floating player over Waze or any other app; each new song read out in
+  the helmet; and all of it started on its own when the helmet's intercom
+  connects, app running or not, and stopped when it disconnects. While it
+  is on, navigation prompts dip the music instead of pausing it, the app
+  shows over the lock screen, and the ride screen goes to full brightness
+  and dims after a minute untouched. The navigation app of your choice is
+  brought up over the ride screen, and a queue found empty can start the
+  "For you" mix, the favourites or the library shuffled. Settings › Ride
+  mode, a launcher shortcut, a quick settings tile, `resonuls://ride`, or
+  the `ride_on` and `ride_off` commands of the intents API. The media
+  volume can be set at the start, and the floating player comes in a size
+  for thick gloves. Android only.
+
 ## [1.5.0] - 2026-09-28
 
 ### Added

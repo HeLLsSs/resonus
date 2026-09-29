@@ -12,6 +12,7 @@ import { ScreenHeader, SettingsSafeArea, settingsStyles } from '@/components/Set
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
 import { anyDownloads, useDownloads } from '@/store/downloads';
+import { rideModeAvailable } from '@/lib/rideMode';
 import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
@@ -115,6 +116,9 @@ export default function SettingsScreen() {
     // And Music Assistant on its own, which reaches its players directly and
     // plays them from the server's own library rather than through the phone.
     { key: 'music-assistant', title: 'Music Assistant', icon: 'musical-notes-outline' as const },
+    // The motorbike: the intercom, the floating player and the spoken titles
+    // are the native module's, so only a phone that has it gets the row.
+    ...(rideModeAvailable ? [{ key: 'ride', title: 'Ride mode', icon: 'speedometer-outline' as const }] : []),
     // Theme lives inside Appearance (row with chevron, like Language).
     { key: 'webdav', title: 'Network shares', icon: 'folder-outline' as const },
     { key: 'personalization', title: 'Appearance', icon: 'color-palette-outline' as const },

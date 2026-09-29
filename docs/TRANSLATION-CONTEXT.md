@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1252 of them.
+Every string the app can show, under the screen it shows up on. 1287 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -346,7 +346,7 @@ you are actually typing into, which is easier than reading it here.
 | `Couldn't reach the server. Check your connection.` | Error on Home when the server does not answer at all |
 | `Discover` | Home section: discovery suggestions |
 | `Evening mix` |  |
-| `For you` |  |
+| `For you` | One of the values of “With an empty queue” |
 | `For you · {date}` |  |
 | `Good afternoon` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
 | `Good evening` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
@@ -734,6 +734,19 @@ you are actually typing into, which is easier than reading it here.
 | `You can pin up to {n} items.` | Toast: there is no room for another pinned thing. `{n}` is the limit |
 | `Your password is needed to upload images and will be stored securely.` | The line explaining why the password is asked for again |
 
+## Ride
+
+| String | What it is |
+| --- | --- |
+| `{title}, by {artist}` | What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it |
+| `Exit ride mode` |  |
+| `Next` | Player control: the next track (accessibility label) |
+| `Nothing playing` | The ride screen with an empty queue: the title's place |
+| `Previous` | Player control: the previous track (accessibility label) |
+| `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
+| `Volume down` |  |
+| `Volume up` |  |
+
 ## Search
 
 | String | What it is |
@@ -756,6 +769,7 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `{title}, by {artist}` | What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it |
 | `Back online` | The toast shown when the server answers again and the app comes out of offline mode |
 | `Exit local mode` | Leave the profile that plays the phone's own files |
 | `Listening stats` |  |
@@ -1373,6 +1387,44 @@ you are actually typing into, which is easier than reading it here.
 | `Size` | The size of the quick grid tiles |
 | `Sources` | Which shortcuts the quick grid shows |
 | `The shortcut cards at the top of Home.` | The line under “Show quick grid”, explaining it |
+
+## Settings › Ride
+
+| String | What it is |
+| --- | --- |
+| `{title}, by {artist}` | What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it |
+| `Allow Bluetooth` |  |
+| `Android needs permission to tell which device connected.` | The line under “Allow Bluetooth”, explaining it |
+| `Announce songs` | Each new song's title and artist read out loud by the phone |
+| `Big buttons for a glove, the screen kept on, and a flick to skip.` | The line under “Open ride mode”, explaining it |
+| `Brought to the front when the intercom connects, with the floating player over it.` | The line under “Navigation app”, explaining it |
+| `Each new song is read out in the helmet.` | The line under “Announce songs”, explaining it |
+| `Favorites, shuffled` | One of the values of “With an empty queue” |
+| `Floating player` | A small player drawn over whatever app is in front (Waze), with play, pause and next |
+| `Floating player size` |  |
+| `For you` | One of the values of “With an empty queue” |
+| `Intercom` | Section title: the helmet's Bluetooth intercom (Cardo, Sena…), the device that starts ride mode when it connects |
+| `Large, for thick gloves` | One of the values of “Floating player size” |
+| `Leave as is` |  |
+| `Navigation app` | Setting: the app (Waze, Maps…) brought to the front when the intercom connects |
+| `No paired device` |  |
+| `None` | The choice of no intercom at all in that list: ride mode never starts by itself |
+| `Normal` | One of the values of “Floating player size” |
+| `Nothing` | A value of `On cover tap`: tapping the cover does nothing |
+| `On the road` | Section title over the three switches of what ride mode does once it is on |
+| `Open ride mode` |  |
+| `Play, pause and skip over Waze or any other app. Needs permission to draw over other apps, asked when switched on.` |  |
+| `Play, pause and skip over Waze or any other app. Tap the title to come back here.` |  |
+| `Resume playback` |  |
+| `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
+| `Ride mode starts on its own when the chosen Bluetooth device connects, and stops when it disconnects. Pair the intercom with the phone first.` |  |
+| `Shuffle all` | One of the values of “With an empty queue” |
+| `Start when this device connects` |  |
+| `The media volume set when ride mode starts on its own, so it is not left where the kitchen had it.` | The line under “Volume at the start”, explaining it |
+| `Volume at the start` |  |
+| `What starts when there is nothing to resume.` | The line under “With an empty queue”, explaining it |
+| `What was playing starts again when the intercom connects.` | The line under “Resume playback”, explaining it |
+| `With an empty queue` | Setting: what ride mode starts when the intercom connects and there is no queue to resume |
 
 ## Settings › Scrobbling
 

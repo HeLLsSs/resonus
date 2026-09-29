@@ -15,10 +15,10 @@ import { currentSong, usePlayerStore } from '@/store/player';
 import { useSettings } from '@/store/settings';
 
 /** Screens that never take the bar, whatever the setting says. */
-const NO_BAR = ['player', 'queue', 'lyrics', 'favorites-add', 'login'];
+const NO_BAR = ['player', 'queue', 'lyrics', 'favorites-add', 'login', 'ride'];
 
 /** Screens that cover the MiniPlayer. `GlobalMiniPlayer` fades it out on these. */
-export const NO_MINI_PLAYER = ['player', 'queue', 'lyrics', 'favorites-add'];
+export const NO_MINI_PLAYER = ['player', 'queue', 'lyrics', 'favorites-add', 'ride'];
 
 export function useTabBarShown(): boolean {
   const always = useSettings((s) => s.alwaysShowTabs);

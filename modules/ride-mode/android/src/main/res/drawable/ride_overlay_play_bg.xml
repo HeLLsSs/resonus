@@ -1,0 +1,5 @@
+<!-- The play button's disc, the app's green (`DEFAULT_ACCENT` in src/theme/index.ts). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+  <solid android:color="#1DB954" />
+</shape>

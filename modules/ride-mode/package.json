@@ -1,0 +1,7 @@
+{
+  "name": "ride-mode",
+  "version": "0.0.1",
+  "description": "Ride mode for Resonus: the intercom, the floating player and the spoken titles (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

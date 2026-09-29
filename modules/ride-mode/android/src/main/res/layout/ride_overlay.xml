@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The floating player: the song's title, which is also the handle to drag
+     it by and the way back into the app, and three buttons big enough for a
+     glove. Drawn by RideOverlay over whatever app is in front. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/ride_root"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/ride_overlay_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
+
+  <TextView
+      android:id="@+id/ride_title"
+      android:layout_width="112dp"
+      android:layout_height="wrap_content"
+      android:layout_marginEnd="8dp"
+      android:contentDescription="@string/ride_open"
+      android:ellipsize="marquee"
+      android:marqueeRepeatLimit="marquee_forever"
+      android:maxLines="1"
+      android:singleLine="true"
+      android:textColor="#FFFFFFFF"
+      android:textSize="14sp"
+      android:textStyle="bold" />
+
+  <ImageButton
+      android:id="@+id/ride_prev"
+      android:layout_width="60dp"
+      android:layout_height="60dp"
+      android:background="?android:attr/selectableItemBackgroundBorderless"
+      android:contentDescription="@string/ride_previous"
+      android:padding="12dp"
+      android:scaleType="fitCenter"
+      android:src="@drawable/ic_ride_prev" />
+
+  <ImageButton
+      android:id="@+id/ride_play"
+      android:layout_width="60dp"
+      android:layout_height="60dp"
+      android:background="@drawable/ride_overlay_play_bg"
+      android:contentDescription="@string/ride_play_pause"
+      android:padding="14dp"
+      android:scaleType="fitCenter"
+      android:src="@drawable/ic_ride_play" />
+
+  <ImageButton
+      android:id="@+id/ride_next"
+      android:layout_width="60dp"
+      android:layout_height="60dp"
+      android:background="?android:attr/selectableItemBackgroundBorderless"
+      android:contentDescription="@string/ride_next"
+      android:padding="12dp"
+      android:scaleType="fitCenter"
+      android:src="@drawable/ic_ride_next" />
+</LinearLayout>
