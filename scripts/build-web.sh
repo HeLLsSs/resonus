@@ -9,6 +9,8 @@
 set -e
 cd "$(dirname "$0")/.."
 OUT="${1:-../navifind/public/app}"
+# --clear: Metro would otherwise serve the version string inlined for the
+# previous export, and the app would ask for an update it already has.
 rm -rf "$OUT"
-CI=1 corepack pnpm@11 exec expo export --platform web --output-dir "$OUT"
+CI=1 corepack pnpm@11 exec expo export --platform web --output-dir "$OUT" --clear
 echo "Web app exported to $OUT"
