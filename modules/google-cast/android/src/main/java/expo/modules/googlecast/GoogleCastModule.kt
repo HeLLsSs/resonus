@@ -192,6 +192,10 @@ class GoogleCastModule : Module() {
 
     OnDestroy {
       mainHandler.post {
+        // A search still waiting for its timeout would otherwise register the
+        // callback again after it has been removed below, and keep the
+        // discovery and this module alive for nobody.
+        mainHandler.removeCallbacksAndMessages(null)
         detach()
         settleConnect(false)
         castContext?.sessionManager?.removeSessionManagerListener(sessionListener, CastSession::class.java)

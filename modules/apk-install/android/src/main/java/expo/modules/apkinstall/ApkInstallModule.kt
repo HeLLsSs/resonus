@@ -48,6 +48,7 @@ class ApkInstallModule : Module() {
      * one. Returns whether anything could be opened.
      */
     Function("openInstallSettings") {
+      val context = appContext.reactContext ?: return@Function false
       val ours = Uri.fromParts("package", context.packageName, null)
       val screens = buildList {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

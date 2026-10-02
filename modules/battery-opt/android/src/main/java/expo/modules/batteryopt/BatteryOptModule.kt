@@ -47,6 +47,7 @@ class BatteryOptModule : Module() {
      * could be opened.
      */
     Function("openSettings") {
+      val context = appContext.reactContext ?: return@Function false
       val screens = listOf(
         Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
         Intent(

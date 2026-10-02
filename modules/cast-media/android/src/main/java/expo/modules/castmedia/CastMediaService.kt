@@ -51,6 +51,13 @@ class CastMediaService : Service() {
   private var lastArtUrl: String? = null
   private var artBitmap: Bitmap? = null
 
+  /**
+   * Set once the notification has been taken down. A cover that finishes
+   * downloading after that, or a late update from JS, must not put it back:
+   * it is ongoing, and with the service gone nothing would ever remove it.
+   */
+  private var stopped = false
+
   private val volumeProvider =
     object : VolumeProviderCompat(
       VolumeProviderCompat.VOLUME_CONTROL_RELATIVE,
@@ -120,6 +127,7 @@ class CastMediaService : Service() {
   }
 
   override fun onDestroy() {
+    stopped = true
     if (instance === this) instance = null
     session?.run {
       isActive = false
@@ -164,6 +172,7 @@ class CastMediaService : Service() {
   }
 
   fun stopEverything() = mainHandler.post {
+    stopped = true
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       stopForeground(STOP_FOREGROUND_REMOVE)
     } else {
@@ -214,6 +223,7 @@ class CastMediaService : Service() {
   }
 
   private fun renotify() {
+    if (stopped) return
     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     nm.notify(NOTIF_ID, buildNotification())
   }

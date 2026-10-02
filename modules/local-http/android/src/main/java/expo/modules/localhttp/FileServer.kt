@@ -133,7 +133,11 @@ class FileServer(private val ctx: Context) {
           // and the next one is the answer. Both read the same from here.
           if (!running) return else continue
         }
-      pool?.execute { serve(client) }
+      // A connection accepted in the instant between `stop` shutting the pool
+      // down and closing the socket is refused by the pool, and the accept
+      // thread must not die of it.
+      runCatching { pool?.execute { serve(client) } }
+        .onFailure { runCatching { client.close() } }
     }
   }
 
