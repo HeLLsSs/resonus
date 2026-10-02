@@ -47,6 +47,33 @@ export const SOUND_HELD_MS = 10_000;
  */
 export const MAX_SKIPS = 3;
 
+/**
+ * How many tracks found online may fail in a row with the error of a server
+ * that is down before the queue stops. A YouTube or SoundCloud track is
+ * fetched by the proxy as it plays, and when its side of the proxy is down
+ * every one of them answers the same 502: three in a row is not three bad
+ * tracks, it is the outage, and the hundred behind them would answer the
+ * same. The skip rule above never caught it, because the next track reports
+ * itself as playing while it buffers, and a state with no reload behind it
+ * counted that as sound held since the beginning of time (see `soundHeld`).
+ */
+export const MAX_UNREACHED = 3;
+
+/**
+ * The error of a server that is down or cannot be reached, as the player
+ * words it: an HTTP status of 500 and up, or no connection at all. ExoPlayer
+ * says `Response code: 502`, or `Unable to connect`, or only `Source error`
+ * when the source could not be read at all.
+ */
+export function serverUnreached(message: string): boolean {
+  return (
+    /\b(?:response code|status(?: code)?|http)\D{0,4}5\d\d\b/i.test(message) ||
+    /unable to connect|failed to connect|connection|unknownhost|unresolved|network|timed? ?out|unreachable|socket|source error/i.test(
+      message,
+    )
+  );
+}
+
 export interface RetryState {
   /** The track the attempts below belong to. */
   trackId: string | null;
@@ -59,10 +86,13 @@ export interface RetryState {
   busy: boolean;
   /** Tracks given up on and passed over, one after another, without a sound between. */
   skipped: number;
+  /** Tracks found online given up on, one after another, with the error of a
+   *  server that is down (see `MAX_UNREACHED`). */
+  unreached: number;
 }
 
 export function freshRetries(): RetryState {
-  return { trackId: null, attempts: 0, gaveUp: false, lastAt: 0, busy: false, skipped: 0 };
+  return { trackId: null, attempts: 0, gaveUp: false, lastAt: 0, busy: false, skipped: 0, unreached: 0 };
 }
 
 /**
@@ -70,26 +100,43 @@ export function freshRetries(): RetryState {
  *
  *  · `retry` — load the track again, and tell this module when that is over.
  *  · `announce` — say it out loud; this track is not going to play.
+ *  · `stop` — say that the server behind the tracks is down, and go no
+ *    further: the next ones would answer the same.
  *  · `wait` — nothing. Either something is already being done about it, or it
  *    has been said once already.
  */
-export type RetryAction = 'retry' | 'announce' | 'wait';
+export type RetryAction = 'retry' | 'announce' | 'stop' | 'wait';
 
-/** The decision, and the state to keep for the next one. */
+/**
+ * The decision, and the state to keep for the next one. `unreached` is a
+ * track found online failing with the error of a server that is down (see
+ * `serverUnreached`): the caller knows the track, this only knows the ids.
+ */
 export function onFailure(
   state: RetryState,
   trackId: string,
   now: number,
+  unreached = false,
 ): { state: RetryState; act: RetryAction } {
   // Another track's failure is another track's story: whatever was counted
   // for the one before has nothing to say about this one, except how many
-  // were passed over on the way here.
-  const here = state.trackId === trackId ? state : { ...freshRetries(), trackId, skipped: state.skipped };
+  // were passed over on the way here. Unless the queue had stopped: nothing
+  // moves it on from there but a hand, and a hand asking starts over.
+  const here =
+    state.trackId === trackId ? state
+    : state.unreached >= MAX_UNREACHED ? { ...freshRetries(), trackId }
+    : { ...freshRetries(), trackId, skipped: state.skipped, unreached: state.unreached, lastAt: state.lastAt };
   if (here.busy) return { state: here, act: 'wait' };
   if (here.gaveUp) return { state: here, act: 'wait' };
   if (here.attempts > 0 && now - here.lastAt < RETRY_DELAY_MS) return { state: here, act: 'wait' };
   if (here.attempts >= MAX_ATTEMPTS) {
-    return { state: { ...here, gaveUp: true }, act: 'announce' };
+    // A track of the library's own, or an online one failing for a reason of
+    // its own, is not the outage: the count is of the same error in a row.
+    const down = unreached ? here.unreached + 1 : 0;
+    return {
+      state: { ...here, gaveUp: true, unreached: down },
+      act: down >= MAX_UNREACHED ? 'stop' : 'announce',
+    };
   }
   return {
     state: { ...here, attempts: here.attempts + 1, lastAt: now, busy: true },
@@ -121,11 +168,12 @@ export function playingAgain(state: RetryState): RetryState {
 }
 
 /**
- * The track was given up on and the next one is being started in its place.
+ * The track was given up on and the next one is being started in its place,
+ * at `now`, which is when the next one's sound starts being counted from.
  * Null when enough have been passed over already: the queue is to stop here.
  */
-export function skipping(state: RetryState): RetryState | null {
-  return state.skipped < MAX_SKIPS ? { ...state, skipped: state.skipped + 1 } : null;
+export function skipping(state: RetryState, now: number): RetryState | null {
+  return state.skipped < MAX_SKIPS ? { ...state, skipped: state.skipped + 1, lastAt: now } : null;
 }
 
 /**
@@ -136,14 +184,16 @@ export function skipping(state: RetryState): RetryState | null {
  * Another track sounding is another track's story: the one counted here is
  * let go of at once, so coming back to it starts it over rather than meeting
  * a failure filed as old news; only the tracks passed over stay counted,
- * until the sound has held.
+ * until the sound has held. Held since the skip that started this track, not
+ * since the beginning of time: a track buffering reports itself as playing,
+ * and a count forgotten on its first beat forgot every skip there was.
  */
 export function soundHeld(state: RetryState, now: number, trackId: string | undefined): RetryState {
-  if (state.attempts === 0 && !state.gaveUp && state.skipped === 0) return state;
+  if (state.attempts === 0 && !state.gaveUp && state.skipped === 0 && state.unreached === 0) return state;
   const held = !state.busy && now - state.lastAt >= SOUND_HELD_MS;
   if (held) return freshRetries();
   if (state.trackId !== null && trackId !== undefined && trackId !== state.trackId) {
-    return { ...freshRetries(), skipped: state.skipped };
+    return { ...freshRetries(), skipped: state.skipped, unreached: state.unreached, lastAt: state.lastAt };
   }
   return state;
 }

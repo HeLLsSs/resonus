@@ -25,7 +25,7 @@ import { fetch as expoFetch } from 'expo/fetch';
 import { AppState, Platform } from 'react-native';
 import { create } from 'zustand';
 
-import { CLIENT_NAME } from '@/api/subsonic';
+import { CLIENT_NAME, isOnlineTrackId } from '@/api/subsonic';
 import { driftPlan, sameQueue } from '@/lib/jam';
 import {
   dealt,
@@ -71,7 +71,15 @@ import { attachBookmarks } from '@/lib/bookmarks';
 import type { Remap } from '@/lib/navidromeRemap';
 import { remapSong } from '@/lib/navidromeRemap';
 import { beat, bump, timed } from '@/lib/perfLog';
-import { freshRetries, onFailure, playingAgain, settled, skipping, soundHeld } from '@/lib/playbackRetry';
+import {
+  freshRetries,
+  onFailure,
+  playingAgain,
+  serverUnreached,
+  settled,
+  skipping,
+  soundHeld,
+} from '@/lib/playbackRetry';
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
 import { recordPlay } from '@/lib/statsDb';
@@ -2822,7 +2830,9 @@ let retries = freshRetries();
  * second go at the same one if it does not, and the truth if neither sounds,
  * followed by the next track, so a bad file does not end the evening. A few
  * bad files in a row do (`MAX_SKIPS`): walking a whole album in silence with
- * a toast per song would hide that nothing plays at all.
+ * a toast per song would hide that nothing plays at all. So do a few tracks
+ * found online answering the same server error (`MAX_UNREACHED`): that is
+ * the proxy's side for them being down, and the queue waits where it is.
  */
 function onPlaybackError(message: string, wasPlaying: boolean): void {
   const st = usePlayerStore.getState();
@@ -2833,9 +2843,23 @@ function onPlaybackError(message: string, wasPlaying: boolean): void {
   // every status until something replaces it: twice a second. What that is
   // worth — another go, a word, or nothing — is decided in one place, over a
   // state that knows what is already being done about it.
-  const decided = onFailure(retries, song.id, Date.now());
+  const decided = onFailure(
+    retries,
+    song.id,
+    Date.now(),
+    isOnlineTrackId(song.id) && serverUnreached(message),
+  );
   retries = decided.state;
   if (decided.act === 'wait') return;
+  if (decided.act === 'stop') {
+    // The proxy's side for these tracks is down: every one of them answers
+    // the same, so the queue stays where it is, for when it is back.
+    bump('player · stopped, the online source is down');
+    const said = tg("Navifind can't reach YouTube or SoundCloud right now");
+    usePlayerStore.setState({ isPlaying: false, isBuffering: false, playbackError: said });
+    useToast.getState().show(said);
+    return;
+  }
   if (decided.act === 'announce') {
     bump('player · gave up on the track');
     // On to the next one, alone: in a Jam the session decides what plays,
@@ -2845,7 +2869,7 @@ function onPlaybackError(message: string, wasPlaying: boolean): void {
     // and a silent one, since its failures are old news from here.
     const next = isJamActive() || st.repeat === 'one' ? null : nextIndex(false);
     const ni = next != null && next !== st.index ? next : null;
-    const onward = ni == null ? null : skipping(retries);
+    const onward = ni == null ? null : skipping(retries, Date.now());
     if (onward && ni != null) {
       retries = onward;
       useToast.getState().show(tg("Couldn't play the song, on to the next"));
