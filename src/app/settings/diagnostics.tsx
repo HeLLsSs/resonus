@@ -9,11 +9,13 @@
 import Constants from 'expo-constants';
 import { useRootNavigationState } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, Share, Text, View } from 'react-native';
+import { Platform, ScrollView, Share, Text, View } from 'react-native';
 
 import { COVER, songCoverUrl, songListSorts } from '@/api/data';
 import { SettingRow, SettingsPage, settingsStyles, SwitchList } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
+import { recentCarAutoLog } from '@/lib/carAuto';
+import { clearCrashLog, crashEntries, readCrashLog } from '@/lib/crashLog';
 import { coverSourceOf, mirrorCoverState } from '@/lib/mirrorCovers';
 import {
   perfAway,
@@ -45,6 +47,12 @@ export default function DiagnosticsSettings() {
   // state: taking it again is what makes React read everything again.
   const [now, setNow] = useState(() => Date.now());
   const blocks = perfBlocks();
+  // What killed the app before, from the file both runtimes write to
+  // (`crashLog.ts`, `MainApplication.kt`), and what the car module logged.
+  // Read with the rest of the snapshot, and again whenever it is refreshed.
+  const [crashText, setCrashText] = useState(() => readCrashLog());
+  const crashes = crashEntries(crashText);
+  const carLog = recentCarAutoLog();
   // What the profile is, in the terms the code asks about it. Half the reports
   // that start with "this doesn't show up for me" end here.
   const auth = useAuthStore((s) => s.auth);
@@ -126,7 +134,10 @@ export default function DiagnosticsSettings() {
       <ScrollView
         contentContainerStyle={settingsStyles.content}
         // Any scroll refreshes the numbers; no timer polling behind this.
-        onScrollEndDrag={() => setNow(Date.now())}
+        onScrollEndDrag={() => {
+          setNow(Date.now());
+          setCrashText(readCrashLog());
+        }}
       >
         <Text style={settingsStyles.sectionDescription}>
           {enabled
@@ -216,6 +227,34 @@ export default function DiagnosticsSettings() {
           </>
         ) : null}
 
+        <Text style={settingsStyles.sectionTitle}>{t('Crashes')}</Text>
+        <Text style={settingsStyles.sectionDescription}>{t('What stopped the app, most recent first.')}</Text>
+        {crashes.length === 0 ? (
+          <Text style={styles.line}>{t('No crash recorded.')}</Text>
+        ) : (
+          <ScrollView style={styles.log} nestedScrollEnabled>
+            {crashes.map((entry, i) => (
+              <Text key={i} style={styles.mono} selectable>
+                {entry}
+              </Text>
+            ))}
+          </ScrollView>
+        )}
+
+        <Text style={settingsStyles.sectionTitle}>{t('Android Auto')}</Text>
+        <Text style={settingsStyles.sectionDescription}>
+          {t("The car module's last lines, for a report written away from the car.")}
+        </Text>
+        {carLog ? (
+          <ScrollView style={styles.log} nestedScrollEnabled>
+            <Text style={styles.mono} selectable>
+              {carLog}
+            </Text>
+          </ScrollView>
+        ) : (
+          <Text style={styles.line}>{t('Nothing logged yet.')}</Text>
+        )}
+
         {/* Here and not in a settings page: this is not a preference, it is a
             switch for whoever is testing the repair against a server that has
             actually renumbered its ids. It stays off until that has been seen
@@ -239,7 +278,12 @@ export default function DiagnosticsSettings() {
           label={t('Share report')}
           onPress={() =>
             void Share.share({
-              message: `${profileLines.join('\n')}\n${stateLines.join('\n')}\n\n${perfReport()}`,
+              message: [
+                `${profileLines.join('\n')}\n${stateLines.join('\n')}`,
+                perfReport(),
+                `Crashes (most recent first):\n${crashes.join('\n\n') || '  none recorded'}`,
+                `Android Auto:\n${carLog || '  nothing logged'}`,
+              ].join('\n\n'),
             })
           }
         />
@@ -251,6 +295,16 @@ export default function DiagnosticsSettings() {
             setNow(Date.now());
           }}
         />
+        {crashes.length > 0 ? (
+          <SettingRow
+            icon="trash-outline"
+            label={t('Clear crash log')}
+            onPress={() => {
+              clearCrashLog();
+              setCrashText('');
+            }}
+          />
+        ) : null}
       </ScrollView>
     </SettingsPage>
   );
@@ -258,6 +312,15 @@ export default function DiagnosticsSettings() {
 
 const styles = themed((colors) => ({
   line: { color: colors.textSecondary, fontSize: fontSize.sm, paddingVertical: 2 },
+  // Stack traces and log lines, kept to a window of their own so one long
+  // trace does not push the rest of the screen out of reach.
+  log: { maxHeight: 280 },
+  mono: {
+    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    paddingVertical: 2,
+  },
   row: { flexDirection: 'row', gap: spacing.md, paddingVertical: 2 },
   tag: { color: colors.text, fontSize: fontSize.sm, flex: 1 },
   value: { color: colors.textSecondary, fontSize: fontSize.sm },

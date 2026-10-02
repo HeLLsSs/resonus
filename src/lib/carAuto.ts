@@ -171,3 +171,11 @@ export function onCarSearch(cb: (e: CarSearchEvent) => void): { remove: () => vo
 export function setSearchResults(query: string, nodes: CarNode[]): void {
   native?.setSearchResults(JSON.stringify({ query, nodes }));
 }
+
+/**
+ * The car module's last lines, oldest first, as `CarAutoLog` kept them. For
+ * the diagnostics screen: logcat is gone by the time a report is written.
+ */
+export function recentCarAutoLog(): string {
+  return native?.recentLog() ?? '';
+}

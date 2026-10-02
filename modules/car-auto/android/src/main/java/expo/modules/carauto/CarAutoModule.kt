@@ -118,6 +118,9 @@ class CarAutoModule : Module() {
       val error = if (o.isNull("error")) null else o.optString("error").takeIf { it.isNotEmpty() }
       player.applyPlaybackState(isPlaying, posMs, shuf, repeat, error)
     }
+
+    /** The module's last log lines, for the diagnostics screen (`CarAutoLog`). */
+    Function("recentLog") { CarAutoLog.recent() }
   }
 
   /**

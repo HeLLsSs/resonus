@@ -1,0 +1,7 @@
+{
+  "name": "crash-log",
+  "version": "0.0.1",
+  "description": "Writes an uncaught native exception to the crash log the app keeps (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

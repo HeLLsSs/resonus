@@ -13,6 +13,7 @@
  * So it is plain functions, called from `index.js` as the runtime starts. The
  * layout keeps what is about drawing and reads the stores these fill in.
  */
+import { installCrashLog } from '@/lib/crashLog';
 import { removeLegacyRadioCovers } from '@/lib/legacyRadioCovers';
 import { startPerfLog } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
@@ -24,6 +25,7 @@ import { startIntentsApi } from '@/lib/intentsApi';
 import { startJamVolume } from '@/lib/jamVolume';
 import { startNavifindWatch } from '@/lib/navifindWatch';
 import { startRideSync } from '@/lib/rideSync';
+import { startSpeakerSuggest } from '@/lib/speakerSuggestSync';
 import { startWidgetSync } from '@/lib/widgetSync';
 import { useAuthStore } from '@/store/auth';
 import { useAutoDownloads } from '@/store/autoDownloads';
@@ -82,6 +84,9 @@ function playable(state: AuthState): boolean {
  * defaults.
  */
 function startOnce(): void {
+  // First of all: a crash while the rest of this starts is the one most worth
+  // having on disk.
+  installCrashLog();
   // Before anything else, so the first seconds count too.
   startPerfLog();
   void removeLegacyRadioCovers();
@@ -225,4 +230,5 @@ export function startApp(): void {
   startWidgetSync();
   startPlaybackLock();
   startRideSync();
+  startSpeakerSuggest();
 }
