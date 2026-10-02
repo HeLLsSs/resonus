@@ -104,7 +104,10 @@ export function MediaMenuSheet() {
   const downloadAlbum = useDownloads((s) => s.downloadAlbum);
   const downloadPlaylist = useDownloads((s) => s.downloadPlaylist);
   const deleteSongs = useDownloads((s) => s.deleteSongs);
-  const files = useDownloads((s) => s.files);
+  // The boolean, not the map: the map is replaced with every song that finishes
+  // downloading, and this sheet is mounted the whole time, closed or not. The
+  // actions below read the map when they run.
+  const hasAnyDownloads = useDownloads(anyDownloads);
   const canShare = useCanShare();
   // Before the early return: hooks can't be conditional. For an album this is
   // exact; a playlist can't be answered without fetching its songs, so there
@@ -113,8 +116,7 @@ export function MediaMenuSheet() {
   const albumHasDownloads = useAlbumDownloads(
     item?.kind === 'album' ? item.album.id : undefined,
   );
-  const hasDownloads =
-    item?.kind === 'album' ? albumHasDownloads : anyDownloads({ files });
+  const hasDownloads = item?.kind === 'album' ? albumHasDownloads : hasAnyDownloads;
 
   if (!item) return null;
 
@@ -148,6 +150,7 @@ export function MediaMenuSheet() {
    */
   async function askExport() {
     try {
+      const { files } = useDownloads.getState();
       const songs = (await fetchSongs(item!)).filter((s) => files[s.id]);
       if (songs.length === 0) {
         toast(t('Nothing here is downloaded'));
@@ -166,6 +169,7 @@ export function MediaMenuSheet() {
     if (!folder) return;
     close();
     toast(t('Exporting…'));
+    const { files } = useDownloads.getState();
     const items = songs.map((s) => ({ song: s, uri: files[s.id] }));
     const { saved, failed } = await exportManyToFolder(items, folder, name);
     toast(
@@ -472,6 +476,7 @@ export function MediaMenuSheet() {
         onConfirm={() => {
           setConfirmDelete(false);
           void withSongs((songs) => {
+            const { files } = useDownloads.getState();
             const ids = songs.filter((s) => files[s.id]).map((s) => s.id);
             if (ids.length === 0) {
               toast(t('Nothing here is downloaded'));

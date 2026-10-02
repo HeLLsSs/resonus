@@ -82,22 +82,23 @@ export function PlayingElsewhereCard() {
   // the answer on, and asking offline would be a request for its own sake.
   const polling = online && focused && appActive;
 
-  const { data, refetch } = useQuery({
+  // Coming back, to the tab or to the app, asks at once rather than waiting
+  // out the interval: the timer stood still meanwhile, and whatever started
+  // playing elsewhere in that time is the one thing the card is for. The
+  // query is switched on and off for that rather than asked again from an
+  // effect: never stale, it is fetched the moment it is switched on, and the
+  // interval only runs while it is. An effect calling `refetch` on mount
+  // cancelled the request the mount had just started and sent a second one.
+  const { data } = useQuery({
     queryKey: ['nowPlaying'],
     queryFn: () => getNowPlaying(),
-    enabled: online,
-    refetchInterval: polling ? POLL_MS : false,
+    enabled: polling,
+    staleTime: 0,
+    refetchInterval: POLL_MS,
     // A card that is not there is the right answer to a server that did not
     // answer; the next tick asks again anyway.
     retry: false,
   });
-
-  // Coming back, to the tab or to the app, asks at once rather than waiting
-  // out the interval: the timer stood still meanwhile, and whatever started
-  // playing elsewhere in that time is the one thing the card is for.
-  useEffect(() => {
-    if (polling) void refetch();
-  }, [polling, refetch]);
 
   const entry = data?.[0];
   // Gone once it is playing here too, whether it was picked up from this card

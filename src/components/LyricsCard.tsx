@@ -126,6 +126,23 @@ export function CoverLyrics({ size, onClose }: { size: number; onClose: () => vo
 /** How much the active line grows: `handleTap` undoes it to find a word. */
 const ACTIVE_SCALE = 1.08;
 
+/** Small advance so the highlight doesn't lag behind the ear. */
+const LEAD_MS = 300;
+
+/** The last line that has started by `posMs`, or -1 before the first. */
+function lineAt(lines: LyricLine[], posMs: number): number {
+  let current = -1;
+  for (let i = 0; i < lines.length && (lines[i].start ?? 0) <= posMs; i++) current = i;
+  return current;
+}
+
+/** The last word that has started by `posMs`, or -1 before the first. */
+function wordAt(words: LyricWord[], posMs: number): number {
+  let sung = -1;
+  for (let i = 0; i < words.length && words[i].start <= posMs; i++) sung = i;
+  return sung;
+}
+
 /** Where a word of the active line was drawn, relative to its row. */
 interface WordBox {
   x: number;
@@ -160,7 +177,15 @@ export function SyncedLyricsView({
   /** Light the active line up word by word when it carries word times. */
   highlightWords?: boolean;
 }) {
-  const positionSec = usePlayerStore((s) => s.positionSec);
+  // The line and the word, not the position: the position lands twice a
+  // second and this view draws every line, so it subscribes to the two numbers
+  // it draws from and repaints only when one of them moves on.
+  const current = usePlayerStore((s) => lineAt(lines, s.positionSec * 1000 + LEAD_MS));
+  // The word being sung on that line, by the same clock. Only the active
+  // line is followed this closely: the others are whole lines whatever they
+  // know, so their rows are not asked to repaint at every word.
+  const words = highlightWords && current >= 0 ? lines[current].words : undefined;
+  const sung = usePlayerStore((s) => (words ? wordAt(words, s.positionSec * 1000 + LEAD_MS) : -1));
   const seekTo = usePlayerStore((s) => s.seekTo);
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   // Real scroll position (regardless of who moved it: user or auto-scroll).
@@ -190,21 +215,11 @@ export function SyncedLyricsView({
   /** What `onMeasure` needs to know without being rebuilt on every line. */
   const currentRef = useRef(-1);
 
-  // Small advance so the highlight doesn't lag behind the ear.
-  const posMs = positionSec * 1000 + 300;
-  let current = -1;
-  for (let i = 0; i < lines.length && (lines[i].start ?? 0) <= posMs; i++) current = i;
   // Written as part of the commit: the rows report where they are as soon as
   // they are laid out, which is before an effect that waited for its turn.
   useLayoutEffect(() => {
     currentRef.current = current;
   });
-  // The word being sung on that line, by the same clock. Only the active
-  // line is followed this closely: the others are whole lines whatever they
-  // know, so their rows are not asked to repaint at every word.
-  const words = highlightWords && current >= 0 ? lines[current].words : undefined;
-  let sung = -1;
-  if (words) for (let i = 0; i < words.length && words[i].start <= posMs; i++) sung = i;
   /** The words of the active line as drawn, for the tap to find one. */
   const wordBoxes = useRef<{ line: number; boxes: WordBox[] }>({ line: -1, boxes: [] });
 
