@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1323 of them.
+Every string the app can show, under the screen it shows up on. 1324 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -1834,6 +1834,7 @@ you are actually typing into, which is easier than reading it here.
 | `More` | A "see more" action, and the third button of the selection bar, the one that opens the rest of what it can do |
 | `More options` | Read out by the screen reader for the three-dot button, which is ⋮ on a song row and in the player and ⋯ in a screen's header |
 | `Name` | The Name field when editing a playlist or a station |
+| `Navifind can't reach YouTube or SoundCloud right now` |  |
 | `New playlist` | Row at the top of the playlist picker, and the button on an empty library: make one |
 | `No results` | Nothing matched what was typed |
 | `No results for “{q}”` | Empty state. `{q}` is what was typed |

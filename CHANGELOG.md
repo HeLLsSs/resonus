@@ -7,6 +7,35 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.8.1] - 2026-10-03
+
+### Fixed
+
+- A source the proxy cannot reach (YouTube or SoundCloud down) stops the
+  player after three online tracks with one toast, instead of walking the
+  whole queue a track at a time; and the limit on skipped tracks, which
+  buffering had always reset, holds again.
+- Ride mode: the greeting and the status read out when the intercom
+  connects were lost to the song announcement while the speech engine was
+  still starting; the lines now queue, in order, and the music only comes
+  back under the last of them. Seeking forward on a radio no longer
+  restarts it.
+- A profile switch no longer carries the previous profile's offline queue,
+  play history, library mirror writes or Navifind import state over to the
+  new one.
+- Native: the local file server, the cast notification, Google Cast
+  discovery, the LinkPlay scope and two settings shortcuts could throw or
+  leak when the app was tearing down.
+- The crash log caps itself at fifty entries per run and follows React
+  Native's own rule for which Promise it watches.
+
+### Changed
+
+- Synced lyrics re-render on a line change rather than twice a second; the
+  "playing elsewhere" card asks once instead of twice; the album and
+  playlist menu no longer re-renders on every downloaded file.
+- The offline profile is named in the app's language.
+
 ## [1.8.0] - 2026-10-03
 
 ### Fixed
