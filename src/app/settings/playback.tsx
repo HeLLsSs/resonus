@@ -24,6 +24,7 @@ import {
   SwitchList,
 } from '@/components/SettingsUI';
 import { useLocalProfile } from '@/hooks/useLocalProfile';
+import { linkPlayAvailable } from '@/lib/linkplay';
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
 import { useTheme } from '@/theme';
@@ -69,6 +70,8 @@ export default function PlaybackSettings() {
   const batteryWarning = useSettings((s) => s.batteryWarning);
   const setBatteryWarning = useSettings((s) => s.setBatteryWarning);
   const setKeepScreenAwake = useSettings((s) => s.setKeepScreenAwake);
+  const suggestKnownSpeakers = useSettings((s) => s.suggestKnownSpeakers);
+  const setSuggestKnownSpeakers = useSettings((s) => s.setSuggestKnownSpeakers);
   const skipSilence = useSettings((s) => s.skipSilence);
   const setSkipSilence = useSettings((s) => s.setSkipSilence);
 
@@ -296,6 +299,18 @@ export default function PlaybackSettings() {
               value: batteryWarning,
               onChange: setBatteryWarning,
             },
+            // Only where the phone can reach a speaker: a browser with no
+            // proxy has nothing to offer.
+            ...(linkPlayAvailable()
+              ? [
+                  {
+                    label: t('Suggest a known speaker'),
+                    description: t('When you play on the phone and a LinkPlay speaker you have used before is on the network, offer to continue on it.'),
+                    value: suggestKnownSpeakers,
+                    onChange: setSuggestKnownSpeakers,
+                  },
+                ]
+              : []),
           ]}
         />
 

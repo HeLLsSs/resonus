@@ -856,6 +856,11 @@ interface SettingsState {
    * exactly when it needs saying again.
    */
   batteryWarning: boolean;
+  /**
+   * Offer to continue on a LinkPlay speaker used before, when it answers on
+   * the network and the music starts on the phone (`lib/speakerSuggest.ts`).
+   */
+  suggestKnownSpeakers: boolean;
   /** Player background: flat, cover color, or blurred cover art. */
   playerBackground: ScreenBackground;
   /**
@@ -1058,6 +1063,7 @@ interface SettingsState {
   setShowDiscHeaders: (value: boolean) => void;
   setShowGenreChips: (value: boolean) => void;
   setBatteryWarning: (value: boolean) => void;
+  setSuggestKnownSpeakers: (value: boolean) => void;
   setPlayerBackground: (value: ScreenBackground) => void;
   setAnimatedCoverBackground: (value: boolean) => void;
   setFitCoverArt: (value: boolean) => void;
@@ -1200,6 +1206,7 @@ function snapshot(get: () => SettingsState) {
     showDiscHeaders: s.showDiscHeaders,
     showGenreChips: s.showGenreChips,
     batteryWarning: s.batteryWarning,
+    suggestKnownSpeakers: s.suggestKnownSpeakers,
     playerBackground: s.playerBackground,
     animatedCoverBackground: s.animatedCoverBackground,
     fitCoverArt: s.fitCoverArt,
@@ -1332,6 +1339,7 @@ const DEFAULTS = {
   showDiscHeaders: true,
   showGenreChips: false,
   batteryWarning: true,
+  suggestKnownSpeakers: true,
   playerBackground: 'cover' as ScreenBackground,
   animatedCoverBackground: false,
   fitCoverArt: false,
@@ -1688,6 +1696,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setBatteryWarning: (batteryWarning) => {
     set({ batteryWarning });
+    persist(snapshot(get));
+  },
+
+  setSuggestKnownSpeakers: (suggestKnownSpeakers) => {
+    set({ suggestKnownSpeakers });
     persist(snapshot(get));
   },
 
@@ -2086,6 +2099,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           showDiscHeaders: boolean;
           showGenreChips: boolean;
           batteryWarning: boolean;
+          suggestKnownSpeakers?: boolean;
           playerBackground: ScreenBackground;
           animatedCoverBackground?: boolean;
           fitCoverArt: boolean;
@@ -2349,6 +2363,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         }
         if (typeof parsed.batteryWarning === 'boolean') {
           set({ batteryWarning: parsed.batteryWarning });
+        }
+        if (typeof parsed.suggestKnownSpeakers === 'boolean') {
+          set({ suggestKnownSpeakers: parsed.suggestKnownSpeakers });
         }
         if (typeof parsed.showDiscHeaders === 'boolean') {
           set({ showDiscHeaders: parsed.showDiscHeaders });
