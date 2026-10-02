@@ -43,6 +43,7 @@ import {
 import { bump } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
 import { waitFor, whenProfileReady } from '@/lib/storeWait';
+import { applyTransport } from '@/lib/transport';
 import { useAuthStore } from '@/store/auth';
 import { useLastPlayed } from '@/store/lastPlayed';
 import { usePins } from '@/store/pins';
@@ -130,38 +131,30 @@ async function toggleFavorite(wanted: boolean): Promise<void> {
   await queryClient.invalidateQueries({ queryKey: ['starred'] });
 }
 
-function applyTransport(e: TransportEvent): void {
-  const store = usePlayerStore.getState();
+function applyCarTransport(e: TransportEvent): void {
   switch (e.action) {
     case 'play':
-      if (!store.isPlaying) store.toggle();
+      applyTransport('resume');
       break;
     case 'pause':
-      if (store.isPlaying) store.toggle();
-      break;
     case 'next':
-      store.next();
-      break;
     case 'previous':
-      store.previous();
+      applyTransport(e.action);
       break;
     case 'seek':
-      store.seekTo((e.value ?? 0) / 1000);
+      applyTransport('seek', (e.value ?? 0) / 1000);
       break;
     case 'seekToIndex':
-      store.jumpTo(Math.round(e.value ?? 0));
+      usePlayerStore.getState().jumpTo(Math.round(e.value ?? 0));
       break;
     case 'shuffle':
-      if (Boolean(e.value) !== store.shuffle) store.toggleShuffle();
+      applyTransport('shuffle', Boolean(e.value));
       break;
     case 'favorite':
       void toggleFavorite(Boolean(e.value));
       break;
     case 'repeat': {
-      // The store cycles off→all→one; advance until the target is reached.
-      for (let i = 0; i < 3 && usePlayerStore.getState().repeat !== e.value; i++) {
-        usePlayerStore.getState().cycleRepeat();
-      }
+      applyTransport('repeat', e.value);
       break;
     }
   }
@@ -261,9 +254,11 @@ export function startCarAutoSync(): void {
   // started this runtime, and a build set off before the session is back
   // is one that finds no session and builds nothing.
   onCarConnected(() => {
-    void whenProfileReady().then(() => {
-      if (Date.now() - lastDeepAt > DEEP_MIN_INTERVAL_MS) scheduleDeep(0);
-    });
+    void whenProfileReady()
+      .then(() => {
+        if (Date.now() - lastDeepAt > DEEP_MIN_INTERVAL_MS) scheduleDeep(0);
+      })
+      .catch(() => bump('car · connect failed'));
   });
 
   // ── Mirror playback state ──
@@ -380,13 +375,34 @@ export function startCarAutoSync(): void {
         state.playbackError !== prev.playbackError)
     ) {
       pushState();
+      told = true;
+    }
+    // A seek while paused: the drift timer below only runs while playing, so
+    // this is the one move of the position nothing else reports.
+    if (!told && !state.isPlaying && state.positionSec !== prev.positionSec && positionDrifted()) {
+      pushState();
     }
   });
   // A seek, a stall, a speed other than 1: whatever leaves the car's count
-  // behind is caught here, and nothing else costs it a push.
-  setInterval(() => {
-    if (positionDrifted()) pushState();
-  }, POSITION_PUSH_MS);
+  // behind is caught here, and nothing else costs it a push. Only while
+  // playing: paused, neither count moves, and a timer waking once a second
+  // in a pocket to compare two numbers that stand still was a timer for its
+  // own sake. A seek made while paused is pushed as a change above.
+  let driftTimer: ReturnType<typeof setInterval> | null = null;
+  const watchDrift = (playing: boolean) => {
+    if (playing && driftTimer === null) {
+      driftTimer = setInterval(() => {
+        if (positionDrifted()) pushState();
+      }, POSITION_PUSH_MS);
+    } else if (!playing && driftTimer !== null) {
+      clearInterval(driftTimer);
+      driftTimer = null;
+    }
+  };
+  watchDrift(usePlayerStore.getState().isPlaying);
+  usePlayerStore.subscribe((state, prev) => {
+    if (state.isPlaying !== prev.isPlaying) watchDrift(state.isPlaying);
+  });
 
   // ── Events from the car ──
   // Each waits for the profile first. A tap can be what started this runtime,
@@ -413,11 +429,21 @@ export function startCarAutoSync(): void {
         pushQueue();
         pushState();
       }
+    }).catch(() => {
+      // A row that could not be resolved at all: counted, and the car's
+      // screen is handed back whatever is playing, for the same reason as
+      // above.
+      bump('car · play failed');
+      pushNowPlaying();
+      pushQueue();
+      pushState();
     });
   });
   // A list opened in the car that the build had not filled: its songs, now.
   onCarBrowse((e) => {
-    void whenProfileReady().then(() => fillCollection(e.parentId));
+    void whenProfileReady()
+      .then(() => fillCollection(e.parentId))
+      .catch(() => bump('car · browse failed'));
   });
   // The car's search box. The native side has searched the tree it holds and
   // sends what it found along with the words, since the library itself can
@@ -443,6 +469,6 @@ export function startCarAutoSync(): void {
       // on a runtime the car just started has nothing to act on until it
       // has: play with an empty queue is nothing.
       .then(() => waitFor(usePlayerStore, (s) => s.queue.length > 0, QUEUE_WAIT_MS))
-      .then(() => applyTransport(e));
+      .then(() => applyCarTransport(e));
   });
 }

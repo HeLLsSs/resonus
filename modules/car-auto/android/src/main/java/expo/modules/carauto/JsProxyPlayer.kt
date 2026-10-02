@@ -180,16 +180,6 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
     // budget runs out, after which they fall back to the uri, which a local
     // file cannot be read from but is at least small. That keeps the timeline
     // under the binder transaction limit.
-    val builder = ImmutableList.builder<MediaItemData>()
-    var artBudget = ART_BUDGET_BYTES
-    for ((i, item) in source.withIndex()) {
-      val isCurrent = i == activeIndex
-      val embed = isCurrent || artBudget > 0
-      val used = item.toMediaItemDataInto(builder, embed)
-      if (!isCurrent) artBudget -= used
-    }
-    val items = builder.build()
-
     val extrapolated = if (playing) {
       positionMs + (System.currentTimeMillis() - positionUpdatedAt)
     } else {
@@ -222,18 +212,47 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
       PlaybackException(it, null, PlaybackException.ERROR_CODE_IO_UNSPECIFIED)
     }
 
-    return State.Builder()
+    fun state(items: ImmutableList<MediaItemData>, index: Int): State = State.Builder()
       .setAvailableCommands(commands)
       .setPlayWhenReady(playing && failure == null, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
       .setPlayerError(failure)
       .setPlaybackState(if (np != null && failure == null) Player.STATE_READY else Player.STATE_IDLE)
       .setPlaylist(items)
       .setPlaylistMetadata(MediaMetadata.Builder().setTitle(queueTitle).build())
-      .setCurrentMediaItemIndex(if (items.isEmpty()) 0 else activeIndex)
+      .setCurrentMediaItemIndex(if (items.isEmpty()) 0 else index)
       .setContentPositionMs(extrapolated.coerceAtLeast(0L))
       .setShuffleModeEnabled(shuffle)
       .setRepeatMode(repeatMode)
       .build()
+
+    // Anything media3 refuses about the playlist (an invariant of its own that
+    // the queue breaks in a way nobody foresaw) costs the car its queue, not
+    // the phone its app: it is handed the current song alone instead.
+    return runCatching {
+      val builder = ImmutableList.builder<MediaItemData>()
+      var artBudget = ART_BUDGET_BYTES
+      // A playlist can hold the same song twice, and media3 throws on a
+      // timeline whose uids repeat, which took the whole app down with it
+      // (and again on every restart, the queue being restored). The second
+      // copy gets a numbered uid; the media id the car navigates by stays
+      // the song's own.
+      val copies = HashMap<String, Int>()
+      for ((i, item) in source.withIndex()) {
+        val isCurrent = i == activeIndex
+        val embed = isCurrent || artBudget > 0
+        val copy = (copies[item.id] ?: 0) + 1
+        copies[item.id] = copy
+        val uid = if (copy == 1) item.id else "${item.id}#$copy"
+        val used = item.toMediaItemDataInto(builder, uid, embed)
+        if (!isCurrent) artBudget -= used
+      }
+      state(builder.build(), activeIndex)
+    }.getOrElse { e ->
+      CarAutoLog.w("the car's playlist could not be built, handing it the current song alone", e)
+      val only = ImmutableList.builder<MediaItemData>()
+      if (np != null) np.toMediaItemDataInto(only, np.id, true)
+      state(only.build(), 0)
+    }
   }
 
   // Builds the timeline item and adds it to [out]. Returns how many bytes of
@@ -241,6 +260,7 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
   // transaction; with [embed] false the cover falls back to its uri.
   private fun NowPlaying.toMediaItemDataInto(
     out: ImmutableList.Builder<MediaItemData>,
+    uid: String,
     embed: Boolean,
   ): Int {
     val metadata = MediaMetadata.Builder()
@@ -256,7 +276,7 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
       .setMediaMetadata(metadata.build())
       .build()
     out.add(
-      MediaItemData.Builder(id)
+      MediaItemData.Builder(uid)
         .setMediaItem(mi)
         .setDurationUs(if (durationMs > 0) durationMs * 1000 else C.TIME_UNSET)
         .build()
