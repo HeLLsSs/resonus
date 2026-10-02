@@ -23,6 +23,17 @@ export const CRASH_LOG_MAX = 64 * 1024;
 export const CRASH_LOG_SHOWN = 20;
 
 /**
+ * The most entries one run of the app writes. Every entry rewrites the whole
+ * file, on the JS thread, and a rejection fired from a loop (a request failing
+ * on every tick out of coverage) would otherwise do that on every turn of it.
+ * The first of them is what the report needs; the rest say the same thing.
+ */
+export const CRASH_LOG_PER_RUN = 50;
+
+/** How many entries this run has written. */
+let written = 0;
+
+/**
  * `text` cut down to its newest half once it is longer than `max`, cut at an
  * entry boundary so the first entry kept is whole.
  */
@@ -76,7 +87,8 @@ export function clearCrashLog(): void {
  * and a promise would never resolve.
  */
 export function appendCrash(kind: 'JS' | 'REJECTION', message: string, stack?: string): void {
-  if (!onPhone) return;
+  if (!onPhone || written >= CRASH_LOG_PER_RUN) return;
+  written += 1;
   try {
     const entry = `${new Date().toISOString()}  ${kind}  ${message}\n${stack ?? ''}`.trimEnd();
     logFile().write(trimLog(`${readCrashLog()}${entry}\n\n`));
@@ -127,9 +139,15 @@ export function installCrashLog(): void {
     },
     onHandled: () => {},
   };
-  const hermes = (globalThis as { HermesInternal?: { enablePromiseRejectionTracker?: (o: typeof tracking) => void } })
-    .HermesInternal;
-  if (hermes?.enablePromiseRejectionTracker) {
+  const hermes = (
+    globalThis as {
+      HermesInternal?: { hasPromise?: () => boolean; enablePromiseRejectionTracker?: (o: typeof tracking) => void };
+    }
+  ).HermesInternal;
+  // The same question React Native asks before it keeps Hermes' `Promise`
+  // (`polyfillPromise.js`): an engine that has the tracker but not the
+  // `Promise` in use would be watching promises nobody makes.
+  if (hermes?.hasPromise?.() && hermes.enablePromiseRejectionTracker) {
     hermes.enablePromiseRejectionTracker(tracking);
   } else {
     // A `require`, as React Native itself loads this polyfill: the module is
