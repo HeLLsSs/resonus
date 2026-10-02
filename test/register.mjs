@@ -38,6 +38,7 @@ const STUBS = new Map([
   ['expo-document-picker', 'expo-document-picker.ts'],
   ['expo/fetch', 'expo-fetch.ts'],
   ['expo-file-system', 'expo-file-system.ts'],
+  ['expo-file-system/legacy', 'expo-file-system-legacy.ts'],
   ['expo-secure-store', 'expo-secure-store.ts'],
   ['expo-sharing', 'expo-sharing.ts'],
   ['@/api/data', 'api-data.ts'],

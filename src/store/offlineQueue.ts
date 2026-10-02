@@ -185,8 +185,14 @@ export const useOfflineQueue = create<QueueState>((set, get) => {
         if (get().loadedFile !== null) set({ data: {}, loadedFile: null });
         return;
       }
-      if (get().loadedFile === file) return;
+      const loaded = get().loadedFile;
+      if (loaded === file) return;
       if (loadPromise && loadingFile === file) return loadPromise;
+      // Another profile's queue is in memory. Every change to it was written
+      // to its own file as it was made, so nothing is lost by letting it go,
+      // and merged into this profile's it would be uploaded to a server that
+      // never heard of those ids.
+      if (loaded !== null) set({ data: {}, loadedFile: null });
       loadingFile = file;
       loadPromise = (async () => {
         let data: QueueData = {};
@@ -196,8 +202,11 @@ export const useOfflineQueue = create<QueueState>((set, get) => {
         } catch {
           // Corrupt or missing file: empty queue.
         }
+        // Overtaken by a read for another profile: this one is nobody's now.
+        if (loadingFile !== file) return;
         set({ data: mergePending(data, get().data), loadedFile: file });
       })().finally(() => {
+        if (loadingFile !== file) return;
         loadPromise = null;
         loadingFile = null;
       });

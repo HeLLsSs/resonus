@@ -24,6 +24,7 @@ import { type ImportReport, navifindStatus, type NavifindStatus } from '@/api/su
 import { tg } from '@/i18n';
 import { navifindActive } from '@/lib/navifind';
 import { queryClient } from '@/lib/query';
+import { primaryUrl } from '@/lib/serverUrls';
 import { useAuthStore } from '@/store/auth';
 import { useToast } from '@/store/toast';
 
@@ -273,6 +274,18 @@ export function startNavifindWatch(): void {
     const [scope, what] = event.query.queryKey;
     if (scope !== NAVIFIND_STATUS_KEY[0] || what !== NAVIFIND_STATUS_KEY[1]) return;
     if (isStatus(event.action.data)) observe(event.action.data);
+  });
+
+  // Another account is another proxy: what was being waited for is not its,
+  // and its first answer must not be counted against the other's library.
+  useAuthStore.subscribe((s, prev) => {
+    const who = (a: typeof s.auth) => (a ? `${primaryUrl(a)}|${a.username}` : '');
+    if (who(s.auth) === who(prev.auth)) return;
+    last = null;
+    before = null;
+    sawProgress = false;
+    graceUntil = 0;
+    stopPolling();
   });
 
   // Back in front with transfers under way when last heard: ask again. Left

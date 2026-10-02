@@ -17,6 +17,7 @@ import {
   SubsonicRequestError,
   type SubsonicAuth,
 } from '@/api/backend';
+import { tg } from '@/i18n';
 import { primaryUrl } from '@/lib/serverUrls';
 import { bump, timed } from '@/lib/perfLog';
 import { clearLocalCatalog, folderSetKey } from '@/lib/localLibrary';
@@ -106,9 +107,9 @@ function sameSource(a: OfflineSource, b: OfflineSource): boolean {
 function offlineLabel(source: OfflineSource): string {
   if (source.mode === 'folder' && source.uris[0]) {
     const decoded = decodeURIComponent(source.uris[0]);
-    return decoded.split(/[:/]/).filter(Boolean).pop() ?? 'Sin conexión';
+    return decoded.split(/[:/]/).filter(Boolean).pop() ?? tg('Offline');
   }
-  return 'Sin conexión';
+  return tg('Offline');
 }
 
 /**

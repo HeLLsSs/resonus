@@ -54,6 +54,9 @@ let favCacheKey: string | null = null;
 async function loadFavs(): Promise<LocalFavStore> {
   const key = favsKey();
   if (favCache && favCacheKey === key) return favCache;
+  // Emptied before the read and not after it: a second caller in between
+  // would otherwise find the previous profile's list filed under this key.
+  favCache = null;
   favCacheKey = key;
   try {
     // The local profile inherits the favorites from the old (global) key until
@@ -899,6 +902,8 @@ let playlistCacheKey: string | null = null;
 async function loadPlaylists(): Promise<LocalPlaylistRec[]> {
   const key = playlistsKey();
   if (playlistCache && playlistCacheKey === key) return playlistCache;
+  // Same as the favourites: nothing of the previous profile's under this key.
+  playlistCache = null;
   playlistCacheKey = key;
   try {
     const raw = await getItem(key);

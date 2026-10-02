@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 
 import { type Song } from '@/api/subsonic';
+import { profileScopeGuard } from '@/lib/profileScope';
 import { primaryUrl } from '@/lib/serverUrls';
 import { deleteItem, getItem, setItem } from '@/lib/storage';
 import { useAuthStore } from './auth';
@@ -72,6 +73,7 @@ interface PlayHistoryState {
 }
 
 let currentKey = '';
+const scope = profileScopeGuard();
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleSave(key: string, entries: HistoryEntry[]) {
@@ -131,9 +133,13 @@ export const usePlayHistory = create<PlayHistoryState>((set, get) => ({
   },
 
   hydrate: async () => {
+    const key = storageKey();
+    // Once per profile. Read again, the file would replace what has played
+    // since and is still waiting on the save timer.
+    if (scope.owns(key)) return;
+    const token = scope.start();
     try {
       // Clear in-memory history if coming from another profile.
-      const key = storageKey();
       if (currentKey && currentKey !== key) set({ entries: [] });
       currentKey = key;
       let raw = await getItem(key);
@@ -146,9 +152,22 @@ export const usePlayHistory = create<PlayHistoryState>((set, get) => ({
           await deleteItem(LEGACY_KEY);
         }
       }
-      set({ entries: raw ? (JSON.parse(raw) as HistoryEntry[]) : [], hydrated: true });
+      // Overtaken by a read for another profile: that one owns the list now
+      // (see `profileScopeGuard`).
+      if (!scope.accept(token, key)) return;
+      const stored = raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+      // What played while the file was being read stays at the top, where it
+      // would be had the file been there: a song started on a cold start used
+      // to be wiped by the read landing behind it.
+      const played = get().entries;
+      const ids = new Set(played.map((e) => e.song.id));
+      set({
+        entries: [...played, ...stored.filter((e) => !ids.has(e.song.id))].slice(0, MAX),
+        hydrated: true,
+      });
     } catch {
-      set({ entries: [], hydrated: true });
+      // Unreadable: what is in memory is the only copy, so it stays.
+      if (scope.accept(token, key)) set({ hydrated: true });
     }
   },
 }));

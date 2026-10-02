@@ -132,8 +132,7 @@ export async function closeMirrorFor(profile: string): Promise<void> {
   // Whatever was held parsed for it goes with the handle: the files are about
   // to, and answering out of memory afterwards would be answering for a
   // library that is no longer there.
-  for (const key of [...parsed.keys()]) if (key.startsWith(`${profile}|`)) parsed.delete(key);
-  if (idsCache?.profile === profile) idsCache = null;
+  forgetProfile(profile);
   const handle = open.get(profile);
   if (!handle) return;
   open.delete(profile);
@@ -491,6 +490,12 @@ function entryKey(profile: string, kind: Kind, id: string): string {
   return `${profile}|${kind}|${id}`;
 }
 
+/** Drops everything held parsed for a profile, when its rows have gone. */
+function forgetProfile(profile: string): void {
+  for (const key of [...parsed.keys()]) if (key.startsWith(`${profile}|`)) parsed.delete(key);
+  if (idsCache?.profile === profile) idsCache = null;
+}
+
 /** Drops what a write has just made wrong. */
 function forgetEntry(profile: string, kind: Kind, id: string): void {
   parsed.delete(entryKey(profile, kind, id));
@@ -842,6 +847,9 @@ export async function remapMirrorIds(
       await db.runAsync('DELETE FROM entries');
     }),
   );
+  // The two lists held parsed would otherwise go on answering, with the ids
+  // from before, for rows that are no longer there.
+  forgetProfile(profile);
 
   return {
     songs: songUpdates.length,

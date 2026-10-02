@@ -1201,6 +1201,9 @@ async function prefetchPlaylistDetails(list: Subsonic.Playlist[]): Promise<void>
     // again: a playlist kept since before covers were saved at all is skipped
     // here for ever, since the server keeps saying it has not changed.
     useLibraryMirror.getState().keepStoredCovers();
+  } catch {
+    // The mirror or the catalog could not be opened: nothing to write into,
+    // and nobody waiting. The next run tries again.
   } finally {
     prefetchingPlaylists = false;
   }

@@ -196,9 +196,12 @@ async function unchanged(
  * interactions to finish costs nothing here and takes it off the way.
  */
 function writeMirror(key: string, fn: (dir: string, profile: string) => Promise<unknown>): void {
+  // Whose write this is, decided now and not when the queue drains: a change
+  // of profile in the seconds between would file it under the other one.
+  const owner = active()?.profile;
   // The last word about a thing is the only one worth writing: a list refetched
   // five times while somebody browses is one row's worth of work, not five.
-  queued.set(key, fn);
+  queued.set(key, (dir, profile) => (profile === owner ? fn(dir, profile) : Promise.resolve()));
   if (flushTimer) return;
   flushTimer = setTimeout(() => {
     flushTimer = null;
