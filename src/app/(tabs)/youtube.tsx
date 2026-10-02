@@ -70,7 +70,7 @@ import { columnsFor, useScreenSize } from '@/hooks/useScreenSize';
 import { useT } from '@/i18n';
 import { haptic } from '@/lib/haptics';
 import { listPerf } from '@/lib/listPerf';
-import { accountRefusal, cardTarget, openableShelves } from '@/lib/youtube';
+import { accountRefusal, cardTarget, openableShelves, tasteOf } from '@/lib/youtube';
 import { useAuthStore } from '@/store/auth';
 import { currentSong, usePlayerStore } from '@/store/player';
 import { useSettings } from '@/store/settings';
@@ -151,6 +151,7 @@ export default function YoutubeScreen() {
   const tile = (width - spacing.lg * 2 - spacing.md * (columns - 1)) / columns;
   const canAsk = navifind && !!auth && !offline;
   const [switching, setSwitching] = useState(false);
+  const [rolling, setRolling] = useState(false);
   // The same key the settings screen fills, so whichever of the two was opened
   // first pays for it and the other reads it from the cache.
   const accounts = useQuery({
@@ -228,6 +229,38 @@ export default function YoutubeScreen() {
       // account it was on, which is still the one being read.
     } finally {
       setSwitching(false);
+    }
+  }
+
+  /**
+   * The die: everything YouTube knows this account likes, dealt and played.
+   *
+   * No list to pick from first, as with the library's shuffle: the point of
+   * the button is not having to choose. The liked songs are fetched here if
+   * that chip was never opened, so the roll works from the first screen.
+   */
+  async function roll() {
+    if (rolling) return;
+    setRolling(true);
+    try {
+      const likedSongs =
+        liked.data ??
+        (await queryClient.fetchQuery({
+          queryKey: ['youtube', 'me', 'liked'],
+          queryFn: () => youtubeLiked(auth!, LIKED),
+        })) ??
+        [];
+      const pool = tasteOf(home.data ?? [], likedSongs);
+      if (pool.length === 0) {
+        toast(t('Nothing to shuffle yet'));
+        return;
+      }
+      haptic('medium');
+      void playQueue(pool, 0, t('YouTube shuffle'), undefined, { shuffled: true });
+    } catch {
+      toast(t("Couldn't load songs."));
+    } finally {
+      setRolling(false);
     }
   }
 
@@ -321,6 +354,23 @@ export default function YoutubeScreen() {
       <View style={styles.header}>
         <Text style={styles.heading}>YouTube</Text>
         <View style={styles.headerRight}>
+          {/* Only with an account to read: without one there is no taste to
+              deal from, and the anonymous home is somebody else's. */}
+          {home.isSuccess ? (
+            <Pressable
+              style={[styles.die, { backgroundColor: accent }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('YouTube shuffle')}
+              disabled={rolling}
+              onPress={() => void roll()}
+            >
+              {rolling ? (
+                <ActivityIndicator size="small" color={colors.onAccent} />
+              ) : (
+                <Ionicons name="dice" size={18} color={colors.onAccent} />
+              )}
+            </Pressable>
+          ) : null}
           {/* Only with somewhere to go: one account is a button that would do
               nothing, and the settings screen is where the list belongs. */}
           {(accounts.data?.length ?? 0) > 1 ? (
@@ -489,6 +539,13 @@ const styles = themed((colors) => ({
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceHighlight,
     flexShrink: 1,
+  },
+  die: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Capped so a long account name cannot push the offline badge off the edge.
   accountName: { color: colors.textSecondary, fontSize: fontSize.xs, maxWidth: 120 },

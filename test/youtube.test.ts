@@ -17,6 +17,7 @@ import {
   saveFailure,
   SIGN_IN_URL,
   signedIn,
+  tasteOf,
 } from '@/lib/youtube';
 
 const card = (over: Partial<YoutubeCard>): YoutubeCard => ({ title: 'Something', ...over });
@@ -234,5 +235,29 @@ describe('signedIn', () => {
     assert.ok(SIGN_IN_URL.includes('service=youtube'));
     assert.ok(SIGN_IN_URL.includes(encodeURIComponent(`${MUSIC_ORIGIN}/`)));
     assert.equal(signedIn(`${MUSIC_ORIGIN}/`, session), true);
+  });
+});
+
+describe('tasteOf', () => {
+  const picks = shelf({ songs: [song('yt_a'), song('yt_b')] });
+
+  it('pools the home shelves and the liked songs', () => {
+    const pool = tasteOf([picks, shelf({})], [song('yt_c')]);
+    assert.deepEqual(
+      pool.map((s) => s.id),
+      ['yt_a', 'yt_b', 'yt_c'],
+    );
+  });
+
+  it('keeps a song once however many shelves carry it', () => {
+    const pool = tasteOf([shelf({ songs: [song('yt_a')] }), picks], [song('yt_b')]);
+    assert.deepEqual(
+      pool.map((s) => s.id),
+      ['yt_a', 'yt_b'],
+    );
+  });
+
+  it('is empty with nothing to deal from', () => {
+    assert.deepEqual(tasteOf([], []), []);
   });
 });

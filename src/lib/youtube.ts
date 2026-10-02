@@ -23,7 +23,7 @@
 // Types only, and said so at the top of the statement rather than specifier by
 // specifier: the API module reads the account through this one, and an import
 // that survives compilation would make that a circle.
-import type { YoutubeCard, YoutubeShelf } from '@/api/subsonic';
+import type { Song, YoutubeCard, YoutubeShelf } from '@/api/subsonic';
 
 /**
  * The two refusals that must not read alike.
@@ -256,4 +256,21 @@ export function openableShelves(shelves: YoutubeShelf[]): YoutubeShelf[] {
   return shelves
     .map((shelf) => ({ ...shelf, items: shelf.items.filter((card) => cardTarget(card)) }))
     .filter((shelf) => shelf.items.length > 0 || shelf.songs.length > 0);
+}
+
+/**
+ * What the account's YouTube would play it, as one list to deal: the tracks on
+ * its own home page (the quick picks, what it listened to again) and the ones
+ * it liked, each once. The tiles are left out, since a mix is a playlist to
+ * open and not a track to queue.
+ */
+export function tasteOf(shelves: YoutubeShelf[], liked: Song[]): Song[] {
+  const seen = new Set<string>();
+  const out: Song[] = [];
+  for (const song of [...shelves.flatMap((shelf) => shelf.songs), ...liked]) {
+    if (seen.has(song.id)) continue;
+    seen.add(song.id);
+    out.push(song);
+  }
+  return out;
 }
