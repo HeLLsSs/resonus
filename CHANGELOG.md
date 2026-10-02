@@ -7,6 +7,44 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.8.0] - 2026-10-03
+
+### Fixed
+
+- The app no longer dies, and keeps dying at every restart, when a playlist
+  holding the same song twice is played while Android Auto (or any media
+  browser: a watch, a car, Bluetooth) is attached: media3 refused the queue
+  mirrored to the car. A song in the queue twice now has two distinct ids
+  there, and a queue the car cannot take falls back to the current song
+  instead of taking the app down.
+- Android Auto: a tap, a browse or a connection that failed on the way left
+  the car showing the tapped row; they now hand the car back what is playing.
+
+### Added
+
+- A die on the YouTube tab: everything YouTube knows the account likes, the
+  home page's own tracks and the liked songs, dealt and played.
+- A crash log, JavaScript and native, read and shared from Settings ›
+  Diagnostics along with the last lines of the Android Auto log.
+- Ride mode: "Prepare the ride" downloads the next songs of the queue
+  (15, 30, 60 or all) before leaving the network behind, with the count on
+  the button; the intercom connecting now hears the battery, the output and
+  how many songs are left, and "status" asks for it again.
+- "Continue on <speaker>?": when the music starts on the phone and a WiiM
+  played on before answers, a toast offers to move the music there
+  (Settings › Playback to turn it off).
+
+### Changed
+
+- The saved queue lives in a plain file rather than encrypted storage: one
+  less thing the opening waits for, and nothing in it was secret. The old
+  copy is moved over once.
+- The Android Auto position check only runs while playing, and the library
+  rows no longer re-render on unrelated changes.
+- One transport path for the intents API, the car, the browser's keys, the
+  voice commands and the lock screen; the queue arithmetic, replay gain and
+  sleep fade are plain functions with tests.
+
 ## [1.7.0] - 2026-09-29
 
 ### Added

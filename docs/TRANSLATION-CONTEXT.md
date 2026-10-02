@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1293 of them.
+Every string the app can show, under the screen it shows up on. 1323 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -405,6 +405,13 @@ you are actually typing into, which is easier than reading it here.
 | `the browser` |  |
 | `the phone` |  |
 
+## in speakerSuggestSync
+
+| String | What it is |
+| --- | --- |
+| `Continue on {name}?` |  |
+| `Play on {name}` |  |
+
 ## Jam
 
 | String | What it is |
@@ -736,15 +743,29 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `{n} songs left in the queue` |  |
+| `{n} songs will be downloaded over mobile data.` |  |
 | `{title}, by {artist}` | What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it |
+| `battery at {n} %` |  |
 | `Battery at {n} %` | Read out loud in the helmet when the phone's battery reaches 20, 10 and 5 %. `{n}` is the level |
+| `battery at {n} %, charging` |  |
+| `Download on mobile data?` |  |
 | `Exit ride mode` |  |
+| `last song of the queue` |  |
 | `Next` | Player control: the next track (accessibility label) |
 | `No radio station chosen` |  |
 | `Nothing found for {query}` | Read out loud after a voice search that found nothing. `{query}` is what was said |
+| `nothing in the queue` |  |
 | `Nothing playing` | The ride screen with an empty queue: the title's place |
+| `one song left in the queue` |  |
+| `playing on {output}` |  |
+| `Prepare the ride` |  |
+| `Preparing the ride` |  |
 | `Previous` | Player control: the previous track (accessibility label) |
 | `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
+| `Ride prepared: {done} of {total} songs downloaded` |  |
+| `Ride prepared: {n} songs downloaded` |  |
+| `The next songs are already downloaded` |  |
 | `Voice` | The ride screen's big microphone button: say a song, an artist or a command |
 | `Volume down` |  |
 | `Volume up` |  |
@@ -883,18 +904,25 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `Android Auto` |  |
+| `Clear crash log` |  |
 | `Counted` | Section header on the Diagnostics screen: things that happened and how many times |
+| `Crashes` |  |
 | `Diagnostics` | The screen's title, and the row in About that opens it |
 | `If the server renumbers its ids, rewrite the downloads to match instead of losing them. Off until it has been tested against a server that has.` | The line under that switch, saying why it is off |
 | `Measuring is off (Settings › About), so there is nothing to show.` | Empty state on the Diagnostics screen when `Measure performance` has never been switched on |
+| `No crash recorded.` |  |
+| `Nothing logged yet.` |  |
 | `Profile` | Section header over what kind of server the profile is. Not a user profile |
 | `Repair the offline library` | The switch itself. Navidrome 0.64 gives every song a new id, and the downloads on the phone still hold the old ones; this is what rewrites them so the music stays playable |
 | `Server id repair` | Section title in the hidden Diagnostics screen, above the switch below |
 | `Share report` | Button: hands the numbers over as plain text, to paste into an issue |
 | `Start over` | Button: clears the measurements and starts counting again. Not "start playback" |
 | `State` | Section header on the Diagnostics screen: what the app is doing at this moment, as opposed to the timings above it |
+| `The car module's last lines, for a report written away from the car.` |  |
 | `The player keeps beating twice a second while the app is away. Long silences here mean the app stopped following what it was playing.` | The line under `While minimized`. "The player" is the native audio engine, not the player screen, and "beating" is a heartbeat: it sends its state every 500 ms, and the position, the notification and the move to the next track all hang off that. Everything else on this screen stops measuring once the app is minimized, because the system takes its timers away, so this beat is the one clock still running out there. A long gap means the player itself went quiet, which is a different fault from the app coming back with a stale screen. Keep the medical sense of a pulse if your language has one |
 | `What happened, rather than how long it took.` | The line under `Counted`: that section is a tally of events, next to the sections above it which are timings |
+| `What stopped the app, most recent first.` |  |
 | `While minimized` | Section header on the Diagnostics screen, over what was measured with the app in the background rather than on screen. Minimized as in put away: the screen off or another app in front, with the music still going |
 
 ## Settings › Download activity
@@ -1297,11 +1325,13 @@ you are actually typing into, which is easier than reading it here.
 | `Streaming codec (Wi-Fi)` |  |
 | `Streaming quality (mobile data)` |  |
 | `Streaming quality (Wi-Fi)` |  |
+| `Suggest a known speaker` |  |
 | `The screen never turns off while the app is visible.` | The line under “Keep screen on”, explaining it |
 | `Tune the sound band by band.` | The line under “Equalizer”, explaining it |
 | `Warn about battery optimization` |  |
 | `When a song counts as played.` | Under the `Scrobbling` row, saying what the screen it opens is about |
 | `When you open the app with nothing playing, take the queue another player left on the server if it is newer than this one. The ⋯ of the queue screen asks for it at any time.` |  |
+| `When you play on the phone and a LinkPlay speaker you have used before is on the network, offer to continue on it.` | The line under “Suggest a known speaker”, explaining it |
 
 ## Settings › Player
 
@@ -1404,6 +1434,7 @@ you are actually typing into, which is easier than reading it here.
 | `Floating player` | A small player drawn over whatever app is in front (Waze), with play, pause and next |
 | `Floating player size` |  |
 | `For you` | One of the values of “With an empty queue” |
+| `How many songs of the queue Prepare the ride downloads before the bike leaves the network.` |  |
 | `Intercom` | Section title: the helmet's Bluetooth intercom (Cardo, Sena…), the device that starts ride mode when it connects |
 | `Large, for thick gloves` | One of the values of “Floating player size” |
 | `Leave as is` |  |
@@ -1416,17 +1447,21 @@ you are actually typing into, which is easier than reading it here.
 | `Open ride mode` |  |
 | `Play, pause and skip over Waze or any other app. Needs permission to draw over other apps, asked when switched on.` |  |
 | `Play, pause and skip over Waze or any other app. Tap the title to come back here.` |  |
+| `Prepare the ride` |  |
 | `Radio station` |  |
 | `Resume playback` |  |
 | `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
 | `Ride mode starts on its own when the chosen Bluetooth device connects, and stops when it disconnects. Pair the intercom with the phone first.` |  |
 | `Shuffle all` | One of the values of “With an empty queue” |
 | `Start when this device connects` |  |
+| `Status at the start` |  |
+| `The battery, the output and how many songs are left, said when the intercom connects.` | The line under “Status at the start”, explaining it |
 | `The media volume set when ride mode starts on its own, so it is not left where the kitchen had it.` | The line under “Volume at the start”, explaining it |
 | `The station the Radio button of the ride screen plays.` | The line under “Radio station”, explaining it |
 | `Volume at the start` |  |
 | `What starts when there is nothing to resume.` | The line under “With an empty queue”, explaining it |
 | `What was playing starts again when the intercom connects.` | The line under “Resume playback”, explaining it |
+| `Whole queue` |  |
 | `With an empty queue` | Setting: what ride mode starts when the intercom connects and there is no queue to resume |
 
 ## Settings › Scrobbling
@@ -1723,6 +1758,7 @@ you are actually typing into, which is easier than reading it here.
 | `Switch account` |  |
 | `The server did not answer as Navifind would. Check the address, or turn this off.` |  |
 | `Your YouTube session has expired` |  |
+| `YouTube shuffle` |  |
 
 ## Used all over the app
 

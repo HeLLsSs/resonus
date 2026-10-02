@@ -60,7 +60,9 @@ appear when it is switched off.
   tracks have arrived. A notification says when the proxy has finished.
 - **A YouTube tab**: the shelves of the YouTube Music home page your account is
   shown, your playlists, the tracks you liked and the records you keep. It
-  starts off and is offered only where Navifind is on.
+  starts off and is offered only where Navifind is on. A die at the top deals
+  everything YouTube knows the account likes, the home page's own tracks and
+  the liked songs, and plays it.
 - **Signing in from the phone**: one button opens Google's own sign-in page
   inside the app, and the session it leaves behind goes to the proxy by itself.
   Two-factor, passkeys and account recovery all behave as they do anywhere
@@ -154,7 +156,9 @@ appear when it is switched off.
   and one speaker playing brings the others into its multiroom group from
   the output sheet, one control per speaker, the way Sonos rooms do. The
   speaker only speaks HTTPS with a certificate of LinkPlay's own, which the
-  app pins and trusts for nothing else.
+  app pins and trusts for nothing else. When the music starts on the phone at
+  home and a speaker played on before answers, a toast offers to continue on
+  it, once per speaker.
 - **Music Assistant**, spoken to directly rather than through Home Assistant.
   Nothing is polled, and no address is handed to a speaker: a song is named by
   its id in the library Music Assistant already keeps, and it fetches the song
@@ -167,6 +171,12 @@ appear when it is switched off.
   buttons a glove can hit, a floating player over Waze or any other app,
   each new song read out in the helmet, and all of it started on its own
   when the helmet's intercom connects. Android only.
+- **Prepare the ride**: one button downloads the next songs of the queue
+  before the bike leaves the network behind, 15, 30, 60 or the whole queue,
+  with the count on the button while they come.
+- **The helmet hears the state of things** when the intercom connects: the
+  battery, where the music is going and how many songs are left, and again
+  on asking for "status".
 
 ### Android Auto
 
@@ -294,6 +304,9 @@ appear when it is switched off.
 - Custom HTTP headers reach casting, DLNA and the car: a server behind them is
   relayed through the phone rather than handed out as an address.
 - The update check looks at this fork's own releases.
+- A crash log, JavaScript and native, read and shared from Settings ›
+  Diagnostics along with the last lines of the Android Auto module, so what
+  went wrong in a car or in a pocket can still be read at home.
 - French translation.
 
 ## Download
