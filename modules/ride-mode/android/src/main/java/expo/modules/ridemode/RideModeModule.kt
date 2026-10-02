@@ -36,6 +36,8 @@ class RideConfigRecord : Record {
   @Field val overlaySize: String = "normal"
   @Field val radioStationId: String = ""
   @Field val radioStationName: String = ""
+  @Field val status: Boolean = true
+  @Field val prepareCount: Int = 30
 }
 
 /** What the floating player shows, as JS pushes it. */
@@ -71,8 +73,9 @@ class RideModeModule : Module() {
   private var modeListener: AudioManager.OnModeChangedListener? = null
   private var batteryReceiver: BroadcastReceiver? = null
 
-  private val context: Context
-    get() = appContext.reactContext ?: throw IllegalStateException("React context is not available")
+  /** Null once React has torn its context down, which is a call to do nothing with, not to throw over. */
+  private val context: Context?
+    get() = appContext.reactContext
 
   override fun definition() = ModuleDefinition {
     Name("RideMode")
@@ -117,9 +120,10 @@ class RideModeModule : Module() {
 
     OnActivityEntersForeground { main.post { applyShowWhenLocked() } }
 
-    Function("getConfig") { RideConfig.load(context).toMap() }
+    Function("getConfig") { context?.let { RideConfig.load(it).toMap() } }
 
     Function("setConfig") { record: RideConfigRecord ->
+      val ctx = context ?: return@Function
       RideConfig(
         intercomName = record.intercomName,
         intercomAddress = record.intercomAddress,
@@ -132,12 +136,14 @@ class RideModeModule : Module() {
         overlaySize = record.overlaySize,
         radioStationId = record.radioStationId,
         radioStationName = record.radioStationName,
-      ).save(context)
+        status = record.status,
+        prepareCount = record.prepareCount,
+      ).save(ctx)
     }
 
     /** Whether the phone has something to turn speech into text: Google's app, on most phones. */
     Function("canListen") {
-      speechIntent().resolveActivity(context.packageManager) != null
+      context?.let { speechIntent().resolveActivity(it.packageManager) != null } ?: false
     }
 
     /**
@@ -148,7 +154,8 @@ class RideModeModule : Module() {
      */
     AsyncFunction("listen") { promise: Promise ->
       val activity = appContext.currentActivity
-      if (activity == null || speechIntent().resolveActivity(context.packageManager) == null) {
+      val ctx = context
+      if (activity == null || ctx == null || speechIntent().resolveActivity(ctx.packageManager) == null) {
         promise.resolve("")
         return@AsyncFunction
       }
@@ -164,13 +171,14 @@ class RideModeModule : Module() {
 
     /** Whether ride mode is on, for the quick settings tile to show. */
     Function("setActive") { on: Boolean ->
-      RideConfig.saveActive(context, on)
-      RideTileService.refresh(context)
+      val ctx = context ?: return@Function
+      RideConfig.saveActive(ctx, on)
+      RideTileService.refresh(ctx)
     }
 
     /** The navigation apps on the phone, each `{package, name}`, from the ones the manifest may look for. */
     Function("getNavigationApps") {
-      val pm = context.packageManager
+      val pm = context?.packageManager ?: return@Function emptyList<Map<String, String>>()
       NAVIGATION_APPS.mapNotNull { pkg ->
         pm.getLaunchIntentForPackage(pkg) ?: return@mapNotNull null
         val name = runCatching { pm.getApplicationInfo(pkg, 0).loadLabel(pm).toString() }.getOrDefault(pkg)
@@ -180,9 +188,10 @@ class RideModeModule : Module() {
 
     /** Brings that app to the front, the way its launcher icon would. */
     Function("openNavigationApp") { pkg: String ->
-      val launch = context.packageManager.getLaunchIntentForPackage(pkg) ?: return@Function false
+      val ctx = context ?: return@Function false
+      val launch = ctx.packageManager.getLaunchIntentForPackage(pkg) ?: return@Function false
       launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      runCatching { context.startActivity(launch) }
+      runCatching { ctx.startActivity(launch) }
         .onFailure { Log.w(Intercom.TAG, "could not open $pkg: ${it.message}") }
         .isSuccess
     }
@@ -214,7 +223,7 @@ class RideModeModule : Module() {
     /** The devices paired with the phone, each `{name, address}`; empty without the permission. */
     Function("getBondedDevices") {
       if (!hasBluetoothPermission()) return@Function emptyList<Map<String, String>>()
-      val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+      val manager = context?.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
       val bonded = runCatching { manager?.adapter?.bondedDevices }.getOrNull().orEmpty()
       bonded.map { device ->
         mapOf(
@@ -224,12 +233,13 @@ class RideModeModule : Module() {
       }.sortedBy { it["name"] }
     }
 
-    Function("canDrawOverlays") { RideOverlay.canDraw(context) }
+    Function("canDrawOverlays") { context?.let { RideOverlay.canDraw(it) } ?: false }
 
-    Function("requestOverlayPermission") { RideOverlay.requestPermission(context) }
+    Function("requestOverlayPermission") { context?.let { RideOverlay.requestPermission(it) } }
 
     Function("showOverlay") { state: OverlayStateRecord ->
-      RideOverlay.show(context, OverlayState(state.title, state.isPlaying), RideConfig.load(context).overlaySize == "large")
+      val ctx = context ?: return@Function
+      RideOverlay.show(ctx, OverlayState(state.title, state.isPlaying), RideConfig.load(ctx).overlaySize == "large")
     }
 
     Function("updateOverlay") { state: OverlayStateRecord ->
@@ -244,16 +254,17 @@ class RideModeModule : Module() {
      * an app that may draw over others, which ride mode asks for anyway.
      */
     Function("openApp") { link: String ->
+      val ctx = context ?: return@Function
       val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
-        .setPackage(context.packageName)
+        .setPackage(ctx.packageName)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      runCatching { context.startActivity(intent) }
+      runCatching { ctx.startActivity(intent) }
         .onFailure { Log.w(Intercom.TAG, "could not open the app: ${it.message}") }
     }
 
-    Function("speak") { text: String ->
-      val context = this@RideModeModule.context
-      main.post { (speaker ?: Speaker(context).also { speaker = it }).speak(text) }
+    Function("speak") { text: String, queue: Boolean ->
+      val context = this@RideModeModule.context ?: return@Function
+      main.post { (speaker ?: Speaker(context).also { speaker = it }).speak(text, queue) }
     }
 
     Function("stopSpeaking") { main.post { speaker?.stop() } }
@@ -274,7 +285,7 @@ class RideModeModule : Module() {
    */
   private fun watchCalls() {
     if (Build.VERSION.SDK_INT < 31 || modeListener != null) return
-    val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+    val audio = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
     val listener = AudioManager.OnModeChangedListener { mode ->
       val inCall = mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION
       sendEvent("call", mapOf("inCall" to inCall))
@@ -296,10 +307,11 @@ class RideModeModule : Module() {
       }
     }
     val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+    val ctx = context ?: return
     if (Build.VERSION.SDK_INT >= 33) {
-      context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+      ctx.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
     } else {
-      context.registerReceiver(receiver, filter)
+      ctx.registerReceiver(receiver, filter)
     }
     batteryReceiver = receiver
   }
@@ -326,7 +338,7 @@ class RideModeModule : Module() {
 
   private fun hasBluetoothPermission(): Boolean =
     Build.VERSION.SDK_INT < 31 ||
-      context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+      context?.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
   /** True when JS was listening and got it. */
   fun emitIntercom(connected: Boolean, name: String, source: String): Boolean {

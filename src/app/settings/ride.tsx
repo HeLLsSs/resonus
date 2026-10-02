@@ -16,7 +16,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { SelectList, SettingRow, SettingsPage, settingsStyles, SliderRow, SwitchList } from '@/components/SettingsUI';
 import { getRadioStations } from '@/api/subsonic';
@@ -26,6 +26,7 @@ import {
   getBondedDevices,
   getNavigationApps,
   hasBluetoothPermission,
+  PREPARE_COUNTS,
   requestBluetoothPermission,
   requestOverlayPermission,
   type BluetoothDevice,
@@ -34,12 +35,12 @@ import {
 } from '@/lib/rideMode';
 import { useAuthStore } from '@/store/auth';
 import { useRideMode } from '@/store/rideMode';
-import { useTheme } from '@/theme';
+import { fontSize, radius, spacing, themed, useTheme } from '@/theme';
 
 export default function RideSettings() {
   // Repaints on a change of appearance or accent: a stack keeps this screen
   // mounted while you are on another one, out of reach of anything else.
-  useTheme();
+  const { accent, onAccent } = useTheme();
   const t = useT();
   const router = useRouter();
   const config = useRideMode((s) => s.config);
@@ -136,6 +137,12 @@ export default function RideSettings() {
               onChange: (announce) => setConfig({ announce }),
             },
             {
+              label: t('Status at the start'),
+              description: t('The battery, the output and how many songs are left, said when the intercom connects.'),
+              value: config.status,
+              onChange: (status) => setConfig({ status }),
+            },
+            {
               label: t('Resume playback'),
               description: t('What was playing starts again when the intercom connects.'),
               value: config.resume,
@@ -214,6 +221,33 @@ export default function RideSettings() {
             }
           />
         ) : null}
+        <Text style={settingsStyles.sectionTitle}>{t('Prepare the ride')}</Text>
+        <Text style={settingsStyles.sectionDescription}>
+          {t('How many songs of the queue Prepare the ride downloads before the bike leaves the network.')}
+        </Text>
+        {/* Chips rather than a list: four short choices, read in one glance. */}
+        <View style={styles.chips}>
+          {PREPARE_COUNTS.map((count) => {
+            const active = count === config.prepareCount;
+            return (
+              <Pressable
+                key={count}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => setConfig({ prepareCount: count })}
+                style={({ pressed }) => [
+                  styles.chip,
+                  active && { backgroundColor: accent },
+                  pressed && { opacity: 0.6 },
+                ]}
+              >
+                <Text style={[styles.chipText, active && { color: onAccent }]}>
+                  {count === 0 ? t('Whole queue') : String(count)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <SettingRow
           label={t('Open ride mode')}
           description={t('Big buttons for a glove, the screen kept on, and a flick to skip.')}
@@ -224,3 +258,14 @@ export default function RideSettings() {
     </SettingsPage>
   );
 }
+
+const styles = themed((colors) => ({
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  chip: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceHighlight,
+  },
+  chipText: { color: colors.text, fontSize: fontSize.sm, fontWeight: '600' },
+}));

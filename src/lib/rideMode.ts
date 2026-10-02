@@ -42,7 +42,14 @@ export interface RideConfig {
   /** The station the ride screen's radio button plays; empty for no button. */
   radioStationId: string;
   radioStationName: string;
+  /** The battery, the output and what is left of the queue said when the intercom connects. */
+  status: boolean;
+  /** How many songs of the queue "Prepare the ride" downloads; 0 for the whole queue. */
+  prepareCount: number;
 }
+
+/** The choices for `prepareCount`, 0 being the whole queue. */
+export const PREPARE_COUNTS = [15, 30, 60, 0];
 
 export type OverlaySize = 'normal' | 'large';
 
@@ -87,7 +94,7 @@ interface NativeRideMode {
   updateOverlay: (state: RideOverlayState) => void;
   hideOverlay: () => void;
   openApp: (link: string) => void;
-  speak: (text: string) => void;
+  speak: (text: string, queue: boolean) => void;
   stopSpeaking: () => void;
   takePendingIntercom: () => string | null;
   getNavigationApps: () => NavigationApp[];
@@ -131,6 +138,8 @@ export const NO_RIDE_CONFIG: RideConfig = {
   overlaySize: 'normal',
   radioStationId: '',
   radioStationName: '',
+  status: true,
+  prepareCount: 30,
 };
 
 export function getRideConfig(): RideConfig {
@@ -139,7 +148,8 @@ export function getRideConfig(): RideConfig {
   // A value written by a later build, or by hand, is read as the default.
   const emptyQueue = EMPTY_QUEUE_ACTIONS.find((a) => a === config.emptyQueue) ?? 'nothing';
   const overlaySize = config.overlaySize === 'large' ? 'large' : 'normal';
-  return { ...config, emptyQueue, overlaySize };
+  const prepareCount = PREPARE_COUNTS.includes(config.prepareCount) ? config.prepareCount : 30;
+  return { ...config, emptyQueue, overlaySize, prepareCount };
 }
 
 export function setRideConfig(config: RideConfig): void {
@@ -196,8 +206,9 @@ export function openRideScreen(): void {
   native?.openApp(RIDE_LINK);
 }
 
-export function speak(text: string): void {
-  native?.speak(text);
+/** Says a line in the helmet, over whatever was being said; after it with `queue`. */
+export function speak(text: string, queue = false): void {
+  native?.speak(text, queue);
 }
 
 export function stopSpeaking(): void {
@@ -247,8 +258,22 @@ export function onCall(cb: (inCall: boolean) => void): { remove: () => void } | 
   return native?.addListener('call', (e) => cb(e.inCall));
 }
 
+/**
+ * The battery as last heard of, for the status read out at the start of a
+ * ride: the system says it again at every change, from the moment somebody
+ * listens, so this is a moment old at most. Nothing until it has spoken.
+ */
+let battery: BatteryEvent | null = null;
+
+export function batteryState(): BatteryEvent | null {
+  return battery;
+}
+
 export function onBattery(cb: (e: BatteryEvent) => void): { remove: () => void } | undefined {
-  return native?.addListener('battery', cb);
+  return native?.addListener('battery', (e) => {
+    battery = e;
+    cb(e);
+  });
 }
 
 export function onIntercom(cb: (e: IntercomEvent) => void): { remove: () => void } | undefined {
@@ -272,4 +297,36 @@ export function announcement(song: Song, live: StreamInfo | null): string | null
   if (!title) return null;
   if (song.url && !live?.title) return null;
   return artist ? tg('{title}, by {artist}', { title, artist }) : title;
+}
+
+/**
+ * The songs "Prepare the ride" downloads: the one playing and the `count`
+ * after it in the order they will play, round to the start of the queue
+ * when it repeats, the whole queue for a `count` of 0. A song already on the
+ * phone and a radio stream are left out and do not count, so what is asked
+ * for is `count` songs the bike could not play without a network, not
+ * `count` places in the queue. A track the proxy found online is fetched
+ * like any other: the proxy streams it, and the download menu offers it too.
+ */
+export function songsToPrepare(
+  queue: Song[],
+  index: number,
+  count: number,
+  repeats: boolean,
+  downloaded: Record<string, string>,
+): Song[] {
+  if (queue.length === 0) return [];
+  const start = Math.max(0, Math.min(index, queue.length - 1));
+  const span = repeats ? queue.length : queue.length - start;
+  const wanted = count > 0 ? count : Infinity;
+  const picked: Song[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < span && picked.length < wanted; i++) {
+    const song = queue[(start + i) % queue.length];
+    if (!song || seen.has(song.id)) continue;
+    seen.add(song.id);
+    if (song.url || song.localUri || downloaded[song.id]) continue;
+    picked.push(song);
+  }
+  return picked;
 }

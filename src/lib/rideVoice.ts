@@ -7,21 +7,26 @@
  * its own, and the app carries no microphone permission for it. What comes
  * back is either one of a few commands, in French or English whichever the
  * phone speaks, or a search: the songs found play, the first one now.
+ *
+ * The other way round too: the status read out when the intercom connects
+ * (the battery, where the music goes, what is left of the queue), and again
+ * on asking for it.
  */
 import { getRadioStations } from '@/api/subsonic';
 import { getStarred, search } from '@/api/data';
-import { tg } from '@/i18n';
+import { tg, type TFunction } from '@/i18n';
 import { playShuffle } from '@/lib/playShuffle';
-import { listen, speak } from '@/lib/rideMode';
+import { batteryState, listen, speak, type BatteryEvent } from '@/lib/rideMode';
+import { applyTransport } from '@/lib/transport';
 import { useAuthStore } from '@/store/auth';
-import { SOURCE_FAVORITES, usePlayerStore } from '@/store/player';
+import { currentOutput, SOURCE_FAVORITES, usePlayerStore } from '@/store/player';
 import { useRideMode } from '@/store/rideMode';
 
 /** How many of the songs a search finds go into the queue. */
 const SEARCH_QUEUE_SIZE = 50;
 
 export type VoiceCommand =
-  | { kind: 'toggle' | 'next' | 'previous' | 'favorites' | 'random' | 'radio' }
+  | { kind: 'toggle' | 'next' | 'previous' | 'favorites' | 'random' | 'radio' | 'status' }
   | { kind: 'search'; query: string }
   | { kind: 'nothing' };
 
@@ -33,6 +38,7 @@ const COMMANDS: [VoiceCommand['kind'], string[]][] = [
   ['favorites', ['favorites', 'favourites', 'favoris', 'mes favoris']],
   ['random', ['shuffle', 'random', 'aléatoire', 'aleatoire', 'au hasard']],
   ['radio', ['radio', 'la radio']],
+  ['status', ['status', 'statut', 'état', 'battery', 'batterie']],
 ];
 
 /**
@@ -52,6 +58,54 @@ export function interpretCommand(said: string): VoiceCommand {
     }
   }
   return { kind: 'search', query: said.trim() };
+}
+
+/** What the status read out in the helmet is made of. */
+export interface RideStatus {
+  /** Nothing when the system has not said yet. */
+  battery: BatteryEvent | null;
+  /** The output's name; empty for the phone itself, which goes without saying. */
+  output: string;
+  /** Songs after the one playing; nothing for an empty queue. */
+  remaining: number | null;
+}
+
+/**
+ * The status as one sentence: the battery, the output when it is not the
+ * phone, and how many songs are left. Short, since it is said over the
+ * music at the start of a ride, and the pieces come in that order because
+ * the battery is what the rider can do something about.
+ */
+export function statusSentence({ battery, output, remaining }: RideStatus, t: TFunction = tg): string {
+  const parts: string[] = [];
+  if (battery) {
+    parts.push(
+      battery.charging
+        ? t('battery at {n} %, charging', { n: battery.level })
+        : t('battery at {n} %', { n: battery.level }),
+    );
+  }
+  if (output) parts.push(t('playing on {output}', { output }));
+  if (remaining === null) parts.push(t('nothing in the queue'));
+  else if (remaining === 0) parts.push(t('last song of the queue'));
+  else if (remaining === 1) parts.push(t('one song left in the queue'));
+  else parts.push(t('{n} songs left in the queue', { n: remaining }));
+  return `${parts.join(', ')}.`;
+}
+
+/** The status as it is now, read off the phone, the player and the output. */
+export function rideStatus(): RideStatus {
+  const { queue, index } = usePlayerStore.getState();
+  return {
+    battery: batteryState(),
+    output: currentOutput().name,
+    remaining: queue.length === 0 ? null : Math.max(0, queue.length - index - 1),
+  };
+}
+
+/** Says the status in the helmet, on asking for it. */
+export function speakStatus(): void {
+  speak(statusSentence(rideStatus()));
 }
 
 /** Plays the station chosen in the settings, if there is one. False when there is none or it is gone. */
@@ -82,13 +136,9 @@ export async function listenAndPlay(): Promise<void> {
     case 'nothing':
       return;
     case 'toggle':
-      player.toggle();
-      return;
     case 'next':
-      player.next();
-      return;
     case 'previous':
-      player.previous();
+      applyTransport(command.kind);
       return;
     case 'favorites': {
       const { songs } = await getStarred();
@@ -100,6 +150,9 @@ export async function listenAndPlay(): Promise<void> {
       return;
     case 'radio':
       if (!(await playRideRadio())) speak(tg('No radio station chosen'));
+      return;
+    case 'status':
+      speakStatus();
       return;
     case 'search': {
       const found = await search(command.query);

@@ -9,6 +9,10 @@
  * turns it off, which is what closes the screen: the intercom disconnecting
  * closes it the same way, through `active`.
  *
+ * One wide button under the rest prepares the ride: the next songs of the
+ * queue downloaded before the bike leaves the network behind, with the count
+ * on the button while they come (see `src/lib/ridePrepare.ts`).
+ *
  * The screen goes to full brightness for the sun, and after a minute with
  * nothing touched it drops to nearly nothing: hours on a handlebar in the
  * sun at full brightness is heat and a drained battery, and a rider is
@@ -23,15 +27,23 @@ import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handl
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COVER, songCoverUrl } from '@/api/data';
+import { type Song } from '@/api/subsonic';
 import { Cover } from '@/components/Cover';
+import { Dialog } from '@/components/Dialog';
 import { useT } from '@/i18n';
 import { haptic } from '@/lib/haptics';
-import { canListen, setScreenBrightness } from '@/lib/rideMode';
+import { canListen, setScreenBrightness, songsToPrepare } from '@/lib/rideMode';
+import { prepareRide, useRidePreparation } from '@/lib/ridePrepare';
 import { activateRide, deactivateRide } from '@/lib/rideSync';
 import { listenAndPlay, playRideRadio } from '@/lib/rideVoice';
 import { onVolumeLevelChanged, setVolumeLevel, volumeLevel, volumeStep } from '@/lib/volumeLevel';
+import { useAuthStore } from '@/store/auth';
+import { useDownloads } from '@/store/downloads';
+import { useNetworkType } from '@/store/networkType';
 import { currentSong, useLiveInfo, usePlayerStore } from '@/store/player';
 import { useRideMode } from '@/store/rideMode';
+import { useSettings } from '@/store/settings';
+import { useToast } from '@/store/toast';
 import { spacing, useTheme } from '@/theme';
 
 /** The screen's own colours: sunlight on a handlebar wants black and white, whatever the theme. */
@@ -97,6 +109,9 @@ export default function RideScreen() {
   const previous = usePlayerStore((s) => s.previous);
   const active = useRideMode((s) => s.active);
   const radioName = useRideMode((s) => s.config.radioStationName);
+  const prepareCount = useRideMode((s) => s.config.prepareCount);
+  const offline = useAuthStore((s) => s.offline);
+  const toast = useToast((s) => s.show);
   const [voice] = useState(canListen);
   const [listening, setListening] = useState(false);
   const askVoice = () => {
@@ -104,6 +119,30 @@ export default function RideScreen() {
     setListening(true);
     haptic('medium');
     void listenAndPlay().finally(() => setListening(false));
+  };
+
+  // The songs the next tap on Prepare would fetch, and how far the last tap
+  // has got, counted off the downloads themselves. Over mobile data the
+  // songs wait in `confirming` for the word; the Wi-Fi only setting is the
+  // download's own to refuse, with its own toast.
+  const files = useDownloads((s) => s.files);
+  const preparing = useRidePreparation((s) => s.preparing);
+  const [confirming, setConfirming] = useState<Song[] | null>(null);
+  const prepared = preparing ? preparing.filter((id) => files[id]).length : 0;
+  const askPrepare = () => {
+    if (preparing) return;
+    haptic('medium');
+    const { queue, index, repeat } = usePlayerStore.getState();
+    const songs = songsToPrepare(queue, index, prepareCount, repeat === 'all', files);
+    if (songs.length === 0) {
+      toast(t('The next songs are already downloaded'));
+      return;
+    }
+    if (useNetworkType.getState().cellular && !useSettings.getState().downloadWifiOnly) {
+      setConfirming(songs);
+      return;
+    }
+    void prepareRide(songs);
   };
 
   // Opened by hand, from the settings or a shortcut: that is ride mode on.
@@ -265,9 +304,36 @@ export default function RideScreen() {
                 ) : null}
               </View>
             ) : null}
+            {/* Nothing to fetch without a server or a queue; a button that
+                could only say so would be a button for nothing. */}
+            {!offline && song ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('Prepare the ride')}
+                onPress={askPrepare}
+                style={({ pressed }) => [styles.shortcut, styles.prepare, (pressed || preparing) && { opacity: 0.7 }]}
+              >
+                <Ionicons name="cloud-download-outline" size={36} color={WHITE} />
+                <Text style={styles.shortcutText} numberOfLines={1}>
+                  {preparing ? `${t('Preparing the ride')}  ${prepared} / ${preparing.length}` : t('Prepare the ride')}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
       </GestureDetector>
+      <Dialog
+        visible={confirming !== null}
+        title={t('Download on mobile data?')}
+        message={t('{n} songs will be downloaded over mobile data.', { n: confirming?.length ?? 0 })}
+        confirmLabel={t('Download')}
+        onCancel={() => setConfirming(null)}
+        onConfirm={() => {
+          const songs = confirming;
+          setConfirming(null);
+          if (songs) void prepareRide(songs);
+        }}
+      />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('Exit ride mode')}
@@ -315,6 +381,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   shortcutText: { color: WHITE, fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  prepare: { flex: 0, marginTop: spacing.md },
   exit: {
     position: 'absolute',
     right: spacing.md,

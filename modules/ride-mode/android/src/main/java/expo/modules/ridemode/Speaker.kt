@@ -65,8 +65,11 @@ internal class Speaker(context: Context) {
     }
   }
 
-  /** Says [text], cutting short whatever was still being said. */
-  fun speak(text: String) {
+  /**
+   * Says [text], cutting short whatever was still being said, or after it
+   * when [queue] is set: the first song of a ride waits for the greeting.
+   */
+  fun speak(text: String, queue: Boolean = false) {
     if (!ready) {
       waiting = text
       return
@@ -74,7 +77,8 @@ internal class Speaker(context: Context) {
     main.post {
       claim()
       utterances += 1
-      tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "ride-$utterances")
+      val mode = if (queue) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+      tts.speak(text, mode, null, "ride-$utterances")
     }
   }
 

@@ -11,8 +11,9 @@
  * Ride mode on means: the music dips under other apps' prompts instead of
  * pausing, the floating player is up over whatever app is in front (when
  * asked for and allowed), and every new song is read out in the helmet
- * (when asked for). Started by the intercom it also says so, brings the
- * ride screen up and, when asked, starts the queue again.
+ * (when asked for). Started by the intercom it also says so, with the
+ * battery, the output and what is left of the queue after it (when asked
+ * for), brings the ride screen up and, when asked, starts the queue again.
  */
 import { AppState } from 'react-native';
 
@@ -41,6 +42,7 @@ import {
   type RideOverlayState,
 } from '@/lib/rideMode';
 import { pushOnce } from '@/lib/pushOnce';
+import { rideStatus, statusSentence } from '@/lib/rideVoice';
 import { waitFor, whenProfileReady } from '@/lib/storeWait';
 import { setVolumeLevel } from '@/lib/volumeLevel';
 import { currentSong, setDuckOthers, SOURCE_FAVORITES, usePlayerStore } from '@/store/player';
@@ -56,6 +58,14 @@ const RECONNECT_GRACE_MS = 15_000;
 
 /** How long the resume waits for the saved queue to come back. The same wait the widget's play makes. */
 const QUEUE_WAIT_MS = 8_000;
+
+/**
+ * How long the status read out at the start waits for the saved queue, so
+ * what it says is left of the queue is not "nothing" because the queue was
+ * still on its way back from disk. Shorter than the resume's wait: a
+ * greeting that comes late is worse than a count that is off.
+ */
+const STATUS_QUEUE_WAIT_MS = 3_000;
 
 /** Once per runtime, however many times the start is asked for. */
 let started = false;
@@ -157,7 +167,6 @@ export async function activateRide(from: 'intercom' | 'intent' | 'manual'): Prom
   // The phone's media volume, left low from the kitchen: set before anything
   // is said, so the word is heard at the level the music will be.
   if (config.startVolume > 0) setVolumeLevel(config.startVolume);
-  if (config.announce) speak(tg('Ride mode'));
   // The app in front navigates itself; from behind another app, or with no
   // screen at all, the module brings it up, which Android allows to an app
   // that may draw over others (the same permission the overlay has). The
@@ -166,6 +175,12 @@ export async function activateRide(from: 'intercom' | 'intent' | 'manual'): Prom
   if (AppState.currentState === 'active') pushOnce('/ride');
   else openRideScreen();
   if (config.navigationApp) openNavigationApp(config.navigationApp);
+  // The greeting and the status as one line: two lines would be the second
+  // cutting the first short, or replacing it while the engine comes up. The
+  // first song of the ride waits for it (see `announceCurrent`).
+  if (config.status) await waitFor(usePlayerStore, (s) => s.queue.length > 0, STATUS_QUEUE_WAIT_MS);
+  const greeting = [config.announce ? tg('Ride mode') : '', config.status ? statusSentence(rideStatus()) : ''];
+  if (config.announce || config.status) speak(greeting.filter(Boolean).join('. '));
   if (config.resume) await resumeSaved();
 }
 
@@ -198,7 +213,12 @@ function intercomLost(): void {
   lostTimer = setTimeout(deactivateRide, RECONNECT_GRACE_MS);
 }
 
-/** Reads out the song now playing, unless it was the last one read out. */
+/**
+ * Reads out the song now playing, unless it was the last one read out. The
+ * first song of a ride waits for the greeting and the status to be said;
+ * any later one cuts whatever was still being said, since a song announced
+ * after the next one has started is noise.
+ */
 function announceCurrent(): void {
   const state = usePlayerStore.getState();
   const song = currentSong(state);
@@ -208,8 +228,9 @@ function announceCurrent(): void {
   if (key === announced) return;
   const text = announcement(song, live);
   if (!text) return;
+  const first = announced === '';
   announced = key;
-  speak(text);
+  speak(text, first);
 }
 
 export function startRideSync(): void {

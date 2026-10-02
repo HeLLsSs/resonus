@@ -35,6 +35,15 @@ Ride mode on means:
   the settings, and the button is only there when one is.
 - **The battery read out** in the helmet at 20, 10 and 5 %, while not
   charging, when announcements are on.
+- **Prepare the ride.** A wide button under the rest downloads the next
+  songs of the queue (the one playing and the ones after it, round to the
+  start when the queue repeats) so the bike can leave 4G and the holes in
+  it behind. How many is **Songs to prepare** in the settings: 15, 30, 60 or
+  the whole queue. What is already on the phone is skipped and does not
+  count; a track the proxy found online is fetched like any other. On mobile
+  data it asks first, unless downloads are Wi-Fi only, in which case the
+  download refuses by itself. The count comes up on the button as the songs
+  arrive, and a toast says how many made it.
 - **The music back after a call.** The phone gives the audio back on its
   own when a call ends and the player follows; when it has not within a
   few seconds, ride mode starts it again.
@@ -56,7 +65,11 @@ intercom is given fifteen seconds to come back before ride mode stops.
 
 Started by the intercom, ride mode sets the media volume to **Volume at the
 start** when one is set, says "Ride mode" in the helmet (when announcements
-are on), brings the ride screen up over whatever is in front,
+are on) followed by the **Status at the start** (on by default): the battery,
+where the music goes when it is not the phone, and how many songs are left in
+the queue, in one sentence in the app's language. Saying "status" (or
+"statut", "batterie") into the Voice button reads it out again. Then it
+brings the ride screen up over whatever is in front,
 then the **Navigation app** chosen in the settings (Waze, Google Maps,
 Calimoto, Kurviger, OsmAnd, Sygic, HERE or TomTom, whichever the phone has)
 over that, with the floating player on top. With **Resume playback** on it

@@ -31,6 +31,10 @@ internal data class RideConfig(
   /** The station the ride screen's radio button plays; empty for no button. */
   val radioStationId: String,
   val radioStationName: String,
+  /** The battery, the output and what is left of the queue said when the intercom connects. */
+  val status: Boolean,
+  /** How many songs of the queue "Prepare the ride" downloads; 0 for the whole queue. */
+  val prepareCount: Int,
 ) {
   /** Whether a connection is worth looking at: an intercom has been chosen. */
   val autoStart: Boolean
@@ -55,6 +59,8 @@ internal data class RideConfig(
       .putString(KEY_OVERLAY_SIZE, overlaySize)
       .putString(KEY_RADIO_ID, radioStationId)
       .putString(KEY_RADIO_NAME, radioStationName)
+      .putBoolean(KEY_STATUS, status)
+      .putInt(KEY_PREPARE_COUNT, prepareCount)
       .apply()
   }
 
@@ -70,6 +76,8 @@ internal data class RideConfig(
     "overlaySize" to overlaySize,
     "radioStationId" to radioStationId,
     "radioStationName" to radioStationName,
+    "status" to status,
+    "prepareCount" to prepareCount,
   )
 
   companion object {
@@ -85,6 +93,8 @@ internal data class RideConfig(
     private const val KEY_OVERLAY_SIZE = "overlaySize"
     private const val KEY_RADIO_ID = "radioStationId"
     private const val KEY_RADIO_NAME = "radioStationName"
+    private const val KEY_STATUS = "status"
+    private const val KEY_PREPARE_COUNT = "prepareCount"
     /** Whether ride mode is on, as JS last said; what the quick settings tile shows. */
     private const val KEY_ACTIVE = "active"
 
@@ -102,6 +112,8 @@ internal data class RideConfig(
         overlaySize = prefs.getString(KEY_OVERLAY_SIZE, null).orEmpty().ifEmpty { "normal" },
         radioStationId = prefs.getString(KEY_RADIO_ID, null).orEmpty(),
         radioStationName = prefs.getString(KEY_RADIO_NAME, null).orEmpty(),
+        status = prefs.getBoolean(KEY_STATUS, true),
+        prepareCount = prefs.getInt(KEY_PREPARE_COUNT, 30),
       )
     }
 
