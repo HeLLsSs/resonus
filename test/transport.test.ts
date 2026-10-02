@@ -53,6 +53,12 @@ describe('applyTransport', () => {
     assert.deepEqual(seeks(), [0, 11, 30 + SEEK_STEP_SEC]);
   });
 
+  it('steps forward on a stream of no known length instead of back to its start', () => {
+    usePlayerStore.setState({ positionSec: 30, durationSec: 0 });
+    applyTransport('forward');
+    assert.deepEqual(seeks(), [30 + SEEK_STEP_SEC]);
+  });
+
   it('turns shuffle only when it is not already as asked', () => {
     applyTransport('shuffle', true);
     applyTransport('shuffle', true);

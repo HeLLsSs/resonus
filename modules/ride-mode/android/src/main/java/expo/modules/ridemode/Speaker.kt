@@ -19,9 +19,11 @@ import java.util.Locale
  * music dips under it the way it dips under them and comes back when the
  * line is done.
  *
- * The engine takes a moment to come up. A line asked for before that is
- * kept, one at a time (the last asked for wins: a song announced after the
- * next one has started is noise), and said as soon as it is.
+ * The engine takes a moment to come up. Lines asked for before that are
+ * kept and said as soon as it is, in the order they would have been said: a
+ * line that cuts short replaces what was waiting (a song announced after the
+ * next one has started is noise), a line that queues joins it, so the
+ * greeting and the first song of a ride both come out of a cold engine.
  */
 internal class Speaker(context: Context) {
   private val app = context.applicationContext
@@ -33,8 +35,15 @@ internal class Speaker(context: Context) {
     .build()
   private var focus: AudioFocusRequest? = null
   @Volatile private var ready = false
-  @Volatile private var waiting: String? = null
+  /** The lines asked for before the engine was ready, in order; only under its own lock. */
+  private val waiting = mutableListOf<String>()
   private var utterances = 0
+  /**
+   * How many lines the engine still has to finish. The audio focus is held
+   * for all of them together, since giving it back between a greeting and
+   * the song queued after it brings the music up under the second line.
+   */
+  private var pending = 0
 
   private val tts: TextToSpeech = TextToSpeech(app) { status ->
     if (status != TextToSpeech.SUCCESS) {
@@ -49,19 +58,23 @@ internal class Speaker(context: Context) {
       tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
         override fun onStart(utteranceId: String?) {}
         override fun onDone(utteranceId: String?) {
-          main.post { release() }
+          main.post { finished() }
         }
         @Deprecated("Deprecated in Java")
         override fun onError(utteranceId: String?) {
-          main.post { release() }
+          main.post { finished() }
         }
         override fun onError(utteranceId: String?, errorCode: Int) {
-          main.post { release() }
+          main.post { finished() }
+        }
+        // A line cut short by the next one ends here, not in onDone.
+        override fun onStop(utteranceId: String?, interrupted: Boolean) {
+          main.post { finished() }
         }
       })
       ready = true
-      waiting?.let { speak(it) }
-      waiting = null
+      val lines = synchronized(waiting) { waiting.toList().also { waiting.clear() } }
+      lines.forEachIndexed { i, line -> speak(line, queue = i > 0) }
     }
   }
 
@@ -71,23 +84,35 @@ internal class Speaker(context: Context) {
    */
   fun speak(text: String, queue: Boolean = false) {
     if (!ready) {
-      waiting = text
+      synchronized(waiting) {
+        if (!queue) waiting.clear()
+        waiting += text
+      }
       return
     }
     main.post {
       claim()
       utterances += 1
+      pending += 1
       val mode = if (queue) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
-      tts.speak(text, mode, null, "ride-$utterances")
+      // A line the engine would not take gets no callback, so it is counted off here.
+      if (tts.speak(text, mode, null, "ride-$utterances") != TextToSpeech.SUCCESS) finished()
     }
   }
 
   fun stop() {
-    waiting = null
+    synchronized(waiting) { waiting.clear() }
     main.post {
       if (ready) tts.stop()
+      pending = 0
       release()
     }
+  }
+
+  /** One line over; the focus goes back with the last of them. Main thread. */
+  private fun finished() {
+    if (pending > 0) pending -= 1
+    if (pending == 0) release()
   }
 
   fun shutdown() {

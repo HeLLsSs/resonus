@@ -63,9 +63,12 @@ export function applyTransport(action: TransportAction, value?: number | boolean
     case 'previous':
       store.previous();
       return;
-    case 'forward':
-      store.seekTo(Math.min(store.positionSec + SEEK_STEP_SEC, Math.max(0, store.durationSec - 1)));
+    case 'forward': {
+      // A stream with no known length (a radio) has no end to stop short of.
+      const ahead = store.positionSec + SEEK_STEP_SEC;
+      store.seekTo(store.durationSec > 0 ? Math.min(ahead, Math.max(0, store.durationSec - 1)) : ahead);
       return;
+    }
     case 'back':
       store.seekTo(Math.max(0, store.positionSec - SEEK_STEP_SEC));
       return;
