@@ -10,24 +10,13 @@
  * and left unset as the app asks. `bindMediaSession` is called after it, and
  * puts the store in its place.
  */
+import { applyTransport } from '@/lib/transport';
 
-/** What the store does at the transport's request. */
-export interface Transport {
-  isPlaying(): boolean;
-  toggle(): void;
-  next(): void;
-  previous(): void;
-  /** Seconds from the start of the song. */
-  seekTo(sec: number): void;
-  positionSec(): number;
-  durationSec(): number;
-}
-
-/** What a key asks for, with nothing happening in a field where one is typing. */
+/**
+ * What a key asks for, with nothing happening in a field where one is typing.
+ * A left or right arrow seeks a step; with shift, it changes track.
+ */
 export type KeyAction = 'toggle' | 'next' | 'previous' | 'back' | 'forward' | null;
-
-/** A left or right arrow moves this far; with shift, it changes track. */
-export const KEY_SEEK_SEC = 10;
 
 export function actionForKey(key: string, shift: boolean, typing: boolean): KeyAction {
   if (typing) return null;
@@ -51,28 +40,6 @@ export function actionForKey(key: string, shift: boolean, typing: boolean): KeyA
   }
 }
 
-export function perform(action: KeyAction, t: Transport): void {
-  switch (action) {
-    case 'toggle':
-      t.toggle();
-      break;
-    case 'next':
-      t.next();
-      break;
-    case 'previous':
-      t.previous();
-      break;
-    case 'forward':
-      t.seekTo(Math.min(t.positionSec() + KEY_SEEK_SEC, Math.max(0, t.durationSec() - 1)));
-      break;
-    case 'back':
-      t.seekTo(Math.max(0, t.positionSec() - KEY_SEEK_SEC));
-      break;
-    case null:
-      break;
-  }
-}
-
 /** Whether the key was pressed somewhere text is typed, where it is text. */
 export function isTyping(target: unknown): boolean {
   if (!target || typeof target !== 'object') return false;
@@ -82,21 +49,21 @@ export function isTyping(target: unknown): boolean {
 }
 
 /** The keyboard, for the whole page; the return value takes it back. */
-export function installKeys(t: Transport, doc: Pick<Document, 'addEventListener' | 'removeEventListener'> = document): () => void {
+export function installKeys(doc: Pick<Document, 'addEventListener' | 'removeEventListener'> = document): () => void {
   const onKey = (e: Event) => {
     const k = e as KeyboardEvent;
     if (k.metaKey || k.ctrlKey || k.altKey) return;
     const action = actionForKey(k.key, k.shiftKey, isTyping(k.target));
     if (!action) return;
     k.preventDefault();
-    perform(action, t);
+    applyTransport(action);
   };
   doc.addEventListener('keydown', onKey);
   return () => doc.removeEventListener('keydown', onKey);
 }
 
 /** The media keys and the system's media bandeau, bound to the store. */
-export function bindMediaSession(t: Transport, session: MediaSession | undefined = globalThis.navigator?.mediaSession): void {
+export function bindMediaSession(session: MediaSession | undefined = globalThis.navigator?.mediaSession): void {
   if (!session) return;
   const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
     try {
@@ -105,17 +72,13 @@ export function bindMediaSession(t: Transport, session: MediaSession | undefined
       // An action this browser does not know.
     }
   };
-  set('play', () => {
-    if (!t.isPlaying()) t.toggle();
-  });
-  set('pause', () => {
-    if (t.isPlaying()) t.toggle();
-  });
-  set('nexttrack', () => t.next());
-  set('previoustrack', () => t.previous());
+  set('play', () => applyTransport('resume'));
+  set('pause', () => applyTransport('pause'));
+  set('nexttrack', () => applyTransport('next'));
+  set('previoustrack', () => applyTransport('previous'));
   set('seekto', (details) => {
-    if (details.seekTime != null) t.seekTo(details.seekTime);
+    if (details.seekTime != null) applyTransport('seek', details.seekTime);
   });
-  set('seekforward', () => perform('forward', t));
-  set('seekbackward', () => perform('back', t));
+  set('seekforward', () => applyTransport('forward'));
+  set('seekbackward', () => applyTransport('back'));
 }

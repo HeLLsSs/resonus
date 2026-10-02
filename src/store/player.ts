@@ -27,6 +27,18 @@ import { create } from 'zustand';
 
 import { CLIENT_NAME } from '@/api/subsonic';
 import { driftPlan, sameQueue } from '@/lib/jam';
+import {
+  dealt,
+  errorTag,
+  fadeProgress,
+  gainFactor as replayGainFactor,
+  isRepeatMode,
+  nextQueueIndex,
+  type RepeatMode,
+  SLEEP_FADE_MS,
+  sleepFadeSchedule,
+} from '@/lib/playerMath';
+import { applyTransport } from '@/lib/transport';
 import { bindMediaSession } from '@/lib/webMedia';
 import {
   getAlbum,
@@ -63,7 +75,7 @@ import { freshRetries, onFailure, playingAgain, settled, skipping, soundHeld } f
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
 import { recordPlay } from '@/lib/statsDb';
-import { getItem, setItem } from '@/lib/storage';
+import { getPlainItemMigrating, setPlainItem } from '@/lib/plainStorage';
 import { useAuthStore } from './auth';
 import { checkAutoUrlNow } from './autoUrl';
 import { castSetState, castSetVolumeLevel, castUpdate, initCastMedia } from './castMedia';
@@ -159,7 +171,7 @@ import {
   syncUpnpRemoteQueue,
 } from './upnpRemoteSync';
 
-export type RepeatMode = 'off' | 'all' | 'one';
+export type { RepeatMode };
 
 /**
  * Sentinel for origins that must be translated on the fly (they are not real
@@ -185,8 +197,6 @@ function sleepDeadline(): number | null {
 // opposite of what was asked. So the last few seconds fade
 // down. The fade FINISHES at expiry, not starts then: "stop in 30
 // minutes" means at 30 minutes there is silence.
-
-const SLEEP_FADE_MS = 30_000;
 
 let sleepFadeTimeout: ReturnType<typeof setTimeout> | null = null;
 let sleepFadeTimer: ReturnType<typeof setInterval> | null = null;
@@ -216,7 +226,7 @@ function clearSleepFade() {
  */
 function tickSleepFade() {
   if (!sleepFade) return;
-  const x = Math.min(1, (Date.now() - sleepFade.t0) / sleepFade.ms);
+  const x = fadeProgress(sleepFade.t0, sleepFade.ms, Date.now());
   const p = activePlayer();
   if (p) {
     try {
@@ -239,8 +249,7 @@ function startSleepFade(ms: number) {
 /** Schedules the fade to finish right at expiry. */
 function armSleepFade(msLeft: number) {
   clearSleepFade();
-  const fadeMs = Math.min(SLEEP_FADE_MS, msLeft);
-  const wait = msLeft - fadeMs;
+  const { fadeMs, wait } = sleepFadeSchedule(msLeft);
   if (wait <= 0) startSleepFade(fadeMs);
   else sleepFadeTimeout = setTimeout(() => startSleepFade(fadeMs), wait);
 }
@@ -833,19 +842,8 @@ function applyLockScreen(p: AudioPlayer, song: Song) {
   });
   // A browser's media keys: expo-audio has just bound them to the audio
   // element, which knows no queue and no Jam. The store takes them over.
-  if (Platform.OS === 'web') bindMediaSession(webTransport);
+  if (Platform.OS === 'web') bindMediaSession();
 }
-
-/** The player store, as the browser's keys and media session drive it. */
-export const webTransport = {
-  isPlaying: () => usePlayerStore.getState().isPlaying,
-  toggle: () => usePlayerStore.getState().toggle(),
-  next: () => usePlayerStore.getState().next(),
-  previous: () => usePlayerStore.getState().previous(),
-  seekTo: (sec: number) => usePlayerStore.getState().seekTo(sec),
-  positionSec: () => usePlayerStore.getState().positionSec,
-  durationSec: () => usePlayerStore.getState().durationSec,
-};
 
 // ── What a radio says it is playing ─────────────────────────────────────────
 // A station is one item in the queue and stays there for hours, so the queue
@@ -1494,21 +1492,6 @@ function reportState(state: PlaybackState, song: Song | undefined, positionSec: 
   });
 }
 
-/**
- * A list in a new order, without touching the one handed in. Fisher-Yates,
- * shared by the shuffle button and by starting a list while shuffle is already
- * on, because those two have to deal the same way: the second used to turn
- * shuffle off instead of dealing at all.
- */
-function dealt<T>(list: T[]): T[] {
-  const out = [...list];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
-
 /** Sends the real scrobble once per track when crossing the threshold. */
 function maybeScrobbleThreshold(positionSec: number) {
   if (scrobbledThisTrack) return;
@@ -1878,16 +1861,6 @@ const SONGS_PER_SIMILAR_ARTIST = 5;
 /** Songs a batch aims for (the queue is then extended by up to 10). */
 const BATCH_SIZE = 12;
 
-/** Shuffles a copy (Fisher-Yates). */
-function shuffled<T>(items: T[]): T[] {
-  const a = items.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 /**
  * Top songs by artists similar to the seed's. This is the tier that actually
  * gives a mix its range: everything else either stays on the seed's artist or
@@ -1908,7 +1881,7 @@ async function similarArtistCandidates(auth: SubsonicAuth, seed: Song): Promise<
   }
   // Shuffled, not the top N: over a long mix this walks the whole list instead
   // of hammering the same four artists batch after batch.
-  const names = shuffled(similarArtistsCache.names).slice(0, SIMILAR_ARTISTS);
+  const names = dealt(similarArtistsCache.names).slice(0, SIMILAR_ARTISTS);
   const lists = await Promise.all(
     names.map((n) => getTopSongs(auth, n, SONGS_PER_SIMILAR_ARTIST).catch(() => [] as Song[])),
   );
@@ -1948,7 +1921,7 @@ async function radioCandidates(auth: SubsonicAuth, seed: Song, have: Set<string>
 
   /** Adds what fits from a pool, in random order and respecting the cap. */
   const take = (songs: Song[]) => {
-    for (const s of shuffled(songs)) {
+    for (const s of dealt(songs)) {
       if (picked.length >= BATCH_SIZE) return;
       if (s.url || seen.has(s.id)) continue;
       const artist = s.artistId ?? s.artist ?? '';
@@ -2114,20 +2087,9 @@ async function fetchAutoplay(
 function nextIndex(_manual: boolean): number | null {
   const { queue, index, repeat } = usePlayerStore.getState();
   // Offline, tracks without local file (stream-only) are skipped; online any is
-  // fine. `ok` decides if an index is a candidate.
+  // fine.
   const offline = useAuthStore.getState().offline;
-  const ok = (i: number) => !offline || playableOffline(queue[i]);
-  for (let i = index + 1; i < queue.length; i++) {
-    if (ok(i)) return i;
-  }
-  // End of queue: with repeat 'all' it wraps around searching from the beginning
-  // (includes the current index, so a single playable track repeats).
-  if (repeat === 'all') {
-    for (let i = 0; i <= index; i++) {
-      if (ok(i)) return i;
-    }
-  }
-  return null;
+  return nextQueueIndex(queue.length, index, repeat, (i) => !offline || playableOffline(queue[i]));
 }
 
 // ── Gapless ─────────────────────────────────────────────────────────────────
@@ -2303,25 +2265,13 @@ useSettings.subscribe((s) => {
 function gainFactor(song: Song | null | undefined): number {
   const settings = useSettings.getState();
   let mode = settings.replayGain;
-  const rg = song?.replayGain;
-  if (mode === 'off' || !rg) return 1;
   if (mode === 'auto') {
     // Like Spotify: whole album without shuffle → album gain (preserves
     // its internal dynamics); playlists, favorites or shuffle → per track.
     const st = usePlayerStore.getState();
     mode = st.sourceHref?.startsWith('/album/') && !st.shuffle ? 'album' : 'track';
   }
-  // Album mode without album gain (or vice versa): use whatever is available.
-  const gain = mode === 'album' ? (rg.albumGain ?? rg.trackGain) : (rg.trackGain ?? rg.albumGain);
-  if (typeof gain !== 'number' || !Number.isFinite(gain)) return 1;
-  // The pre-amp rides on top of the tag: it moves the target loudness the whole
-  // library normalizes to, which is the point of having one (#93).
-  let f = Math.pow(10, (gain + settings.replayGainPreampDb) / 20);
-  // With positive gain, don't exceed the file's peak (prevents clipping).
-  const peak = mode === 'album' ? (rg.albumPeak ?? rg.trackPeak) : (rg.trackPeak ?? rg.albumPeak);
-  if (typeof peak === 'number' && peak > 0) f = Math.min(f, 1 / peak);
-  // Safety clamp for wild tags.
-  return Math.min(Math.max(f, 0.05), 4);
+  return replayGainFactor(song?.replayGain, mode, settings.replayGainPreampDb);
 }
 
 /**
@@ -2868,20 +2818,6 @@ function maybeDetectStall(intendPlay: boolean, buffering: boolean, positionSec: 
 let retries = freshRetries();
 
 /**
- * The error in its own words, with anything that looks like an address taken
- * out: this is counted, and counts are what the Diagnostics report is made of.
- * A stream URL carries the credentials, so none of them can go in it.
- */
-function errorTag(message: string): string {
-  const clean = message
-    .replace(/\b[a-z][a-z0-9+.-]*:\/\/\S*/gi, 'url')
-    .replace(/\/[\w./-]{16,}/g, 'path')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return clean.length > 80 ? `${clean.slice(0, 80)}…` : clean;
-}
-
-/**
  * Answers a playback failure: the other copy of the song if it has one, a
  * second go at the same one if it does not, and the truth if neither sounds,
  * followed by the next track, so a bad file does not end the evening. A few
@@ -3113,8 +3049,8 @@ function handleSleepAtSongEnd(): boolean {
 // downloaded songs and radios, which the server doesn't accept in
 // savePlayQueue.
 
-// SecureStore only accepts keys with [A-Za-z0-9._-] (same criterion as
-// playHistory); sanitize serverUrl/username.
+// The key is a file name (see `plainStorage`), so it is limited to
+// [A-Za-z0-9._-] (same criterion as playHistory); sanitize serverUrl/username.
 function safeKey(s: string): string {
   return s.replace(/[^A-Za-z0-9._-]/g, '_');
 }
@@ -3166,19 +3102,14 @@ interface StoredQueue {
   savedAt?: number;
 }
 
-/** Guards what comes back from disk: the file is ours, but an older version's
- *  (or a hand-edited one's) is not worth trusting into the player. */
-function isRepeatMode(v: unknown): v is RepeatMode {
-  return v === 'off' || v === 'one' || v === 'all';
-}
 
 /**
  * Something other than the position changed since the last write. Set by the
  * store subscription at the end of this file.
  *
  * The periodic sync runs every twenty seconds while playing, and rewriting up
- * to 500 whole songs into SecureStore, which encrypts them, to move one number
- * is exactly the kind of work that shows up as a dropped tap (#50). In the
+ * to 500 whole songs to disk to move one number is exactly the kind of work
+ * that shows up as a dropped tap (#50). In the
  * foreground it now writes only when the queue itself moved; in the background
  * it writes as before, since the position does keep advancing there and nobody
  * is waiting on the JS thread.
@@ -3230,7 +3161,8 @@ function saveQueueLocal(force = false) {
   if (queue.length === 0) return;
   if (!force && !queueDirty && AppState.currentState === 'active') return;
   queueDirty = false;
-  // Size cap as a precaution for SecureStore; 500 songs is more than enough.
+  // Size cap, so the file stays what a cold start can afford to read; 500
+  // songs is more than enough.
   const payload: StoredQueue = {
     queue: queue.slice(0, 500),
     index: Math.min(index, 499),
@@ -3245,7 +3177,7 @@ function saveQueueLocal(force = false) {
     savedAt: Date.now(),
   };
   localSavedAt = payload.savedAt ?? 0;
-  void setItem(key, JSON.stringify(payload));
+  void setPlainItem(key, JSON.stringify(payload));
 }
 
 /**
@@ -3276,7 +3208,7 @@ function clearQueueLocal() {
     savedAt: Date.now(),
   };
   localSavedAt = empty.savedAt ?? 0;
-  void setItem(key, JSON.stringify(empty));
+  void setPlainItem(key, JSON.stringify(empty));
 }
 
 /**
@@ -3929,20 +3861,18 @@ export function initRemoteIntegration() {
     const st = usePlayerStore.getState();
     switch (action) {
       case 'play':
-        if (!st.isPlaying) st.toggle();
+        applyTransport('resume');
         break;
       case 'pause':
       case 'stop':
-        if (st.isPlaying) st.toggle();
+        applyTransport('pause');
         break;
       case 'next':
-        st.next();
-        break;
       case 'previous':
-        st.previous();
+        applyTransport(action);
         break;
       case 'seek':
-        if (value != null) st.seekTo(value / 1000);
+        if (value != null) applyTransport('seek', value / 1000);
         break;
       case 'volume':
         // The system sends +1 / -1 per press; we move volume in steps.
@@ -4968,7 +4898,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!key || get().queue.length > 0) return true;
     let saved: StoredQueue | null = null;
     try {
-      const raw = await getItem(key);
+      // Migrating: a queue saved by an older version, which kept it encrypted
+      // in SecureStore, is read from there the first time and moved over.
+      const raw = await getPlainItemMigrating(key);
       saved = raw ? (JSON.parse(raw) as StoredQueue) : null;
     } catch {
       return false;
@@ -5036,8 +4968,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // offline mode); the server one is a backup for fresh sessions —
     // except when the local copy says the queue was emptied on purpose.
     //
-    // Timed as one: it reads the saved queue out of SecureStore, up to five
-    // hundred songs of it, and loads its track into the player. That is the
+    // Timed as one: it reads the saved queue off disk, up to five hundred
+    // songs of it, and loads its track into the player. That is the
     // last thing the opening waits for.
     await timed('boot queue', async () => {
       const handled = await get().restoreFromStorage();

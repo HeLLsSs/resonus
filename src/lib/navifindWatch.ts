@@ -207,7 +207,10 @@ function openScreen(response: Notifications.NotificationResponse | null): void {
   const { identifier, content } = response.notification.request;
   if (identifier === handledTap || content.data?.url !== SCREEN_URL) return;
   handledTap = identifier;
-  void whenScreensMounted().then(() => Linking.openURL(SCREEN_URL));
+  // Rejected when nothing takes the link: a tap that goes nowhere is no crash.
+  void whenScreensMounted()
+    .then(() => Linking.openURL(SCREEN_URL))
+    .catch(() => {});
 }
 
 /**

@@ -36,10 +36,6 @@ export function setPerfEnabled(on: boolean): void {
   resetPerfLog();
 }
 
-export function perfEnabled(): boolean {
-  return enabled;
-}
-
 /** How often the heartbeat checks in. */
 const TICK_MS = 250;
 /** Under this, being late is ordinary scheduling noise rather than a block. */

@@ -2,23 +2,18 @@
  * The keyboard and the browser's media session, bound to the player store.
  */
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { beforeEach, describe, it } from 'node:test';
 
-import { actionForKey, bindMediaSession, installKeys, isTyping, perform, type Transport } from '@/lib/webMedia';
+import { actionForKey, bindMediaSession, installKeys, isTyping } from '@/lib/webMedia';
 
-function transport(playing = true, position = 30, duration = 200) {
-  const calls: string[] = [];
-  const t: Transport = {
-    isPlaying: () => playing,
-    toggle: () => calls.push('toggle'),
-    next: () => calls.push('next'),
-    previous: () => calls.push('previous'),
-    seekTo: (sec) => calls.push(`seek:${sec}`),
-    positionSec: () => position,
-    durationSec: () => duration,
-  };
-  return { t, calls };
-}
+import { playerCalls, resetPlayer, usePlayerStore } from './stubs/store-player';
+
+const calls = () => playerCalls.map((c) => (c.name === 'seekTo' ? `seek:${c.args[0]}` : c.name));
+
+beforeEach(() => {
+  resetPlayer();
+  usePlayerStore.setState({ isPlaying: true, positionSec: 30, durationSec: 200 });
+});
 
 describe('actionForKey', () => {
   it('maps the keys, and shift on an arrow changes track', () => {
@@ -44,24 +39,14 @@ describe('isTyping', () => {
   });
 });
 
-describe('perform', () => {
-  it('seeks ten seconds around the position, within the song', () => {
-    const { t, calls } = transport(true, 5, 12);
-    perform('back', t);
-    perform('forward', t);
-    assert.deepEqual(calls, ['seek:0', 'seek:11']);
-  });
-});
-
 describe('installKeys', () => {
   it('handles a key, prevents its default, and lets a shortcut with a modifier through', () => {
-    const { t, calls } = transport();
     let handler: ((e: Event) => void) | null = null;
     const doc = {
       addEventListener: (_: string, h: EventListenerOrEventListenerObject) => (handler = h as (e: Event) => void),
       removeEventListener: () => (handler = null),
     };
-    const off = installKeys(t, doc as unknown as Document);
+    const off = installKeys(doc as unknown as Document);
     let prevented = 0;
     const press = (key: string, extra: Record<string, unknown> = {}) =>
       handler?.({ key, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false, target: {}, preventDefault: () => prevented++, ...extra } as unknown as Event);
@@ -70,20 +55,20 @@ describe('installKeys', () => {
     press('ArrowLeft', { ctrlKey: true });
     press(' ', { target: { tagName: 'INPUT' } });
     off();
-    assert.deepEqual([calls, prevented, handler], [['toggle', 'next'], 2, null]);
+    assert.deepEqual([calls(), prevented, handler], [['toggle', 'next'], 2, null]);
   });
 });
 
 describe('bindMediaSession', () => {
-  it('binds play and pause to the state, and next to the queue', () => {
-    const { t, calls } = transport(true);
+  it('binds play and pause to the state, next to the queue and the seeks to the position', () => {
     const handlers = new Map<string, MediaSessionActionHandler | null>();
     const session = { setActionHandler: (a: string, h: MediaSessionActionHandler | null) => handlers.set(a, h) } as unknown as MediaSession;
-    bindMediaSession(t, session);
+    bindMediaSession(session);
     handlers.get('play')?.({ action: 'play' });
     handlers.get('pause')?.({ action: 'pause' });
     handlers.get('nexttrack')?.({ action: 'nexttrack' });
     handlers.get('seekto')?.({ action: 'seekto', seekTime: 42 });
-    assert.deepEqual(calls, ['toggle', 'next', 'seek:42']);
+    handlers.get('seekforward')?.({ action: 'seekforward' });
+    assert.deepEqual(calls(), ['toggle', 'next', 'seek:42', 'seek:40']);
   });
 });

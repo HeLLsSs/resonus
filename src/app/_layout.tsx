@@ -30,7 +30,6 @@ import { installKeys } from '@/lib/webMedia';
 import { queryClient } from '@/lib/query';
 import { useAuthStore } from '@/store/auth';
 import { anyDownloads, useDownloads } from '@/store/downloads';
-import { webTransport } from '@/store/player';
 import { APP_FONT_FAMILY, useSettings } from '@/store/settings';
 import { colors, themeMode, useTheme } from '@/theme';
 
@@ -112,7 +111,7 @@ export default function RootLayout() {
   // and an arrow for the next or previous song.
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    return installKeys(webTransport);
+    return installKeys();
   }, []);
 
   // Keep screen awake (setting). The native flag only acts with the app in

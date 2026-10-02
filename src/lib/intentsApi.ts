@@ -20,11 +20,13 @@ import { type Song } from '@/api/subsonic';
 import { tg } from '@/i18n';
 import { publishHaState } from '@/lib/haBridge';
 import { playShuffle } from '@/lib/playShuffle';
+import { isRepeatMode } from '@/lib/playerMath';
 import { queryClient } from '@/lib/query';
+import { applyTransport } from '@/lib/transport';
 import { setVolumeLevel } from '@/lib/volumeLevel';
 import { useAuthStore } from '@/store/auth';
 import { haConnect, haPlayerById, useHomeAssistant } from '@/store/homeAssistant';
-import { leaveRemoteOutputs, type RepeatMode, usePlayerStore } from '@/store/player';
+import { leaveRemoteOutputs, usePlayerStore } from '@/store/player';
 
 /** A command as the broadcast carried it: `command` and every other extra. */
 type IntentCommand = Record<string, string | number | boolean>;
@@ -65,8 +67,6 @@ const TOP_SONGS = 20;
 
 /** The longest sleep timer a command may set: ten hours, past any night. */
 const MAX_SLEEP_MINUTES = 600;
-
-const REPEAT_MODES: RepeatMode[] = ['off', 'all', 'one'];
 
 let started = false;
 
@@ -155,26 +155,20 @@ async function run(command: IntentCommand): Promise<void> {
   const player = usePlayerStore.getState();
   switch (name) {
     case 'play':
-      if (!player.isPlaying) player.toggle();
+      applyTransport('resume');
       return;
     case 'pause':
-      if (player.isPlaying) player.toggle();
-      return;
     case 'toggle':
-      player.toggle();
+    case 'next':
+    case 'previous':
+      applyTransport(name);
       return;
     case 'stop':
       await player.stopAndClear();
       return;
-    case 'next':
-      player.next();
-      return;
-    case 'previous':
-      player.previous();
-      return;
     case 'seek': {
       const position = num(command, 'position');
-      if (position !== undefined) player.seekTo(Math.max(0, position));
+      if (position !== undefined) applyTransport('seek', position);
       return;
     }
     case 'volume': {
@@ -183,19 +177,15 @@ async function run(command: IntentCommand): Promise<void> {
       return;
     }
     case 'shuffle':
-      if (flag(command, 'on') !== player.shuffle) player.toggleShuffle();
+      applyTransport('shuffle', flag(command, 'on'));
       return;
     case 'repeat': {
       const mode = text(command, 'mode');
-      if (!REPEAT_MODES.some((m) => m === mode)) {
+      if (!isRepeatMode(mode)) {
         console.warn(`[intents] repeat: unknown mode "${mode}"`);
         return;
       }
-      // Through the same cycle the button turns, so everything the button
-      // does (the player's loop, the queue sync) happens here too.
-      for (let i = 0; i < REPEAT_MODES.length && usePlayerStore.getState().repeat !== mode; i++) {
-        usePlayerStore.getState().cycleRepeat();
-      }
+      applyTransport('repeat', mode);
       return;
     }
     case 'play_album':

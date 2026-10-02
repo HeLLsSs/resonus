@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
@@ -28,6 +28,7 @@ import {
   getPlaylists,
   getStarred,
   type Album,
+  type Artist,
   type Playlist,
   COVER,
 } from '@/api/data';
@@ -42,9 +43,10 @@ import { Message } from '@/components/Message';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useBottomSheetAnim } from '@/hooks/useBottomSheetAnim';
 import { albumsLabel, songsLabel, useT } from '@/i18n';
+import type { Language } from '@/i18n/languages';
 import { useAuthStore } from '@/store/auth';
 import { useLastPlayed } from '@/store/lastPlayed';
-import { useMediaMenu } from '@/store/mediaMenu';
+import { useMediaMenu, type MediaMenuItem } from '@/store/mediaMenu';
 import { usePins } from '@/store/pins';
 import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { SmartPlaylistArt } from '../smart-playlists';
@@ -336,6 +338,23 @@ function PlaylistsTab({
       ),
     [data, query, owner, username, sort, times, pins],
   );
+  // Rows are memoised (see `PlaylistItem`), so this must keep its identity
+  // and hand each row only what it draws: the pin as a boolean, not the map.
+  const renderPlaylist = useCallback(
+    ({ item }: { item: Playlist }) =>
+      item.id === FAVORITES_ID ? (
+        <FavoritesEntry grid />
+      ) : (
+        <PlaylistItem
+          item={item}
+          grid={grid}
+          lang={lang}
+          pinned={!!pins[`playlist:${item.id}`]}
+          openMenu={openMenu}
+        />
+      ),
+    [grid, lang, pins, openMenu],
+  );
   if (isLoading) return <Loader />;
   if (isError) return <Message text={t("Couldn't load playlists.")} onRetry={() => refetch()} />;
   // In grid, Favorites goes in as the first card (sentinel); in list it
@@ -375,43 +394,117 @@ function PlaylistsTab({
           />
         )
       }
-      renderItem={({ item }: { item: Playlist }) =>
-        item.id === FAVORITES_ID ? (
-          <FavoritesEntry grid />
-        ) : grid ? (
-          <GridCard
-            href={`/playlist/${item.id}`}
-            uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
-            title={item.name}
-            subtitle={songsLabel(item.songCount ?? 0, lang)}
-            pinned={!!pins[`playlist:${item.id}`]}
-            onLongPress={() => { haptic('light'); openMenu({ kind: 'playlist', playlist: item }); }}
-          />
-        ) : (
-          <Link href={`/playlist/${item.id}`} asChild>
-            <Pressable
-              style={styles.row}
-              onLongPress={() => { haptic('light'); openMenu({ kind: 'playlist', playlist: item }); }}
-            >
-              <Cover uri={coverArtUrl(item.coverArt ?? item.id, COVER.thumb)} size={56} />
-              <View style={styles.rowInfo}>
-                <Text style={styles.rowTitle} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <View style={styles.rowSubLine}>
-                  {pins[`playlist:${item.id}`] ? (
-                    <MaterialCommunityIcons name="pin" size={13} color={colors.accent} style={styles.pinIcon} />
-                  ) : null}
-                  <Text style={styles.rowSub}>{songsLabel(item.songCount ?? 0, lang)}</Text>
-                </View>
-              </View>
-            </Pressable>
-          </Link>
-        )
-      }
+      renderItem={renderPlaylist}
     />
   );
 }
+
+/**
+ * One playlist under the Playlists chip, as a card or a row.
+ *
+ * Memoised, like the rows of the other chips below: a keystroke in the filter,
+ * a pull to refresh or a pin on one row re-renders the whole tab, and the list
+ * was drawing every row on screen again for each of them (#50). With the pin
+ * handed over as a boolean, a row is drawn again only when it is the one that
+ * changed.
+ */
+const PlaylistItem = memo(function PlaylistItem({
+  item,
+  grid,
+  lang,
+  pinned,
+  openMenu,
+}: {
+  item: Playlist;
+  grid: boolean;
+  lang: Language;
+  pinned: boolean;
+  openMenu: (target: MediaMenuItem) => void;
+}) {
+  const onLongPress = () => {
+    haptic('light');
+    openMenu({ kind: 'playlist', playlist: item });
+  };
+  return grid ? (
+    <GridCard
+      href={`/playlist/${item.id}`}
+      uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
+      title={item.name}
+      subtitle={songsLabel(item.songCount ?? 0, lang)}
+      pinned={pinned}
+      onLongPress={onLongPress}
+    />
+  ) : (
+    <Link href={`/playlist/${item.id}`} asChild>
+      <Pressable style={styles.row} onLongPress={onLongPress}>
+        <Cover uri={coverArtUrl(item.coverArt ?? item.id, COVER.thumb)} size={56} />
+        <View style={styles.rowInfo}>
+          <Text style={styles.rowTitle} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <View style={styles.rowSubLine}>
+            {pinned ? (
+              <MaterialCommunityIcons name="pin" size={13} color={colors.accent} style={styles.pinIcon} />
+            ) : null}
+            <Text style={styles.rowSub}>{songsLabel(item.songCount ?? 0, lang)}</Text>
+          </View>
+        </View>
+      </Pressable>
+    </Link>
+  );
+});
+
+/** One favourite artist, as a card or a row (see `PlaylistItem`). */
+const ArtistItem = memo(function ArtistItem({
+  item,
+  grid,
+  lang,
+}: {
+  item: Artist;
+  grid: boolean;
+  lang: Language;
+}) {
+  return grid ? (
+    <GridCard
+      href={`/artist/${item.id}`}
+      uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
+      rounded
+      title={item.name}
+      subtitle={albumsLabel(item.albumCount ?? 0, lang)}
+    />
+  ) : (
+    <ArtistRow artist={item} />
+  );
+});
+
+/** One favourite album, as a card or a row (see `PlaylistItem`). */
+const AlbumItem = memo(function AlbumItem({
+  item,
+  grid,
+  pinned,
+  openMenu,
+}: {
+  item: Album;
+  grid: boolean;
+  pinned: boolean;
+  openMenu: (target: MediaMenuItem) => void;
+}) {
+  return grid ? (
+    <GridCard
+      href={`/album/${item.id}`}
+      uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
+      title={item.name}
+      subtitle={item.artist}
+      pinned={pinned}
+      onLongPress={() => {
+        haptic('light');
+        openMenu({ kind: 'album', album: item });
+      }}
+    />
+  ) : (
+    <AlbumRow album={item} pinned={pinned} />
+  );
+});
 
 function ArtistsTab({ query }: { query: string }) {
   const canFetch = useAuthStore((s) => !!s.auth || s.offline);
@@ -443,6 +536,10 @@ function ArtistsTab({ query }: { query: string }) {
       ),
     [data, query, sort, times, byArtist],
   );
+  const renderArtist = useCallback(
+    ({ item }: { item: Artist }) => <ArtistItem item={item} grid={grid} lang={lang} />,
+    [grid, lang],
+  );
   if (isLoading) return <Loader />;
   if (isError) return <Message text={t("Couldn't load artists.")} onRetry={() => refetch()} />;
   return (
@@ -456,19 +553,7 @@ function ArtistsTab({ query }: { query: string }) {
       refreshControl={
         <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.accent} />
       }
-      renderItem={({ item }) =>
-        grid ? (
-          <GridCard
-            href={`/artist/${item.id}`}
-            uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
-            rounded
-            title={item.name}
-            subtitle={albumsLabel(item.albumCount ?? 0, lang)}
-          />
-        ) : (
-          <ArtistRow artist={item} />
-        )
-      }
+      renderItem={renderArtist}
       ListEmptyComponent={
         query ? (
           <NoResults query={query} />
@@ -534,6 +619,12 @@ function AlbumsTab({ query }: { query: string }) {
       ),
     [data, query, sort, times, byAlbum, pins],
   );
+  const renderAlbum = useCallback(
+    ({ item }: { item: Album }) => (
+      <AlbumItem item={item} grid={grid} pinned={!!pins[`album:${item.id}`]} openMenu={openMenu} />
+    ),
+    [grid, pins, openMenu],
+  );
   if (isLoading) return <Loader />;
   if (isError) return <Message text={t("Couldn't load albums.")} onRetry={() => refetch()} />;
   return (
@@ -547,20 +638,7 @@ function AlbumsTab({ query }: { query: string }) {
       refreshControl={
         <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.accent} />
       }
-      renderItem={({ item }) =>
-        grid ? (
-          <GridCard
-            href={`/album/${item.id}`}
-            uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
-            title={item.name}
-            subtitle={item.artist}
-            pinned={!!pins[`album:${item.id}`]}
-            onLongPress={() => { haptic('light'); openMenu({ kind: 'album', album: item }); }}
-          />
-        ) : (
-          <AlbumRow album={item} pinned={!!pins[`album:${item.id}`]} />
-        )
-      }
+      renderItem={renderAlbum}
       ListEmptyComponent={
         query ? (
           <NoResults query={query} />
@@ -833,17 +911,40 @@ function LibRows({
   const listPad = useListPadding(spacing.lg);
 
   /** "Playlist · juan", "Album · Rojuu", "Artist". */
-  const label = (i: LibItem): string => {
-    const kind = i.kind === 'playlist' ? t('Playlist') : i.kind === 'album' ? t('Album') : t('Artist');
-    return i.by ? `${kind} · ${i.by}` : kind;
-  };
+  const label = useCallback(
+    (i: LibItem): string => {
+      const kind = i.kind === 'playlist' ? t('Playlist') : i.kind === 'album' ? t('Album') : t('Artist');
+      return i.by ? `${kind} · ${i.by}` : kind;
+    },
+    [t],
+  );
 
-  const onLongPress = (i: LibItem) => {
-    if (i.playlist) openMenu({ kind: 'playlist', playlist: i.playlist });
-    else if (i.album) openMenu({ kind: 'album', album: i.album });
-    else return;
-    haptic('light');
-  };
+  const onLongPress = useCallback(
+    (i: LibItem) => {
+      if (i.playlist) openMenu({ kind: 'playlist', playlist: i.playlist });
+      else if (i.album) openMenu({ kind: 'album', album: i.album });
+      else return;
+      haptic('light');
+    },
+    [openMenu],
+  );
+
+  // Memoised rows, as under the chips (see `PlaylistItem`).
+  const renderRow = useCallback(
+    ({ item }: { item: LibItem }) =>
+      item.id === FAVORITES_ID ? (
+        <FavoritesEntry grid />
+      ) : (
+        <LibRow
+          item={item}
+          grid={grid}
+          pinned={!!pins[`${item.kind}:${item.id}`]}
+          label={label}
+          onLongPress={onLongPress}
+        />
+      ),
+    [grid, pins, label, onLongPress],
+  );
 
   return (
     <FlatList
@@ -858,52 +959,65 @@ function LibRows({
       }
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
-      renderItem={({ item }: { item: LibItem }) =>
-        item.id === FAVORITES_ID ? (
-          <FavoritesEntry grid />
-        ) : grid ? (
-          <GridCard
-            href={item.href}
-            uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
-            rounded={item.kind === 'artist'}
-            title={item.name}
-            subtitle={label(item)}
-            pinned={!!pins[`${item.kind}:${item.id}`]}
-            onLongPress={() => onLongPress(item)}
-          />
-        ) : (
-          <Link href={item.href} asChild>
-            <Pressable style={styles.row} onLongPress={() => onLongPress(item)}>
-              <Cover
-                uri={coverArtUrl(item.coverArt ?? item.id, COVER.thumb)}
-                size={56}
-                rounded={item.kind === 'artist'}
-              />
-              <View style={styles.rowInfo}>
-                <Text style={styles.rowTitle} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <View style={styles.rowSubLine}>
-                  {pins[`${item.kind}:${item.id}`] ? (
-                    <MaterialCommunityIcons
-                      name="pin"
-                      size={13}
-                      color={colors.accent}
-                      style={styles.pinIcon}
-                    />
-                  ) : null}
-                  <Text style={styles.rowSub} numberOfLines={1}>
-                    {label(item)}
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-          </Link>
-        )
-      }
+      renderItem={renderRow}
     />
   );
 }
+
+/** One row of a mixed list, as a card or a row (see `PlaylistItem`). */
+const LibRow = memo(function LibRow({
+  item,
+  grid,
+  pinned,
+  label,
+  onLongPress,
+}: {
+  item: LibItem;
+  grid: boolean;
+  pinned: boolean;
+  label: (i: LibItem) => string;
+  onLongPress: (i: LibItem) => void;
+}) {
+  return grid ? (
+    <GridCard
+      href={item.href}
+      uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
+      rounded={item.kind === 'artist'}
+      title={item.name}
+      subtitle={label(item)}
+      pinned={pinned}
+      onLongPress={() => onLongPress(item)}
+    />
+  ) : (
+    <Link href={item.href} asChild>
+      <Pressable style={styles.row} onLongPress={() => onLongPress(item)}>
+        <Cover
+          uri={coverArtUrl(item.coverArt ?? item.id, COVER.thumb)}
+          size={56}
+          rounded={item.kind === 'artist'}
+        />
+        <View style={styles.rowInfo}>
+          <Text style={styles.rowTitle} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <View style={styles.rowSubLine}>
+            {pinned ? (
+              <MaterialCommunityIcons
+                name="pin"
+                size={13}
+                color={colors.accent}
+                style={styles.pinIcon}
+              />
+            ) : null}
+            <Text style={styles.rowSub} numberOfLines={1}>
+              {label(item)}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+    </Link>
+  );
+});
 
 function Loader() {
   return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.accent} />;
