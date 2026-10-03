@@ -105,6 +105,14 @@ export default function AboutSettings() {
           label={t('Report a bug')}
           onPress={() => Linking.openURL(bugReportUrl(version))}
         />
+        {/* The same, written from here with the logs attached: Diagnostics
+            opens on its report sheet. */}
+        <SettingRow
+          icon="chatbubble-ellipses-outline"
+          label={t('Report a problem')}
+          description={t('With the crash log, without your server or account')}
+          onPress={() => router.push({ pathname: '/settings/diagnostics', params: { report: '1' } })}
+        />
         {/* Asking now sits against the switch that asks by itself: same
             question, one of them answered on the spot and the other left
             standing. Nothing between them, so the switch reads as the

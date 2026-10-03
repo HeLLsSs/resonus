@@ -6,10 +6,22 @@
  * thing as plain text, which is easier to paste into an issue than a
  * screenshot is to read.
  */
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
-import { useRootNavigationState } from 'expo-router';
-import { useState } from 'react';
-import { Platform, ScrollView, Share, Text, View } from 'react-native';
+import { useLocalSearchParams, useRootNavigationState } from 'expo-router';
+import { useRef, useState } from 'react';
+import {
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { COVER, songCoverUrl, songListSorts } from '@/api/data';
 import { SettingRow, SettingsPage, settingsStyles, SwitchList } from '@/components/SettingsUI';
@@ -27,13 +39,15 @@ import {
   resetPerfLog,
 } from '@/lib/perfLog';
 import { repairStatus } from '@/lib/navidromeRepair';
+import { buildReport, ISSUE_BODY_MAX, issueUrl, MAIL_BODY_MAX, mailtoUrl } from '@/lib/report';
 import { useAuthStore } from '@/store/auth';
 import { anyDownloads, useDownloads } from '@/store/downloads';
 import { currentSong, usePlayerStore } from '@/store/player';
 import { useSettings } from '@/store/settings';
 import { useUnplayable } from '@/store/unplayable';
 import { enabledFolderIds } from '@/store/libraries';
-import { fontSize, spacing, themed, useTheme } from '@/theme';
+import { useToast } from '@/store/toast';
+import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
 
 /** Stamped in by the workflow that builds the APK; empty when run locally. */
 const COMMIT = (process.env.EXPO_PUBLIC_COMMIT ?? '').slice(0, 7);
@@ -130,6 +144,54 @@ export default function DiagnosticsSettings() {
     ...coverLines,
   ];
   const minutes = Math.max(1, Math.round((now - perfSince()) / 60000));
+  // Reporting a problem. About opens this screen with `?report=1` to land on
+  // the sheet directly: the report is made of what this screen reads, so it
+  // is written here and nowhere else.
+  const params = useLocalSearchParams<{ report?: string }>();
+  const [reporting, setReporting] = useState(params.report === '1');
+  const [reportText, setReportText] = useState('');
+  const reportInput = useRef<TextInput>(null);
+  const toast = useToast((s) => s.show);
+  const sendReport = (via: 'github' | 'email') => {
+    const report = buildReport(
+      {
+        text: reportText,
+        version: `${Constants.expoConfig?.version ?? '?'} (${Constants.expoConfig?.android?.versionCode ?? '?'})${COMMIT ? ` ${COMMIT}` : ''}`,
+        device:
+          Platform.OS === 'android'
+            ? `Android ${Platform.constants.Release} (API ${Platform.Version}), ${Platform.constants.Manufacturer} ${Platform.constants.Model}`
+            : `${Platform.OS} ${Platform.Version}`,
+        serverType: auth?.serverType,
+        crashLog: crashEntries(readCrashLog()),
+        carLog: recentCarAutoLog(),
+        // Everything of the profile that would say whose server it is or open
+        // it, in case a log line carries one in a shape the patterns miss.
+        secrets: auth
+          ? [
+              auth.serverUrl,
+              ...(auth.urls ?? []),
+              auth.scopeUrl,
+              auth.username,
+              auth.token,
+              auth.salt,
+              auth.password,
+              auth.ndPassword,
+              auth.jfToken,
+              auth.jfUserId,
+            ].filter((s): s is string => !!s)
+          : [],
+      },
+      via === 'github' ? ISSUE_BODY_MAX : MAIL_BODY_MAX,
+    );
+    Linking.openURL(via === 'github' ? issueUrl(report) : mailtoUrl(report)).then(
+      () => {
+        setReporting(false);
+        setReportText('');
+      },
+      () => toast(t("Couldn't open the link")),
+    );
+  };
+  const canReport = reportText.trim().length > 0;
 
   return (
     <SettingsPage title={t('Diagnostics')}>
@@ -141,6 +203,11 @@ export default function DiagnosticsSettings() {
           setCrashText(readCrashLog());
         }}
       >
+        <SettingRow
+          icon="chatbubble-ellipses-outline"
+          label={t('Report a problem')}
+          onPress={() => setReporting(true)}
+        />
         <Text style={settingsStyles.sectionDescription}>
           {enabled
             ? t('Measured over the last {n} min of use.', { n: minutes })
@@ -308,6 +375,55 @@ export default function DiagnosticsSettings() {
           />
         ) : null}
       </ScrollView>
+
+      {/* Not `Dialog`: that one has a single-line field and one answer that
+          reads it, and this needs room to write and two ways out. Same look. */}
+      <Modal
+        transparent
+        visible={reporting}
+        animationType="fade"
+        onRequestClose={() => setReporting(false)}
+        onShow={() => reportInput.current?.focus()}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setReporting(false)} />
+        <View style={styles.center} pointerEvents="box-none">
+          <View style={styles.card}>
+            <Text style={styles.title}>{t('Report a problem')}</Text>
+            <TextInput
+              ref={reportInput}
+              style={styles.input}
+              placeholder={t('What happened?')}
+              placeholderTextColor={colors.textMuted}
+              value={reportText}
+              onChangeText={setReportText}
+              multiline
+              textAlignVertical="top"
+            />
+            <Text style={styles.warning}>
+              {t('Issues on this GitHub repository are public.')}
+            </Text>
+            {(
+              [
+                ['github', 'logo-github', t('Open a GitHub issue')],
+                ['email', 'mail-outline', t('Send by email')],
+              ] as const
+            ).map(([via, icon, label]) => (
+              <Pressable
+                key={via}
+                style={[styles.choice, !canReport && { opacity: 0.4 }]}
+                disabled={!canReport}
+                onPress={() => sendReport(via)}
+              >
+                <Ionicons name={icon} size={18} color={colors.accent} />
+                <Text style={styles.choiceLabel}>{label}</Text>
+              </Pressable>
+            ))}
+            <Pressable hitSlop={8} style={styles.cancel} onPress={() => setReporting(false)}>
+              <Text style={styles.cancelLabel}>{t('Cancel')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SettingsPage>
   );
 }
@@ -326,4 +442,29 @@ const styles = themed((colors) => ({
   row: { flexDirection: 'row', gap: spacing.md, paddingVertical: 2 },
   tag: { color: colors.text, fontSize: fontSize.sm, flex: 1 },
   value: { color: colors.textSecondary, fontSize: fontSize.sm },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.backdropStrong },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  card: {
+    width: '100%',
+    backgroundColor: colors.surfaceHighlight,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  title: { color: colors.text, fontSize: fontSize.lg, fontWeight: '600' },
+  input: {
+    backgroundColor: colors.surface,
+    color: colors.text,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: fontSize.md,
+    minHeight: 110,
+    maxHeight: 220,
+  },
+  warning: { color: colors.textSecondary, fontSize: fontSize.sm },
+  choice: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs },
+  choiceLabel: { color: colors.accent, fontSize: fontSize.md, fontWeight: '700' },
+  cancel: { alignSelf: 'flex-end', marginTop: spacing.sm },
+  cancelLabel: { color: colors.textSecondary, fontSize: fontSize.md, fontWeight: '600' },
 }));
