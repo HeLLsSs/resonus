@@ -42,6 +42,7 @@ import { useAuthStore } from '@/store/auth';
 import { usePlayerStore } from '@/store/player';
 import { usePlayHistory } from '@/store/playHistory';
 import { useSettings } from '@/store/settings';
+import { withoutUnplayable } from '@/store/unplayable';
 
 /** How many songs are asked of each artist and each genre. Small: the point is
  *  breadth across what is played, not depth into one name. */
@@ -90,7 +91,8 @@ async function fromLibrary(artists: string[], genres: string[]): Promise<Song[]>
  *
  * Only with an account connected. Signed out the proxy answers the public home
  * page, which is a chart and not a taste, and has no business in a mix named
- * after this one.
+ * after this one. Nor has a track the player gave up on this week: a mix is
+ * where a hole is noticed least and heard most.
  */
 async function fromYoutube(): Promise<Song[]> {
   const { auth, offline } = useAuthStore.getState();
@@ -99,7 +101,7 @@ async function fromYoutube(): Promise<Song[]> {
     youtubeLiked(auth, YOUTUBE_LIKED).catch(() => [] as Song[]),
     youtubeHome(auth, true).catch(() => []),
   ]);
-  return [...liked, ...shelves.flatMap((shelf) => shelf.songs)];
+  return withoutUnplayable([...liked, ...shelves.flatMap((shelf) => shelf.songs)]);
 }
 
 /**

@@ -160,6 +160,7 @@ import { foreignSource } from '@/lib/servers';
 import { useQueueHistory } from './queueHistory';
 import { scrobbleThresholdSec, useSettings, type TranscodeFormat } from './settings';
 import { useToast } from './toast';
+import { useUnplayable } from './unplayable';
 import {
   initUpnp,
   isUpnpConnected,
@@ -2862,6 +2863,11 @@ function onPlaybackError(message: string, wasPlaying: boolean): void {
   }
   if (decided.act === 'announce') {
     bump('player · gave up on the track');
+    // A track found online failing for a reason of its own (taken down,
+    // blocked, a 403) answers the same next week: the shuffles and mixes leave
+    // it out from here. Not for the proxy's side being down, which is every
+    // track at once and passes.
+    if (isOnlineTrackId(song.id) && !serverUnreached(message)) useUnplayable.getState().markUnplayable(song.id);
     // On to the next one, alone: in a Jam the session decides what plays,
     // and a song on repeat has no next one but itself. Nor has the last
     // playable song of a queue on repeat, which `nextIndex` answers with
@@ -2973,7 +2979,12 @@ function onStatus(status: AudioStatus) {
   // Sound, for long enough: the track is not the failing one any more. Not
   // at the first second, which every reload plays before seeking back to
   // where it failed (see `soundHeld`).
-  if (status.playing) retries = soundHeld(retries, Date.now(), prev.queue[prev.index]?.id);
+  if (status.playing) {
+    const playingId = prev.queue[prev.index]?.id;
+    retries = soundHeld(retries, Date.now(), playingId);
+    // A track given up on last week, sounding now: back into the shuffles.
+    if (playingId) useUnplayable.getState().forget(playingId);
+  }
   const buffering =
     intendPlay && !status.didJustFinish && (status.isBuffering || !status.isLoaded);
   // Only once loaded: while buffering the duration is still unknown and would

@@ -76,6 +76,7 @@ import { currentSong, usePlayerStore } from '@/store/player';
 import { useSettings } from '@/store/settings';
 import { useSongMenu } from '@/store/songMenu';
 import { useToast } from '@/store/toast';
+import { withoutUnplayable } from '@/store/unplayable';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
 
 /** How much of each list is worth asking for. Generous, because one request
@@ -250,7 +251,9 @@ export default function YoutubeScreen() {
           queryFn: () => youtubeLiked(auth!, LIKED),
         })) ??
         [];
-      const pool = tasteOf(home.data ?? [], likedSongs);
+      // Without the tracks the player gave up on this week: a die has no hand
+      // behind it to ask for one of those.
+      const pool = withoutUnplayable(tasteOf(home.data ?? [], likedSongs));
       if (pool.length === 0) {
         toast(t('Nothing to shuffle yet'));
         return;

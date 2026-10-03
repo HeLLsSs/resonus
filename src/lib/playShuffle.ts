@@ -14,6 +14,7 @@ import { tasteOf } from '@/lib/youtube';
 import { useAuthStore } from '@/store/auth';
 import { usePlayerStore } from '@/store/player';
 import { useToast } from '@/store/toast';
+import { withoutUnplayable } from '@/store/unplayable';
 
 /** Not the entire library: the endpoint caps ~500 and a queue that size is unusable. */
 const SHUFFLE_SIZE = 200;
@@ -33,14 +34,15 @@ export function youtubeJoinsShuffle(): boolean {
 /**
  * What YouTube knows the account likes, for the shuffle to deal in. Nothing
  * when the account cannot be read, so the library plays alone as it always
- * did: the proxy saying no is not a reason for the button to.
+ * did: the proxy saying no is not a reason for the button to. Without the
+ * tracks the player gave up on this week: nobody chose them.
  */
 async function youtubeTaste() {
   const [shelves, liked] = await Promise.all([
     youtubeHomeShelves().catch(() => []),
     youtubeLikedSongs(YOUTUBE_LIKED).catch(() => []),
   ]);
-  return tasteOf(shelves, liked);
+  return withoutUnplayable(tasteOf(shelves, liked));
 }
 
 /**

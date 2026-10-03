@@ -31,6 +31,7 @@ import { useAuthStore } from '@/store/auth';
 import { anyDownloads, useDownloads } from '@/store/downloads';
 import { currentSong, usePlayerStore } from '@/store/player';
 import { useSettings } from '@/store/settings';
+import { useUnplayable } from '@/store/unplayable';
 import { enabledFolderIds } from '@/store/libraries';
 import { fontSize, spacing, themed, useTheme } from '@/theme';
 
@@ -125,6 +126,7 @@ export default function DiagnosticsSettings() {
     `downloads: ${hydrated ? downloads : 'loading'}${anyDl && !hydrated ? ' (some)' : ''}`,
     `mirror covers: ${covers.saved} saved, ${covers.aliases} other names`,
     `screens open: ${navState?.routes?.length ?? '—'}`,
+    `online tracks left out this week: ${Object.keys(useUnplayable.getState().entries).length}`,
     ...coverLines,
   ];
   const minutes = Math.max(1, Math.round((now - perfSince()) / 60000));

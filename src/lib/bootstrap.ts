@@ -47,6 +47,7 @@ import { useRecentSearches } from '@/store/recentSearches';
 import { useSettings } from '@/store/settings';
 import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { useSortPrefs } from '@/store/sortPrefs';
+import { useUnplayable } from '@/store/unplayable';
 
 /** How long the offline copy of the library waits before being read, when the
  *  app has a server and nothing is going to ask for it yet. */
@@ -93,6 +94,8 @@ function startOnce(): void {
   // Equalizer: reads device capabilities and applies saved settings. Not the
   // profile's: it belongs to the phone and its output.
   void useEqualizer.getState().hydrate();
+  // The online tracks given up on this week: the services' ids, not a profile's.
+  void useUnplayable.getState().hydrate();
   initNetworkType();
   // Server URL switching on network change (profiles with multiple URLs).
   initAutoUrl();
