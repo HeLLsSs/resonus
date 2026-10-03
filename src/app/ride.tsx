@@ -32,6 +32,7 @@ import { Cover } from '@/components/Cover';
 import { Dialog } from '@/components/Dialog';
 import { useT } from '@/i18n';
 import { haptic } from '@/lib/haptics';
+import { playShuffle } from '@/lib/playShuffle';
 import { canListen, setScreenBrightness, songsToPrepare } from '@/lib/rideMode';
 import { prepareRide, useRidePreparation } from '@/lib/ridePrepare';
 import { activateRide, deactivateRide } from '@/lib/rideSync';
@@ -270,40 +271,53 @@ export default function RideScreen() {
               </View>
               <BigButton icon="volume-high" label={t('Volume up')} size={VOLUME} onPress={() => bump(1)} />
             </View>
-            {/* The two ways to music with no list: a word said into the
-                helmet, and the one station chosen in the settings. Each only
-                when the phone, or the settings, can answer for it. */}
-            {voice || radioName ? (
-              <View style={styles.shortcuts}>
-                {voice ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t('Voice')}
-                    onPress={askVoice}
-                    style={({ pressed }) => [styles.shortcut, (pressed || listening) && { opacity: 0.7 }]}
-                  >
-                    <Ionicons name="mic" size={36} color={WHITE} />
-                    <Text style={styles.shortcutText}>{t('Voice')}</Text>
-                  </Pressable>
-                ) : null}
-                {radioName ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={radioName}
-                    onPress={() => {
-                      haptic('medium');
-                      void playRideRadio();
-                    }}
-                    style={({ pressed }) => [styles.shortcut, pressed && { opacity: 0.7 }]}
-                  >
-                    <Ionicons name="radio" size={36} color={WHITE} />
-                    <Text style={styles.shortcutText} numberOfLines={1}>
-                      {radioName}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : null}
+            {/* The ways to music with no list: a word said into the helmet,
+                the die, and the one station chosen in the settings. Voice and
+                radio only when the phone, or the settings, can answer for
+                them; the die always, since it asks nothing of either. */}
+            <View style={styles.shortcuts}>
+              {voice ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('Voice')}
+                  onPress={askVoice}
+                  style={({ pressed }) => [styles.shortcut, (pressed || listening) && { opacity: 0.7 }]}
+                >
+                  <Ionicons name="mic" size={36} color={WHITE} />
+                  <Text style={styles.shortcutText}>{t('Voice')}</Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('Shuffle')}
+                onPress={() => {
+                  haptic('medium');
+                  void playShuffle();
+                }}
+                style={({ pressed }) => [styles.shortcut, pressed && { opacity: 0.7 }]}
+              >
+                <Ionicons name="dice" size={36} color={WHITE} />
+                <Text style={styles.shortcutText} numberOfLines={1}>
+                  {t('Shuffle')}
+                </Text>
+              </Pressable>
+              {radioName ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={radioName}
+                  onPress={() => {
+                    haptic('medium');
+                    void playRideRadio();
+                  }}
+                  style={({ pressed }) => [styles.shortcut, pressed && { opacity: 0.7 }]}
+                >
+                  <Ionicons name="radio" size={36} color={WHITE} />
+                  <Text style={styles.shortcutText} numberOfLines={1}>
+                    {radioName}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
             {/* Nothing to fetch without a server or a queue; a button that
                 could only say so would be a button for nothing. */}
             {!offline && song ? (

@@ -27,12 +27,14 @@ Ride mode on means:
   phone's text-to-speech engine, in the phone's language, with the same audio
   usage as a navigation app's prompts so it goes where they go and the music
   dips under it.
-- **Voice and Radio.** Two wide buttons under the volume. Voice brings up the
-  phone's own speech dialog (Google's, on most phones; the app records
+- **Voice, Shuffle and Radio.** Wide buttons under the volume. Voice brings
+  up the phone's own speech dialog (Google's, on most phones; the app records
   nothing itself): say a song or an artist and the songs found play, or one
   of "next", "pause", "previous", "favourites", "shuffle", "radio", in
-  French or English. Radio plays the station chosen as **Radio station** in
-  the settings, and the button is only there when one is.
+  French or English. Shuffle is the same die as the Home tab's: the library
+  dealt, and YouTube's picks with it when the proxy has an account. Radio
+  plays the station chosen as **Radio station** in the settings, and the
+  button is only there when one is.
 - **The battery read out** in the helmet at 20, 10 and 5 %, while not
   charging, when announcements are on.
 - **Prepare the ride.** A wide button under the rest downloads the next
