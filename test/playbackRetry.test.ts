@@ -196,6 +196,12 @@ describe('serverUnreached', () => {
   it('leaves a refusal alone', () => {
     assert.equal(serverUnreached('Response code: 404'), false);
   });
+
+  it('lets the status decide over the words around it', () => {
+    assert.equal(serverUnreached('Source error: Response code: 404'), false);
+    assert.equal(serverUnreached('Source error: Response code: 503'), true);
+    assert.equal(serverUnreached('Source error'), true);
+  });
 });
 
 describe('stop', () => {

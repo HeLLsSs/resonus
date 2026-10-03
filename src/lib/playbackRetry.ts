@@ -66,11 +66,12 @@ export const MAX_UNREACHED = 3;
  * when the source could not be read at all.
  */
 export function serverUnreached(message: string): boolean {
-  return (
-    /\b(?:response code|status(?: code)?|http)\D{0,4}5\d\d\b/i.test(message) ||
-    /unable to connect|failed to connect|connection|unknownhost|unresolved|network|timed? ?out|unreachable|socket|source error/i.test(
-      message,
-    )
+  // A status code settles it on its own: 5xx is the server, anything below
+  // is the track (gone, blocked, not found) however the rest is worded.
+  const code = /\b(?:response code|status(?: code)?|http)\D{0,4}(\d{3})\b/i.exec(message);
+  if (code) return Number(code[1]) >= 500;
+  return /unable to connect|failed to connect|connection|unknownhost|resolve host|unresolved|network|timed? ?out|unreachable|socket|source error/i.test(
+    message,
   );
 }
 

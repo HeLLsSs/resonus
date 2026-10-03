@@ -329,7 +329,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
      runBlocking(appContext.mainQueue.coroutineContext) { block() }
  
 diff --git a/android/src/main/java/expo/modules/audio/AudioPlayer.kt b/android/src/main/java/expo/modules/audio/AudioPlayer.kt
-index c76a9fd2a53743a691782e0f67d0d71401df58f6..cb01498c491a1ddaac60a0a11e20275b8160138f 100644
+index c76a9fd2a53743a691782e0f67d0d71401df58f6..4696a41e8644ff4202bc244922df795e846b51fc 100644
 --- a/android/src/main/java/expo/modules/audio/AudioPlayer.kt
 +++ b/android/src/main/java/expo/modules/audio/AudioPlayer.kt
 @@ -8,11 +8,14 @@ import android.util.Log
@@ -518,7 +518,25 @@ index c76a9fd2a53743a691782e0f67d0d71401df58f6..cb01498c491a1ddaac60a0a11e20275b
    fun setActiveForLockScreen(active: Boolean, metadata: Metadata? = null, options: AudioLockScreenOptions? = null) {
      if (active) {
        this.metadata = metadata
-@@ -221,7 +351,8 @@ class AudioPlayer(
+@@ -156,9 +286,16 @@ class AudioPlayer(
+   }
+ 
+   override fun onPlayerError(error: PlaybackException) {
++    // The cause chain goes with the message: "Source error" alone says
++    // nothing of whether the server is down (a 5xx) or the track is gone (a
++    // 404), and JS decides what to do about a failure from those words.
++    val chain = generateSequence<Throwable>(error) { it.cause }
++      .mapNotNull { it.message?.takeIf(String::isNotBlank) }
++      .distinct()
++      .joinToString(": ")
+     sendStatusUpdate(
+       mapOf(
+-        "error" to error.message
++        "error" to chain.ifEmpty { error.message }
+       )
+     )
+   }
+@@ -221,7 +358,8 @@ class AudioPlayer(
  
    internal fun assignBasicMediaSession() {
      mediaSession.release()
