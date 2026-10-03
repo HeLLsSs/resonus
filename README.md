@@ -55,6 +55,9 @@ appear when it is switched off.
   front of Navidrome, a search also answers with tracks it can fetch from
   YouTube and SoundCloud. They are badged as such, play straight away, and the
   proxy files them into the library by itself after ten seconds of listening.
+- **The proxy's sources at a glance**: Settings › Navifind shows whether
+  Invidious, Piped, yt-dlp and SoundCloud answer; and the songs liked on
+  YouTube can be filed into the library on their own.
 - **Import from a link**: paste a YouTube, SoundCloud or Spotify address and a
   playlist or album becomes a playlist of the same name on the server once its
   tracks have arrived. A notification says when the proxy has finished.
@@ -162,7 +165,10 @@ appear when it is switched off.
   speaker only speaks HTTPS with a certificate of LinkPlay's own, which the
   app pins and trusts for nothing else. When the music starts on the phone at
   home and a speaker answers, a toast asks "Continue at home?": the home
-  speaker chosen in Settings › Playback, or else the one last played on.
+  speaker chosen in Settings › Playback, or else the one last played on. Set
+  to switch on its own, the music moves to it without asking, also when the
+  phone joins the Wi-Fi mid-song, with an "Undo"; and it comes back to the
+  phone, where it was, when the phone leaves the Wi-Fi.
 - **Music Assistant**, spoken to directly rather than through Home Assistant.
   Nothing is polled, and no address is handed to a speaker: a song is named by
   its id in the library Music Assistant already keeps, and it fetches the song
@@ -180,6 +186,9 @@ appear when it is switched off.
 - **Prepare the ride**: one button downloads the next songs of the queue
   before the bike leaves the network behind, 15, 30, 60 or the whole queue,
   with the count on the button while they come.
+- **Prepare on its own and volume with the speed**: the next songs download
+  while the phone charges on Wi-Fi at night, and the volume rises over the
+  rider's own level as the bike goes faster, from the GPS.
 - **The helmet hears the state of things** when the intercom connects: the
   battery, where the music is going and how many songs are left, and again
   on asking for "status".
@@ -317,6 +326,11 @@ appear when it is switched off.
 
 - Custom HTTP headers reach casting, DLNA and the car: a server behind them is
   relayed through the phone rather than handed out as an address.
+- **A wake-up alarm** that plays the shuffle, "For you" or a playlist on the
+  phone or the home speaker, rising in volume, with the app closed.
+- **The sleep timer follows the output**: a speaker fades and stops too.
+- **Report a problem** from Diagnostics as a GitHub issue or an email,
+  cleaned of addresses and credentials.
 - The update check looks at this fork's own releases.
 - A crash log, JavaScript and native, read and shared from Settings ›
   Diagnostics along with the last lines of the Android Auto module, so what

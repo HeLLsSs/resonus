@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1331 of them.
+Every string the app can show, under the screen it shows up on. 1379 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -346,7 +346,7 @@ you are actually typing into, which is easier than reading it here.
 | `Couldn't reach the server. Check your connection.` | Error on Home when the server does not answer at all |
 | `Discover` | Home section: discovery suggestions |
 | `Evening mix` |  |
-| `For you` | One of the values of “With an empty queue” |
+| `For you` | One of the values of “What to play” |
 | `For you · {date}` |  |
 | `From YouTube` |  |
 | `Good afternoon` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
@@ -401,6 +401,13 @@ you are actually typing into, which is easier than reading it here.
 | `Unknown title` | Fallback when the file and the server have no title |
 | `Your likes and picks, dealt` |  |
 
+## in likedImport
+
+| String | What it is |
+| --- | --- |
+| `{n} liked songs sent to Navifind for the library` |  |
+| `1 liked song sent to Navifind for the library` |  |
+
 ## in playbackLock
 
 | String | What it is |
@@ -415,6 +422,7 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `Continue at home?` |  |
+| `Now playing at home on {name}` |  |
 | `Play on {name}` |  |
 
 ## Jam
@@ -494,7 +502,6 @@ you are actually typing into, which is easier than reading it here.
 | `Nothing here yet` |  |
 | `Only the first {n} entries were read` |  |
 | `Open` |  |
-| `Playlist` | A list saved on the server. Not the queue |
 | `Playlist created` | The toast after making one |
 | `Public` |  |
 | `Rules you write; songs that fit them.` |  |
@@ -662,7 +669,6 @@ you are actually typing into, which is easier than reading it here.
 | `Description` | The playlist's own description: what whoever made it wrote about it |
 | `Edit playlist` | Menu action, and the title of the sheet it opens |
 | `Export as M3U` |  |
-| `Playlist` | A list saved on the server. Not the queue |
 | `Playlist deleted` | Toast, with an undo button |
 | `Playlist updated` | Toast after saving a change |
 | `Playlists are not available in offline mode.` | Shown instead of a playlist when there is no connection |
@@ -820,11 +826,13 @@ you are actually typing into, which is easier than reading it here.
 | `Installing updates needs permission` | Shown when the user came back from Android's «install unknown apps» screen without granting it |
 | `Measure performance` | Timing, not analytics: how long the app takes to do things on this phone, kept on the phone. Nothing is sent anywhere. It is turned on when somebody is being walked through a slowdown |
 | `Report a bug` | Opens a new issue on GitHub |
+| `Report a problem` |  |
 | `Restore` | Restore settings to their defaults |
 | `Restore default settings` | Put every setting back the way it came |
 | `Settings restored` | Toast after putting the settings back to their defaults |
 | `Version` | Which version of Resonus this is. Tapping it five times opens Diagnostics |
 | `What's new` | Opens what changed in this version |
+| `With the crash log, without your server or account` | The line under “Report a problem”, explaining it |
 | `You're on the latest version` | Answer when that check finds nothing newer |
 | `Your preferences will go back to their defaults. Your language stays.` | The line under that dialog |
 
@@ -863,6 +871,31 @@ you are actually typing into, which is easier than reading it here.
 | `The new passwords don't match` |  |
 | `This server doesn't let you edit your own account` |  |
 | `Your password is changed on the server, not from here.` |  |
+
+## Settings › Alarm
+
+| String | What it is |
+| --- | --- |
+| `{n} min` |  |
+| `Alarm time` |  |
+| `Choose a playlist` | One of the values of “Playlist” |
+| `Choose at least one day.` |  |
+| `Choose your home speaker in Quality & playback to wake up on it.` |  |
+| `Days` |  |
+| `For you` | One of the values of “What to play” |
+| `From silence up to the volume the phone or the speaker was left at.` | The line under “Rising volume”, explaining it |
+| `If the speaker does not answer, the phone rings instead.` |  |
+| `Lost contact with the speaker` |  |
+| `Music` | The name given to the server's folder when it does not have one of its own, browsing by folder |
+| `Next alarm: {when}` |  |
+| `Plays music at the chosen time, even with the app closed.` | The line under “Wake me up”, explaining it |
+| `Rising volume` |  |
+| `The speaker couldn't play this song` |  |
+| `This phone` | The on-device profile, with no server account |
+| `Wake me up` |  |
+| `Wake-up alarm` |  |
+| `What to play` |  |
+| `Where` |  |
 
 ## Settings › Backup
 
@@ -911,15 +944,20 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `Android Auto` |  |
 | `Clear crash log` |  |
+| `Couldn't open the link` |  |
 | `Counted` | Section header on the Diagnostics screen: things that happened and how many times |
 | `Crashes` |  |
 | `Diagnostics` | The screen's title, and the row in About that opens it |
 | `If the server renumbers its ids, rewrite the downloads to match instead of losing them. Off until it has been tested against a server that has.` | The line under that switch, saying why it is off |
+| `Issues on this GitHub repository are public.` |  |
 | `Measuring is off (Settings › About), so there is nothing to show.` | Empty state on the Diagnostics screen when `Measure performance` has never been switched on |
 | `No crash recorded.` |  |
 | `Nothing logged yet.` |  |
+| `Open a GitHub issue` |  |
 | `Profile` | Section header over what kind of server the profile is. Not a user profile |
 | `Repair the offline library` | The switch itself. Navidrome 0.64 gives every song a new id, and the downloads on the phone still hold the old ones; this is what rewrites them so the music stays playable |
+| `Report a problem` |  |
+| `Send by email` |  |
 | `Server id repair` | Section title in the hidden Diagnostics screen, above the switch below |
 | `Share report` | Button: hands the numbers over as plain text, to paste into an issue |
 | `Start over` | Button: clears the measurements and starts counting again. Not "start playback" |
@@ -927,6 +965,7 @@ you are actually typing into, which is easier than reading it here.
 | `The car module's last lines, for a report written away from the car.` |  |
 | `The player keeps beating twice a second while the app is away. Long silences here mean the app stopped following what it was playing.` | The line under `While minimized`. "The player" is the native audio engine, not the player screen, and "beating" is a heartbeat: it sends its state every 500 ms, and the position, the notification and the move to the next track all hang off that. Everything else on this screen stops measuring once the app is minimized, because the system takes its timers away, so this beat is the one clock still running out there. A long gap means the player itself went quiet, which is a different fault from the app coming back with a stale screen. Keep the medical sense of a pulse if your language has one |
 | `What happened, rather than how long it took.` | The line under `Counted`: that section is a tally of events, next to the sections above it which are timings |
+| `What happened?` |  |
 | `What stopped the app, most recent first.` |  |
 | `While minimized` | Section header on the Diagnostics screen, over what was measured with the app in the background rather than on screen. Minimized as in put away: the screen off or another app in front, with the music still going |
 
@@ -1171,10 +1210,17 @@ you are actually typing into, which is easier than reading it here.
 | `1 track is in the library now` |  |
 | `A YouTube, SoundCloud or Spotify link. A playlist or an album becomes a playlist of the same name on the server once its tracks are in.` |  |
 | `All {total} tracks found` |  |
+| `Answering` |  |
 | `Branch Spotify` |  |
+| `Check now` |  |
+| `Checking…` |  |
+| `deno is missing, so YouTube cannot be read` |  |
+| `Does not run` |  |
+| `Every six hours, the songs you liked on YouTube go into the library, twenty at most each time.` |  |
 | `Fetching {n} tracks into the library` |  |
 | `Fetching 1 track into the library` |  |
 | `Fetching now` |  |
+| `File my liked songs` |  |
 | `Forget the Spotify account` |  |
 | `Forgotten. Navifind has no Spotify account left.` |  |
 | `Import` |  |
@@ -1185,6 +1231,11 @@ you are actually typing into, which is easier than reading it here.
 | `Listen together, everyone on their own device.` | The line under “Jam”, explaining it |
 | `Marks online tracks in searches and lets them be copied into the library.` | The line under “Use Navifind”, explaining it |
 | `Navifind sits in front of Navidrome and answers searches with tracks it can fetch from YouTube and SoundCloud. Only turn it on if your server address points at it.` |  |
+| `Not answering` |  |
+| `Not checked yet` |  |
+| `Not configured` |  |
+| `Not installed` |  |
+| `Noted down {n} min ago` |  |
 | `Nothing new in the library` |  |
 | `Nothing to fetch at that link` |  |
 | `Offline: nothing to ask.` |  |
@@ -1193,6 +1244,7 @@ you are actually typing into, which is easier than reading it here.
 | `Only the first 100 tracks came: Spotify shows no more of a playlist to anyone but its maker. If it holds more, make a copy of it on your Spotify account and import that one.` |  |
 | `Opens Spotify in a browser to ask for its permission.` |  |
 | `Sending…` |  |
+| `Sources` | Which shortcuts the quick grid shows |
 | `Spotify account` |  |
 | `Spotify did not answer. Try again.` |  |
 | `Spotify is branched` |  |
@@ -1211,6 +1263,8 @@ you are actually typing into, which is easier than reading it here.
 | `Tracks the proxy has fetched so far. Navidrome picks them up on its next scan.` | The line under “In the library”, explaining it |
 | `Untitled` |  |
 | `Use Navifind` |  |
+| `Version {version}, with deno` |  |
+| `Where the proxy looks for an online track. One noted down is left aside for five minutes, then tried again.` |  |
 | `Which account Navifind reads, and where to sign in to another.` | The line under “YouTube account”, explaining it |
 | `YouTube account` |  |
 
@@ -1293,6 +1347,7 @@ you are actually typing into, which is easier than reading it here.
 | `“Original” is the file exactly as it is on the server, with nothing transcoded. A lower bitrate saves data and may cost audible quality.` |  |
 | `A downloaded song normally plays from the file, which costs no data. Choose otherwise if your downloads are smaller copies and you would rather stream the good one when you can. Without a connection the file is always used.` |  |
 | `Always` | A value of when a downloaded song is played from the file instead of streamed |
+| `Ask` | One of the values of “When you get home” |
 | `Automatic` | A value of `Normalize volume`: let the app decide between per track and per album |
 | `Autoplay` | When the queue runs out, keep playing with similar songs instead of stopping |
 | `By album` | Volume normalization (ReplayGain) mode: even out loudness album by album |
@@ -1302,6 +1357,7 @@ you are actually typing into, which is easier than reading it here.
 | `Codec to transcode to. Your server must support it.` |  |
 | `Crossfade` | One song fading into the next |
 | `Cuts the quiet gaps inside and between tracks` | The line under “Skip silence”, explaining it |
+| `Do nothing` | One of the values of “When you get home” |
 | `Equalizer` |  |
 | `Evens out loudness between songs using your files' ReplayGain tags.` | The line under “Normalize volume”, explaining it |
 | `Home speaker` |  |
@@ -1333,15 +1389,16 @@ you are actually typing into, which is easier than reading it here.
 | `Streaming codec (Wi-Fi)` |  |
 | `Streaming quality (mobile data)` |  |
 | `Streaming quality (Wi-Fi)` |  |
-| `Suggest a known speaker` |  |
+| `Switch on its own` | One of the values of “When you get home” |
 | `The screen never turns off while the app is visible.` | The line under “Keep screen on”, explaining it |
 | `The speaker couldn't play this song` |  |
-| `The speaker offered when you play on the phone. Without one, it is the speaker you last played on.` |  |
+| `The speaker the music goes to when you get home. Without one, it is the speaker you last played on.` |  |
 | `Tune the sound band by band.` | The line under “Equalizer”, explaining it |
 | `Warn about battery optimization` |  |
+| `What to do when the music plays on the phone and the home speaker is on the network. Switching on its own, the music also comes back to the phone when you leave the Wi-Fi.` |  |
 | `When a song counts as played.` | Under the `Scrobbling` row, saying what the screen it opens is about |
+| `When you get home` |  |
 | `When you open the app with nothing playing, take the queue another player left on the server if it is newer than this one. The ⋯ of the queue screen asks for it at any time.` |  |
-| `When you play on the phone and a LinkPlay speaker you have used before is on the network, offer to continue on it.` | The line under “Suggest a known speaker”, explaining it |
 
 ## Settings › Player
 
@@ -1443,32 +1500,40 @@ you are actually typing into, which is easier than reading it here.
 | `Favorites, shuffled` | One of the values of “With an empty queue” |
 | `Floating player` | A small player drawn over whatever app is in front (Waze), with play, pause and next |
 | `Floating player size` |  |
-| `For you` | One of the values of “With an empty queue” |
+| `For you` | One of the values of “What to play” |
 | `How many songs of the queue Prepare the ride downloads before the bike leaves the network.` |  |
 | `Intercom` | Section title: the helmet's Bluetooth intercom (Cardo, Sena…), the device that starts ride mode when it connects |
 | `Large, for thick gloves` | One of the values of “Floating player size” |
 | `Leave as is` |  |
+| `Light, one step` | One of the values of “Raised by” |
+| `Medium, two steps` | One of the values of “Raised by” |
 | `Navigation app` | Setting: the app (Waze, Maps…) brought to the front when the intercom connects |
 | `No paired device` |  |
 | `None` | The choice of no intercom at all in that list: ride mode never starts by itself |
 | `Normal` | One of the values of “Floating player size” |
 | `Nothing` | A value of `On cover tap`: tapping the cover does nothing |
+| `On the charger and on Wi-Fi, at night or with the screen off for ten minutes, once in twelve hours at most. While the app is running.` |  |
 | `On the road` | Section title over the three switches of what ride mode does once it is on |
 | `Open ride mode` |  |
 | `Play, pause and skip over Waze or any other app. Needs permission to draw over other apps, asked when switched on.` |  |
 | `Play, pause and skip over Waze or any other app. Tap the title to come back here.` |  |
+| `Prepare on its own` |  |
 | `Prepare the ride` |  |
 | `Radio station` |  |
+| `Raised by` |  |
 | `Resume playback` |  |
 | `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
 | `Ride mode starts on its own when the chosen Bluetooth device connects, and stops when it disconnects. Pair the intercom with the phone first.` |  |
 | `Shuffle all` | One of the values of “With an empty queue” |
 | `Start when this device connects` |  |
 | `Status at the start` |  |
+| `Strong, three steps` | One of the values of “Raised by” |
 | `The battery, the output and how many songs are left, said when the intercom connects.` | The line under “Status at the start”, explaining it |
 | `The media volume set when ride mode starts on its own, so it is not left where the kitchen had it.` | The line under “Volume at the start”, explaining it |
 | `The station the Radio button of the ride screen plays.` | The line under “Radio station”, explaining it |
+| `The volume rises over your own level as the bike goes faster, against the wind, from the GPS. Needs the location allowed all the time, since the navigation app is in front.` |  |
 | `Volume at the start` |  |
+| `Volume with the speed` |  |
 | `What starts when there is nothing to resume.` | The line under “With an empty queue”, explaining it |
 | `What was playing starts again when the intercom connects.` | The line under “Resume playback”, explaining it |
 | `Whole queue` |  |
@@ -1677,7 +1742,6 @@ you are actually typing into, which is easier than reading it here.
 | `Any rule can match` | One of the values of “Name” |
 | `At most this many songs. Empty means all of them.` | The line under “Limit”, explaining it |
 | `contains` |  |
-| `Days` |  |
 | `does not contain` |  |
 | `Edit smart playlist` |  |
 | `Favourite` |  |
@@ -1762,7 +1826,6 @@ you are actually typing into, which is easier than reading it here.
 | `No YouTube account on the proxy` |  |
 | `Nothing here yet` |  |
 | `Offline: nothing to ask.` |  |
-| `Playlist` | A list saved on the server. Not the queue |
 | `Sign in again` |  |
 | `Sign in an account` |  |
 | `Switch account` |  |
@@ -1859,6 +1922,7 @@ you are actually typing into, which is easier than reading it here.
 | `Play` | Read out by the screen reader for the play button. A verb |
 | `Play next` | Action: put this song right after the one playing, without clearing the rest |
 | `Playing next` | The toast that says `Play next` worked. Not the same string, and not a heading |
+| `Playlist` | A list saved on the server. Not the queue |
 | `Playlist name` | The name field when making or renaming a playlist |
 | `Radio` | Internet radio stations. Most languages keep the word |
 | `Random` |  |

@@ -7,6 +7,42 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.9.0] - 2026-10-03
+
+### Added
+
+- Getting home: Settings › Playback chooses between doing nothing, asking
+  ("Continue at home?") or switching on its own when the phone joins the
+  Wi-Fi; switching on its own also brings the music back to the phone when
+  the Wi-Fi is left, in seconds rather than the better part of a minute.
+- A wake-up alarm (Settings › Alarm): a time, days, the shuffle, "For you"
+  or a playlist, on the phone or the home speaker, with the volume rising
+  over a few minutes. Set with the system's alarm clock, so it rings with
+  the app closed and is set again after a reboot.
+- The sleep timer fades and stops the speaker the music is on, not only
+  the phone, and gives the speaker its volume back afterwards.
+- Ride mode: "Prepare on its own" while the phone charges on Wi-Fi at
+  night, and the volume following the speed (from the GPS) over the
+  rider's own level, light, medium or strong.
+- Settings › Navifind shows whether Invidious, Piped, yt-dlp and SoundCloud
+  answer, with a "Check now"; and the songs liked on YouTube can be filed
+  into the library on their own, twenty at most every six hours.
+- "Report a problem" in Diagnostics and About: a GitHub issue or an email
+  with the crash log, cleaned of server addresses and credentials.
+
+### Fixed
+
+- Songs added to the queue while shuffled are no longer lost when shuffle
+  is turned off, and songs removed no longer come back.
+- After a server id migration, turning shuffle off no longer lands on
+  another song.
+- "One phone, one music" (exclusive playback) is remembered across starts.
+
+### Changed
+
+- The queue logic of the player (adding, removing, moving, shuffle, the
+  back history, the saved queue) lives in tested modules.
+
 ## [1.8.3] - 2026-10-03
 
 ### Added
