@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 
 import { isLanguage, LANGUAGE_NAMES, type Language } from '@/i18n/languages';
+import { type AlarmConfig, DEFAULT_ALARM, parseAlarm, syncAlarm } from '@/lib/alarm';
 import { type TabSegment } from '@/lib/tabOrigin';
 import { hashKey } from '@/lib/localLibrary';
 import { getSystemAccent } from '@/lib/materialYou';
@@ -9,6 +10,7 @@ import { setNavifindActive } from '@/lib/navifind';
 import { setPerfEnabled } from '@/lib/perfLog';
 import { profileScopeGuard } from '@/lib/profileScope';
 import { queryClient } from '@/lib/query';
+import { type HandoffMode, isHandoffMode } from '@/lib/speakerSuggest';
 import { getItem, setItem } from '@/lib/storage';
 import {
   applyAccents,
@@ -813,6 +815,12 @@ interface SettingsState {
    */
   exclusivePlayback: boolean;
   /**
+   * The YouTube liked songs handed to the proxy to file in the library on
+   * their own, a few at a time and at most every six hours (see
+   * `lib/likedImport.ts`). Off unless turned on.
+   */
+  autoImportLiked: boolean;
+  /**
    * The ListenBrainz user token the app sends loves with, and whose it is
    * (see `lib/listenBrainz.ts`). Both empty until a token has been checked,
    * and both go together: the name is what the screen shows and what the
@@ -860,15 +868,19 @@ interface SettingsState {
    */
   batteryWarning: boolean;
   /**
-   * Offer to continue on a LinkPlay speaker used before, when it answers on
-   * the network and the music starts on the phone (`lib/speakerSuggest.ts`).
+   * What to do when the home speaker answers on the network while the music
+   * plays on the phone: nothing, offer it, or move the music to it, and back
+   * to the phone on leaving the Wi-Fi (`lib/speakerSuggest.ts`). It replaced
+   * the `suggestKnownSpeakers` switch, read once for the move.
    */
-  suggestKnownSpeakers: boolean;
+  homeHandoff: HandoffMode;
   /**
    * The address of the LinkPlay speaker the suggestion is about, or `''` for
    * whichever one was played on last.
    */
   homeSpeakerHost: string;
+  /** The wake-up alarm (`lib/alarm.ts`), handed to the native side on each change. */
+  alarm: AlarmConfig;
   /** Player background: flat, cover color, or blurred cover art. */
   playerBackground: ScreenBackground;
   /**
@@ -1059,6 +1071,7 @@ interface SettingsState {
   setHapticsEnabled: (value: boolean) => void;
   setNavifind: (value: boolean) => void;
   setExclusivePlayback: (value: boolean) => void;
+  setAutoImportLiked: (value: boolean) => void;
   /** Both at once, empty to forget: they are only ever set from a token that
    *  ListenBrainz has just said whose it is. */
   setListenBrainzLoves: (token: string, user: string) => void;
@@ -1071,8 +1084,9 @@ interface SettingsState {
   setShowDiscHeaders: (value: boolean) => void;
   setShowGenreChips: (value: boolean) => void;
   setBatteryWarning: (value: boolean) => void;
-  setSuggestKnownSpeakers: (value: boolean) => void;
+  setHomeHandoff: (value: HandoffMode) => void;
   setHomeSpeakerHost: (value: string) => void;
+  setAlarm: (value: AlarmConfig) => void;
   setPlayerBackground: (value: ScreenBackground) => void;
   setAnimatedCoverBackground: (value: boolean) => void;
   setFitCoverArt: (value: boolean) => void;
@@ -1204,6 +1218,7 @@ function snapshot(get: () => SettingsState) {
     hapticsEnabled: s.hapticsEnabled,
     navifind: s.navifind,
     exclusivePlayback: s.exclusivePlayback,
+    autoImportLiked: s.autoImportLiked,
     listenBrainzToken: s.listenBrainzToken,
     listenBrainzUser: s.listenBrainzUser,
     lyricsBackground: s.lyricsBackground,
@@ -1215,8 +1230,9 @@ function snapshot(get: () => SettingsState) {
     showDiscHeaders: s.showDiscHeaders,
     showGenreChips: s.showGenreChips,
     batteryWarning: s.batteryWarning,
-    suggestKnownSpeakers: s.suggestKnownSpeakers,
+    homeHandoff: s.homeHandoff,
     homeSpeakerHost: s.homeSpeakerHost,
+    alarm: s.alarm,
     playerBackground: s.playerBackground,
     animatedCoverBackground: s.animatedCoverBackground,
     fitCoverArt: s.fitCoverArt,
@@ -1301,6 +1317,7 @@ const DEFAULTS = {
   playCacheGB: 2,
   searchEveryServer: false,
   exclusivePlayback: true,
+  autoImportLiked: false,
   language: 'en' as Language,
   showAudioQuality: false,
   showRating: false,
@@ -1349,8 +1366,9 @@ const DEFAULTS = {
   showDiscHeaders: true,
   showGenreChips: false,
   batteryWarning: true,
-  suggestKnownSpeakers: true,
+  homeHandoff: 'ask' as HandoffMode,
   homeSpeakerHost: '',
+  alarm: DEFAULT_ALARM,
   playerBackground: 'cover' as ScreenBackground,
   animatedCoverBackground: false,
   fitCoverArt: false,
@@ -1665,6 +1683,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
     persist(snapshot(get));
   },
 
+  setAutoImportLiked: (autoImportLiked) => {
+    set({ autoImportLiked });
+    persist(snapshot(get));
+  },
+
   setListenBrainzLoves: (listenBrainzToken, listenBrainzUser) => {
     set({ listenBrainzToken, listenBrainzUser });
     persist(snapshot(get));
@@ -1710,14 +1733,20 @@ export const useSettings = create<SettingsState>((set, get) => ({
     persist(snapshot(get));
   },
 
-  setSuggestKnownSpeakers: (suggestKnownSpeakers) => {
-    set({ suggestKnownSpeakers });
+  setHomeHandoff: (homeHandoff) => {
+    set({ homeHandoff });
     persist(snapshot(get));
   },
 
   setHomeSpeakerHost: (homeSpeakerHost) => {
     set({ homeSpeakerHost });
     persist(snapshot(get));
+  },
+
+  setAlarm: (alarm) => {
+    set({ alarm });
+    persist(snapshot(get));
+    syncAlarm(alarm);
   },
 
   setShowArtistPhoto: (showArtistPhoto) => {
@@ -2102,6 +2131,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           hapticsEnabled: boolean;
           navifind: boolean;
           exclusivePlayback?: boolean;
+          autoImportLiked?: boolean;
           listenBrainzToken?: string;
           listenBrainzUser?: string;
           lyricsBackground: ScreenBackground;
@@ -2116,7 +2146,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
           showGenreChips: boolean;
           batteryWarning: boolean;
           suggestKnownSpeakers?: boolean;
+          homeHandoff?: unknown;
           homeSpeakerHost?: string;
+          alarm?: unknown;
           playerBackground: ScreenBackground;
           animatedCoverBackground?: boolean;
           fitCoverArt: boolean;
@@ -2323,6 +2355,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         const navifind = typeof parsed.navifind === 'boolean' ? parsed.navifind : false;
         set({ navifind });
         setNavifindActive(navifind);
+        if (typeof parsed.autoImportLiked === 'boolean') {
+          set({ autoImportLiked: parsed.autoImportLiked });
+        }
         // Only as a pair: a token whose user is unknown cannot import, and a
         // user without a token cannot send, so half of one is none of it.
         if (
@@ -2378,14 +2413,30 @@ export const useSettings = create<SettingsState>((set, get) => ({
         if (typeof parsed.showGenreChips === 'boolean') {
           set({ showGenreChips: parsed.showGenreChips });
         }
+        // Saved since it was added, but never read back: it came back on at
+        // every start whatever had been chosen.
+        if (typeof parsed.exclusivePlayback === 'boolean') {
+          set({ exclusivePlayback: parsed.exclusivePlayback });
+        }
         if (typeof parsed.batteryWarning === 'boolean') {
           set({ batteryWarning: parsed.batteryWarning });
         }
-        if (typeof parsed.suggestKnownSpeakers === 'boolean') {
-          set({ suggestKnownSpeakers: parsed.suggestKnownSpeakers });
+        // The switch it replaced: off stays off, on was the offer.
+        if (isHandoffMode(parsed.homeHandoff)) {
+          set({ homeHandoff: parsed.homeHandoff });
+        } else if (typeof parsed.suggestKnownSpeakers === 'boolean') {
+          set({ homeHandoff: parsed.suggestKnownSpeakers ? 'ask' : 'off' });
         }
         if (typeof parsed.homeSpeakerHost === 'string') {
           set({ homeSpeakerHost: parsed.homeSpeakerHost });
+        }
+        // Handed to the native side again as well: the profile read back may
+        // not be the one whose alarm it holds. Only one that was saved, so a
+        // read that came back empty does not cancel it.
+        const alarm = parseAlarm(parsed.alarm);
+        if (alarm) {
+          set({ alarm });
+          syncAlarm(alarm);
         }
         if (typeof parsed.showDiscHeaders === 'boolean') {
           set({ showDiscHeaders: parsed.showDiscHeaders });

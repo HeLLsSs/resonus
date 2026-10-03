@@ -72,8 +72,8 @@ export default function PlaybackSettings() {
   const batteryWarning = useSettings((s) => s.batteryWarning);
   const setBatteryWarning = useSettings((s) => s.setBatteryWarning);
   const setKeepScreenAwake = useSettings((s) => s.setKeepScreenAwake);
-  const suggestKnownSpeakers = useSettings((s) => s.suggestKnownSpeakers);
-  const setSuggestKnownSpeakers = useSettings((s) => s.setSuggestKnownSpeakers);
+  const homeHandoff = useSettings((s) => s.homeHandoff);
+  const setHomeHandoff = useSettings((s) => s.setHomeHandoff);
   const homeSpeakerHost = useSettings((s) => s.homeSpeakerHost);
   const setHomeSpeakerHost = useSettings((s) => s.setHomeSpeakerHost);
   const lpDevices = useLinkPlay((s) => s.devices);
@@ -304,30 +304,35 @@ export default function PlaybackSettings() {
               value: batteryWarning,
               onChange: setBatteryWarning,
             },
-            // Only where the phone can reach a speaker: a browser with no
-            // proxy has nothing to offer.
-            ...(linkPlayAvailable()
-              ? [
-                  {
-                    label: t('Suggest a known speaker'),
-                    description: t('When you play on the phone and a LinkPlay speaker you have used before is on the network, offer to continue on it.'),
-                    value: suggestKnownSpeakers,
-                    onChange: setSuggestKnownSpeakers,
-                  },
-                ]
-              : []),
           ]}
         />
-        {/* Which speaker the suggestion is about. Greyed out rather than gone
-            with the switch above off, so it can still be found (#114). A home
-            speaker that is not on the network right now keeps its row, under
-            its address, instead of the choice silently reading as "last one
-            used". */}
+        {/* Only where the phone can reach a speaker: a browser with no proxy
+            has nothing to offer. */}
+        {linkPlayAvailable() ? (
+          <SelectList
+            label={t('When you get home')}
+            description={t(
+              'What to do when the music plays on the phone and the home speaker is on the network. Switching on its own, the music also comes back to the phone when you leave the Wi-Fi.',
+            )}
+            options={[
+              { value: 'off', label: t('Do nothing') },
+              { value: 'ask', label: t('Ask') },
+              { value: 'auto', label: t('Switch on its own') },
+            ]}
+            value={homeHandoff}
+            onChange={setHomeHandoff}
+          />
+        ) : null}
+        {/* Which speaker the handoff is about. Greyed out rather than gone
+            with the choice above on "Do nothing", so it can still be found
+            (#114). A home speaker that is not on the network right now keeps
+            its row, under its address, instead of the choice silently reading
+            as "last one used". */}
         {linkPlayAvailable() ? (
           <SelectList
             label={t('Home speaker')}
             description={t(
-              'The speaker offered when you play on the phone. Without one, it is the speaker you last played on.',
+              'The speaker the music goes to when you get home. Without one, it is the speaker you last played on.',
             )}
             options={[
               { value: '', label: t('Last one used') },
@@ -338,7 +343,7 @@ export default function PlaybackSettings() {
             ]}
             value={homeSpeakerHost}
             onChange={setHomeSpeakerHost}
-            disabled={!suggestKnownSpeakers}
+            disabled={homeHandoff === 'off'}
           />
         ) : null}
 

@@ -1,36 +1,105 @@
 /**
- * The "Continue at home?" rules: when to ask, and which speaker.
+ * The home speaker rules: when to offer it, when to move to it and back, and
+ * which speaker.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { pickSpeaker, shouldSuggest, type SuggestFlags } from '@/lib/speakerSuggest';
+import {
+  handoffAction,
+  type HandoffFlags,
+  isHandoffMode,
+  type LeavingFlags,
+  pickSpeaker,
+  shouldReturnToPhone,
+} from '@/lib/speakerSuggest';
 
-const ok: SuggestFlags = { enabled: true, onPhone: true, wifi: true, jam: false, ride: false };
+const ok: HandoffFlags = {
+  mode: 'ask',
+  trigger: 'play',
+  onPhone: true,
+  wifi: true,
+  jam: false,
+  ride: false,
+};
 
-describe('shouldSuggest', () => {
+describe('handoffAction', () => {
   it('asks when the music starts on the phone, on Wi-Fi, with nothing else going on', () => {
-    assert.equal(shouldSuggest(ok), true);
+    assert.equal(handoffAction(ok), 'ask');
   });
 
-  it('stays quiet when switched off', () => {
-    assert.equal(shouldSuggest({ ...ok, enabled: false }), false);
+  it('switches instead of asking when set to', () => {
+    assert.equal(handoffAction({ ...ok, mode: 'auto' }), 'switch');
   });
 
-  it('stays quiet when the music is already somewhere else', () => {
-    assert.equal(shouldSuggest({ ...ok, onPhone: false }), false);
+  it('switches on joining a Wi-Fi with the music going, when set to', () => {
+    assert.equal(handoffAction({ ...ok, mode: 'auto', trigger: 'wifi' }), 'switch');
   });
 
-  it('stays quiet off Wi-Fi', () => {
-    assert.equal(shouldSuggest({ ...ok, wifi: false }), false);
+  it('does not ask on joining a Wi-Fi mid-song', () => {
+    assert.equal(handoffAction({ ...ok, trigger: 'wifi' }), 'none');
   });
 
-  it('stays quiet in a Jam', () => {
-    assert.equal(shouldSuggest({ ...ok, jam: true }), false);
+  it('does nothing when switched off', () => {
+    assert.equal(handoffAction({ ...ok, mode: 'off' }), 'none');
   });
 
-  it('stays quiet in ride mode', () => {
-    assert.equal(shouldSuggest({ ...ok, ride: true }), false);
+  for (const mode of ['ask', 'auto'] as const) {
+    describe(`in ${mode}`, () => {
+      it('does nothing when the music is already somewhere else', () => {
+        assert.equal(handoffAction({ ...ok, mode, onPhone: false }), 'none');
+      });
+
+      it('does nothing off Wi-Fi', () => {
+        assert.equal(handoffAction({ ...ok, mode, wifi: false }), 'none');
+      });
+
+      it('does nothing in a Jam', () => {
+        assert.equal(handoffAction({ ...ok, mode, jam: true }), 'none');
+      });
+
+      it('does nothing in ride mode', () => {
+        assert.equal(handoffAction({ ...ok, mode, ride: true }), 'none');
+      });
+    });
+  }
+});
+
+describe('shouldReturnToPhone', () => {
+  const away: LeavingFlags = { mode: 'auto', onHomeSpeaker: true, playing: true, wifi: false };
+
+  it('brings the music back on leaving the Wi-Fi with it on the home speaker', () => {
+    assert.equal(shouldReturnToPhone(away), true);
+  });
+
+  it('leaves it be when only asking', () => {
+    assert.equal(shouldReturnToPhone({ ...away, mode: 'ask' }), false);
+  });
+
+  it('leaves it be when switched off', () => {
+    assert.equal(shouldReturnToPhone({ ...away, mode: 'off' }), false);
+  });
+
+  it('leaves it be on another output', () => {
+    assert.equal(shouldReturnToPhone({ ...away, onHomeSpeaker: false }), false);
+  });
+
+  it('leaves it be when paused', () => {
+    assert.equal(shouldReturnToPhone({ ...away, playing: false }), false);
+  });
+
+  it('leaves it be still on Wi-Fi', () => {
+    assert.equal(shouldReturnToPhone({ ...away, wifi: true }), false);
+  });
+});
+
+describe('isHandoffMode', () => {
+  it('takes the three modes', () => {
+    assert.deepEqual(['off', 'ask', 'auto'].map(isHandoffMode), [true, true, true]);
+  });
+
+  it('refuses anything else, the old switch included', () => {
+    assert.deepEqual([true, 'on', undefined].map(isHandoffMode), [false, false, false]);
   });
 });
 
