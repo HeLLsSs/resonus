@@ -7,7 +7,15 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { CarNode } from '@/lib/carAuto';
-import { drawerLayout, overflowsHome, resumeFraction, searchRows, shelfId, tabLayout } from '@/lib/carAutoLayout';
+import {
+  drawerLayout,
+  overflowsHome,
+  resumeFraction,
+  searchRows,
+  shelfId,
+  spokenShuffle,
+  tabLayout,
+} from '@/lib/carAutoLayout';
 
 function row(id: string, title = id): CarNode {
   return { id, title, playable: true };
@@ -151,6 +159,26 @@ describe('searchRows', () => {
     const given = row('album:1', 'A');
     rows('a', [given], []);
     assert.equal(given.group, undefined);
+  });
+});
+
+describe('spokenShuffle', () => {
+  it('hears the die of YouTube in either language, with or without "play"', () => {
+    for (const said of ['YouTube shuffle', 'aléatoire YouTube', 'lecture aléatoire YouTube', 'play youtube shuffle']) {
+      assert.equal(spokenShuffle(said), 'youtube', said);
+    }
+  });
+
+  it('hears the die of the library under its plain names and the names of its rows', () => {
+    for (const said of ['shuffle', 'aléatoire', 'lecture aléatoire', 'Shuffle everything', 'Tout en aléatoire']) {
+      assert.equal(spokenShuffle(said), 'library', said);
+    }
+  });
+
+  it('leaves a shuffle of something named, and a thing merely called shuffle, to the search', () => {
+    for (const said of ['shuffle Radiohead', 'Shuffle Along', 'youtube', 'Moon River', '']) {
+      assert.equal(spokenShuffle(said), null, said);
+    }
   });
 });
 

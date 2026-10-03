@@ -45,7 +45,15 @@ import { useQueueHistory, type PastQueue } from '@/store/queueHistory';
 import { useSettings } from '@/store/settings';
 import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { setNodes, type CarNode, type CarTree } from './carAuto';
-import { drawerLayout, overflowsHome, resumeFraction, searchRows, shelfId, tabLayout } from './carAutoLayout';
+import {
+  drawerLayout,
+  overflowsHome,
+  resumeFraction,
+  searchRows,
+  shelfId,
+  spokenShuffle,
+  tabLayout,
+} from './carAutoLayout';
 import { fold } from './text';
 import { allMixes, topGenres, type Mix } from './mixes';
 import { resolveSmartPlaylist, type SmartPlaylist } from './smartPlaylists';
@@ -434,6 +442,45 @@ const SHUFFLE_FAVORITES_ID = 'shuffle:favorites';
 const SHUFFLE_SONGS = 100;
 /** The die at the top of the YouTube tab: what the account likes, dealt. */
 const YOUTUBE_DICE_ID = 'yt:dice';
+/** The queue with the network taken out of it: the songs of it that are on
+ *  the phone, for the stretch of road with no signal. */
+const ROAD_ID = 'road:queue';
+
+/** The die of Home. Also what a shuffle asked for by name resolves to. */
+function shuffleRow(): CarNode {
+  return {
+    id: SHUFFLE_ID,
+    title: tg('Shuffle everything'),
+    // Said when YouTube is dealt in, since "everything" then means more
+    // than the library (`playShuffle`).
+    subtitle: youtubeJoinsShuffle() ? tg('Library and YouTube') : undefined,
+    artworkUrl: icon('ic_car_shuffle'),
+    playable: true,
+  };
+}
+
+/** The die of the YouTube tab, and of "YouTube shuffle" asked for by name. */
+function youtubeDiceRow(): CarNode {
+  return {
+    id: YOUTUBE_DICE_ID,
+    title: tg('YouTube shuffle'),
+    subtitle: tg('Your likes and picks, dealt'),
+    artworkUrl: icon('ic_car_dice'),
+    playable: true,
+  };
+}
+
+/**
+ * The songs of the queue that are on the phone, in the queue's order from the
+ * current song round to the start: what goes on playing once the road leaves
+ * the network behind. Counted for the row on Home and queued when it is
+ * pressed.
+ */
+function roadSongs(): Song[] {
+  const { queue, index } = usePlayerStore.getState();
+  const { files } = useDownloads.getState();
+  return [...queue.slice(index), ...queue.slice(0, index)].filter((s) => !!files[s.id]);
+}
 
 // ── Genres ───────────────────────────────────────────────────────────────────
 
@@ -851,15 +898,7 @@ async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promi
 
   // The die first: the one row of the tab that needs nothing read to be
   // pressed, which at the wheel is the row that gets pressed.
-  const rows: CarNode[] = [
-    {
-      id: YOUTUBE_DICE_ID,
-      title: tg('YouTube shuffle'),
-      subtitle: tg('Your likes and picks, dealt'),
-      artworkUrl: icon('ic_car_dice'),
-      playable: true,
-    },
-  ];
+  const rows: CarNode[] = [youtubeDiceRow()];
   const shelfRows: CarNode[] = [];
   if (liked.length > 0) {
     tree['yt:liked'] = songRows(into, 'yt:liked', liked);
@@ -1160,6 +1199,7 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
   // and the playlists pinned on the phone. Each group is cut short: the tab
   // is read, not scrolled, and the Library has the rest.
   const resume = resumeNode();
+  const road = roadSongs().length;
   tree['tab:home'] = tabLayout([
     {
       heading: tg('Continue listening'),
@@ -1168,8 +1208,8 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
     },
     {
       nodes: [
-        // First of the three: it is the one that needs no choice made about
-        // it, which is the only kind of row worth pressing while driving.
+        // First of them: it is the one that needs no choice made about it,
+        // which is the only kind of row worth pressing while driving.
         {
           id: FOR_YOU_ID,
           title: tg('For you'),
@@ -1177,15 +1217,7 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
           artworkUrl: icon('ic_car_foryou'),
           playable: true,
         },
-        {
-          id: SHUFFLE_ID,
-          title: tg('Shuffle everything'),
-          // Said when YouTube is dealt in, since "everything" then means more
-          // than the library (`playShuffle`).
-          subtitle: youtubeJoinsShuffle() ? tg('Library and YouTube') : undefined,
-          artworkUrl: icon('ic_car_shuffle'),
-          playable: true,
-        },
+        shuffleRow(),
         {
           id: SHUFFLE_FAVORITES_ID,
           title: tg('Favorites'),
@@ -1193,6 +1225,19 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
           artworkUrl: icon('ic_car_favorites'),
           playable: true,
         },
+        // Only while the queue holds something that plays with no signal: a
+        // row promising the road music it cannot keep is worse than none.
+        ...(road > 0
+          ? [
+              {
+                id: ROAD_ID,
+                title: tg('For the road'),
+                subtitle: tg('{n} songs, no network needed', { n: road }),
+                artworkUrl: icon('ic_car_downloaded'),
+                playable: true,
+              },
+            ]
+          : []),
       ],
     },
     { heading: tg('Made for you'), nodes: mixes.map((m) => mixNode(into, m)), max: HOME_MIXES },
@@ -1360,12 +1405,18 @@ export async function carSearch(query: string, local: CarNode[]): Promise<CarNod
   // cannot fetch for itself is a file of the phone's or nothing at all, the
   // same as everywhere else in the tree.
   await resolveCachedArt({ [FOUND_ID]: nodes });
-  return searchRows(query, local, nodes, {
+  const rows = searchRows(query, local, nodes, {
     song: tg('Songs'),
     album: tg('Albums'),
     artist: tg('Artists'),
     playlist: tg('Playlists'),
   });
+  // "Shuffle", "aléatoire YouTube": the die named goes first, above whatever
+  // carries the word in its title (`spokenShuffle`). YouTube's with no
+  // account to read is the library's die instead.
+  const die = spokenShuffle(query);
+  const lead = die === 'youtube' && youtubeReachable() ? youtubeDiceRow() : die ? shuffleRow() : null;
+  return lead ? [lead, ...rows.filter((n) => n.id !== lead.id)] : rows;
 }
 
 // ── Playback resolution on car tap ───────────────────────────────────────────
@@ -1474,6 +1525,12 @@ const SPOKEN_SONGS = 50;
  * kind of music. Offline the same search runs over what is on the phone.
  */
 async function playSpoken(query: string): Promise<void> {
+  // The die named rather than a thing to find: "shuffle", "lecture
+  // aléatoire", "aléatoire YouTube". Searched for, the words would play
+  // whatever song carries them in its title. YouTube's die asked for with no
+  // account to read is the library's instead, which beats silence.
+  const die = spokenShuffle(query);
+  if (die) return handleBrowsePlay(die === 'youtube' && youtubeReachable() ? YOUTUBE_DICE_ID : SHUFFLE_ID);
   const store = usePlayerStore.getState();
   const said = fold(query);
   if (!said) return;
@@ -1573,6 +1630,15 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
   if (mediaId === SHUFFLE_FAVORITES_ID) {
     const songs = await starredSongs().catch(() => [] as Song[]);
     if (songs.length > 0) await store.playQueue(songs, 0, tg('Favorites'), '/favorites', { shuffled: true });
+    return;
+  }
+
+  // The queue with the network taken out of it, from the current song round
+  // to the start, under a name of its own: it is a queue the driver made, cut
+  // to what the phone holds, not a list of any screen's.
+  if (mediaId === ROAD_ID) {
+    const songs = roadSongs();
+    if (songs.length > 0) await store.playQueue(songs, 0, tg('For the road'));
     return;
   }
 

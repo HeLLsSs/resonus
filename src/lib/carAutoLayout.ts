@@ -157,6 +157,53 @@ export function searchRows(
     });
 }
 
+// ── What was said ────────────────────────────────────────────────────────────
+
+/** The words of a spoken request that ask for nothing in themselves: "play",
+ *  "lecture aléatoire", "tout en aléatoire", "shuffle everything". */
+const SPOKEN_FILLER = new Set([
+  'play',
+  'lecture',
+  'mode',
+  'en',
+  'au',
+  'la',
+  'le',
+  'de',
+  'du',
+  'des',
+  'sur',
+  'on',
+  'the',
+  'all',
+  'everything',
+  'tout',
+  'music',
+  'musique',
+  'my',
+  'ma',
+]);
+
+/** The die, in either language. */
+const SHUFFLE_WORDS = new Set(['shuffle', 'aleatoire', 'random', 'hasard', 'melange']);
+
+/**
+ * Whether what was said names a die rather than a thing to find: "shuffle",
+ * "lecture aléatoire", "YouTube shuffle", "aléatoire YouTube". A search of the
+ * library would answer those with whatever song has the word in its title,
+ * which is not what anybody asking for a shuffle means. Words left over that
+ * are neither the die nor YouTube ("shuffle Radiohead") are a request of
+ * their own and go to the search as before.
+ */
+export function spokenShuffle(query: string): 'youtube' | 'library' | null {
+  const words = fold(query)
+    .split(' ')
+    .filter((w) => w && !SPOKEN_FILLER.has(w));
+  if (!words.some((w) => SHUFFLE_WORDS.has(w))) return null;
+  if (!words.every((w) => SHUFFLE_WORDS.has(w) || w === 'youtube')) return null;
+  return words.includes('youtube') ? 'youtube' : 'library';
+}
+
 // ── The YouTube tab ──────────────────────────────────────────────────────────
 
 /** Long enough to tell two shelves apart, short enough that a tab of twenty of

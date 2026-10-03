@@ -45,6 +45,7 @@ import { queryClient } from '@/lib/query';
 import { waitFor, whenProfileReady } from '@/lib/storeWait';
 import { applyTransport } from '@/lib/transport';
 import { useAuthStore } from '@/store/auth';
+import { useDownloads } from '@/store/downloads';
 import { useLastPlayed } from '@/store/lastPlayed';
 import { usePins } from '@/store/pins';
 import { usePlayerStore, type StreamInfo } from '@/store/player';
@@ -243,6 +244,12 @@ export function startCarAutoSync(): void {
   };
   useBookmarks.subscribe((state, prev) => {
     if (state.byId !== prev.byId && !sameSongs(state.byId, prev.byId)) rebuild(false);
+  });
+  // The "For the road" row of Home counts the songs of the queue that are on
+  // the phone, so a download landing or a file deleted redraws it. `files` is
+  // replaced only then, not while a download is on its way.
+  useDownloads.subscribe((state, prev) => {
+    if (state.files !== prev.files) rebuild(false);
   });
   // Plugging into a car is the one moment the tree is certain to be needed,
   // and the wait was being counted from the launch: forty five seconds of
