@@ -46,10 +46,20 @@ export interface RideConfig {
   status: boolean;
   /** How many songs of the queue "Prepare the ride" downloads; 0 for the whole queue. */
   prepareCount: number;
+  /** The ride prepared on its own, on the charger and on Wi-Fi, at night or with the phone left alone. */
+  autoPrepare: boolean;
+  /** The media volume raised with the speed while ride mode is on, against the wind. */
+  speedVolume: boolean;
+  /** How far `speedVolume` raises it. */
+  speedStrength: SpeedStrength;
 }
 
 /** The choices for `prepareCount`, 0 being the whole queue. */
 export const PREPARE_COUNTS = [15, 30, 60, 0];
+
+export type SpeedStrength = 'light' | 'medium' | 'strong';
+
+export const SPEED_STRENGTHS: SpeedStrength[] = ['light', 'medium', 'strong'];
 
 export type OverlaySize = 'normal' | 'large';
 
@@ -104,7 +114,11 @@ interface NativeRideMode {
   setActive: (on: boolean) => void;
   canListen: () => boolean;
   listen: () => Promise<string>;
+  isScreenOn: () => boolean;
+  watchSpeed: (on: boolean) => void;
   addListener: {
+    (event: 'screen', cb: (e: { on: boolean }) => void): { remove: () => void };
+    (event: 'speed', cb: (e: { speed: number }) => void): { remove: () => void };
     (event: 'intercom', cb: (e: IntercomEvent) => void): { remove: () => void };
     (event: 'action', cb: (e: { action: RideAction }) => void): { remove: () => void };
     (event: 'call', cb: (e: { inCall: boolean }) => void): { remove: () => void };
@@ -140,6 +154,9 @@ export const NO_RIDE_CONFIG: RideConfig = {
   radioStationName: '',
   status: true,
   prepareCount: 30,
+  autoPrepare: false,
+  speedVolume: false,
+  speedStrength: 'medium',
 };
 
 export function getRideConfig(): RideConfig {
@@ -149,7 +166,8 @@ export function getRideConfig(): RideConfig {
   const emptyQueue = EMPTY_QUEUE_ACTIONS.find((a) => a === config.emptyQueue) ?? 'nothing';
   const overlaySize = config.overlaySize === 'large' ? 'large' : 'normal';
   const prepareCount = PREPARE_COUNTS.includes(config.prepareCount) ? config.prepareCount : 30;
-  return { ...config, emptyQueue, overlaySize, prepareCount };
+  const speedStrength = SPEED_STRENGTHS.find((s) => s === config.speedStrength) ?? 'medium';
+  return { ...config, emptyQueue, overlaySize, prepareCount, speedStrength };
 }
 
 export function setRideConfig(config: RideConfig): void {
@@ -170,6 +188,36 @@ export async function requestBluetoothPermission(): Promise<boolean> {
   try {
     const answer = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
     return answer === PermissionsAndroid.RESULTS.GRANTED;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Asks for the phone's position, for the volume that follows the speed:
+ * the precise one first, which is what the GPS needs, then the one that
+ * goes on with the app behind the navigation app, which from Android 11 is
+ * a choice on the system's own screen ("Allow all the time"). Answers
+ * whether the speed can be read at all; without the second answer it can,
+ * but only while the app is in front.
+ */
+export async function requestLocationPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  const { PERMISSIONS, RESULTS } = PermissionsAndroid;
+  try {
+    // Both asked together: from Android 12 the precise one asked alone is
+    // ignored. "Approximate" is no answer here, since the speed is the GPS's.
+    const answers = await PermissionsAndroid.requestMultiple([
+      PERMISSIONS.ACCESS_FINE_LOCATION,
+      PERMISSIONS.ACCESS_COARSE_LOCATION,
+    ]);
+    if (answers[PERMISSIONS.ACCESS_FINE_LOCATION] !== RESULTS.GRANTED) return false;
+    // Android 10 is where the position in the background became a
+    // permission of its own; before it the first answer covers both.
+    if (Number(Platform.Version) >= 29 && !(await PermissionsAndroid.check(PERMISSIONS.ACCESS_BACKGROUND_LOCATION))) {
+      await PermissionsAndroid.request(PERMISSIONS.ACCESS_BACKGROUND_LOCATION);
+    }
+    return true;
   } catch {
     return false;
   }
@@ -276,6 +324,26 @@ export function onBattery(cb: (e: BatteryEvent) => void): { remove: () => void }
   });
 }
 
+/** Whether the screen is lit, the lock screen included; true where nobody can say. */
+export function isScreenOn(): boolean {
+  return native?.isScreenOn() ?? true;
+}
+
+/** The screen going on or off, at every change. */
+export function onScreen(cb: (on: boolean) => void): { remove: () => void } | undefined {
+  return native?.addListener('screen', (e) => cb(e.on));
+}
+
+/** Starts or stops reading the speed off the GPS; nothing without the permission. */
+export function watchSpeed(on: boolean): void {
+  native?.watchSpeed(on);
+}
+
+/** The speed in km/h, every couple of seconds while `watchSpeed` is on and the GPS has a fix. */
+export function onSpeed(cb: (kmh: number) => void): { remove: () => void } | undefined {
+  return native?.addListener('speed', (e) => cb(e.speed * 3.6));
+}
+
 export function onIntercom(cb: (e: IntercomEvent) => void): { remove: () => void } | undefined {
   return native?.addListener('intercom', cb);
 }
@@ -329,4 +397,73 @@ export function songsToPrepare(
     picked.push(song);
   }
   return picked;
+}
+
+/** The longest a ride stays prepared before the next one is worth fetching. */
+export const AUTO_PREPARE_EVERY_MS = 12 * 60 * 60 * 1000;
+
+/** How long the screen stays off before a phone on its charger counts as left alone. */
+export const AUTO_PREPARE_IDLE_MS = 10 * 60 * 1000;
+
+/** Night, in the phone's local hours: from 22:00 to 06:00. */
+const NIGHT_FROM = 22;
+const NIGHT_TO = 6;
+
+/**
+ * Whether the ride should be prepared on its own now: on the charger, on
+ * Wi-Fi, and either at night or with the screen off for ten minutes, the
+ * phone put down for the evening. Once in twelve hours at most, so a phone
+ * on its charger all day is not fetching the queue again at every turn.
+ * `lastAt` and `screenOffSince` are null for never and for a lit screen.
+ */
+export function shouldAutoPrepare(c: {
+  charging: boolean;
+  wifi: boolean;
+  hour: number;
+  lastAt: number | null;
+  now: number;
+  screenOffSince: number | null;
+}): boolean {
+  if (!c.charging || !c.wifi) return false;
+  if (c.lastAt !== null && c.now - c.lastAt < AUTO_PREPARE_EVERY_MS) return false;
+  const night = c.hour >= NIGHT_FROM || c.hour < NIGHT_TO;
+  const idle = c.screenOffSince !== null && c.now - c.screenOffSince >= AUTO_PREPARE_IDLE_MS;
+  return night || idle;
+}
+
+/** Below this the wind is no louder than the engine, and the volume is the rider's alone. */
+const SPEED_FLOOR_KMH = 30;
+/** From this the boost is all it will ever be. */
+const SPEED_TOP_KMH = 110;
+const SPEED_STEPS: Record<SpeedStrength, number> = { light: 1, medium: 2, strong: 3 };
+
+/**
+ * How many volume steps the wind at `kmh` is worth, as a fraction: none up
+ * to 30 km/h, rising evenly to 1, 2 or 3 steps (light, medium, strong) at
+ * 110 km/h, and no more past it.
+ */
+export function speedOffset(kmh: number, strength: SpeedStrength): number {
+  const share = (kmh - SPEED_FLOOR_KMH) / (SPEED_TOP_KMH - SPEED_FLOOR_KMH);
+  return Math.max(0, Math.min(1, share)) * SPEED_STEPS[strength];
+}
+
+/**
+ * The speed smoothed over the last few readings (one every two seconds),
+ * so a hard brake, a gust in the GPS or a moment without a fix does not
+ * move the volume on its own. Null before the first reading.
+ */
+export function smoothSpeed(previous: number | null, kmh: number): number {
+  return previous === null ? kmh : previous + (kmh - previous) * 0.3;
+}
+
+/**
+ * The whole steps of boost to apply, from the ones applied now and the
+ * fraction the speed is worth: one step at a time, and only once the
+ * fraction is three quarters of a step away, so a speed that hovers around
+ * a threshold does not pump the volume up and down.
+ */
+export function nextSpeedSteps(applied: number, target: number): number {
+  if (target >= applied + 0.75) return applied + 1;
+  if (target <= applied - 0.75) return applied - 1;
+  return applied;
 }

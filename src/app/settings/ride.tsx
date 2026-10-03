@@ -11,7 +11,8 @@
  * start: knowing which device connected (Android 12 and later), asked when
  * the list of paired devices is first opened; and drawing over other apps,
  * asked when the floating player is switched on, which is also what lets
- * the app come up on its own over the navigation app.
+ * the app come up on its own over the navigation app; and the position,
+ * asked when the volume with the speed is switched on.
  */
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
@@ -28,10 +29,12 @@ import {
   hasBluetoothPermission,
   PREPARE_COUNTS,
   requestBluetoothPermission,
+  requestLocationPermission,
   requestOverlayPermission,
   type BluetoothDevice,
   type EmptyQueueAction,
   type OverlaySize,
+  type SpeedStrength,
 } from '@/lib/rideMode';
 import { useAuthStore } from '@/store/auth';
 import { useRideMode } from '@/store/rideMode';
@@ -71,6 +74,13 @@ export default function RideSettings() {
     const can = canDrawOverlays();
     setOverlayAllowed(can);
     if (!can) requestOverlayPermission();
+  };
+
+  // Not on without the position: a switch that is on and reads nothing
+  // would be a lie told to the rider.
+  const setSpeedVolume = async (on: boolean) => {
+    if (on && !(await requestLocationPermission())) return;
+    setConfig({ speedVolume: on });
   };
 
   // The chosen intercom stays in the list even if it is not paired right
@@ -148,8 +158,30 @@ export default function RideSettings() {
               value: config.resume,
               onChange: (resume) => setConfig({ resume }),
             },
+            {
+              label: t('Volume with the speed'),
+              description: t(
+                'The volume rises over your own level as the bike goes faster, against the wind, from the GPS. Needs the location allowed all the time, since the navigation app is in front.',
+              ),
+              value: config.speedVolume,
+              onChange: (on) => void setSpeedVolume(on),
+            },
           ]}
         />
+        {/* Only with the volume following the speed: how far, from 30 to
+            110 km/h. */}
+        {config.speedVolume ? (
+          <SelectList<SpeedStrength>
+            label={t('Raised by')}
+            options={[
+              { value: 'light', label: t('Light, one step') },
+              { value: 'medium', label: t('Medium, two steps') },
+              { value: 'strong', label: t('Strong, three steps') },
+            ]}
+            value={config.speedStrength}
+            onChange={(speedStrength) => setConfig({ speedStrength })}
+          />
+        ) : null}
         {/* Only with the floating player on: the size of a thing that is
             not there is not a setting. */}
         {config.overlay ? (
@@ -248,6 +280,18 @@ export default function RideSettings() {
             );
           })}
         </View>
+        <SwitchList
+          options={[
+            {
+              label: t('Prepare on its own'),
+              description: t(
+                'On the charger and on Wi-Fi, at night or with the screen off for ten minutes, once in twelve hours at most. While the app is running.',
+              ),
+              value: config.autoPrepare,
+              onChange: (autoPrepare) => setConfig({ autoPrepare }),
+            },
+          ]}
+        />
         <SettingRow
           label={t('Open ride mode')}
           description={t('Big buttons for a glove, the screen kept on, and a flick to skip.')}

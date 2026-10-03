@@ -46,6 +46,10 @@ Ride mode on means:
   data it asks first, unless downloads are Wi-Fi only, in which case the
   download refuses by itself. The count comes up on the button as the songs
   arrive, and a toast says how many made it.
+- **Prepare on its own** (optional, off by default): the same download
+  without a tap, see below.
+- **Volume with the speed** (optional, off by default): the media volume
+  rises over the rider's own level as the bike goes faster, see below.
 - **The music back after a call.** The phone gives the audio back on its
   own when a call ends and the player follows; when it has not within a
   few seconds, ride mode starts it again.
@@ -56,6 +60,50 @@ Ride mode on means:
   brightness for the sun, and after a minute untouched drops to almost
   nothing, since hours at full brightness on a handlebar is heat and a
   drained battery. The first tap only wakes it.
+
+## Preparing the ride on its own
+
+With **Prepare on its own** on (Settings › Ride mode, under Prepare the
+ride), the queue is prepared the way the button does it, with the same
+count, when the phone is on its charger and on Wi-Fi, and either it is
+night (22:00 to 06:00, the phone's time) or the screen has been off for ten
+minutes. Once in twelve hours at most; nothing is fetched when the next
+songs are already on the phone. It is quiet about it: the toast at the end
+only shows on a lit screen. The decision is `shouldAutoPrepare` in
+`src/lib/rideMode.ts`.
+
+What it does not do: there is no job scheduled with Android. The check runs
+in the app's JavaScript whenever one of the conditions changes (the battery
+reported by the ride module, which watches it for as long as the app runs,
+ride mode on or not; the network; the screen going on or off; the app
+coming to the front or leaving it), so it only happens while the app's
+process is alive. A music player's process usually is, and on the charger
+the phone does not doze, but a phone that has killed the app, or a reboot
+with the app never opened, prepares nothing until the app is started again.
+
+## Volume with the speed
+
+With **Volume with the speed** on, while ride mode is on, the ride module
+reads the speed off the phone's GPS (a fix every two seconds) and the media
+volume goes up over the rider's own level against the wind: nothing below
+30 km/h, then evenly up to one, two or three volume steps at 110 km/h, for
+**Raised by** light, medium or strong. The speed is smoothed over the last
+few readings and the volume moves one step at a time, only once the speed is
+well past a threshold, so a speed hovering around one does not pump it up
+and down; it never goes past the maximum. The rider keeps the say: a press
+of the volume keys or of the ride screen's buttons becomes the new level,
+and the speed adds to it from there instead of pulling it back. When ride
+mode stops, the GPS is let go and the volume goes back to the rider's own
+level. The curve and the smoothing are `speedOffset`, `smoothSpeed` and
+`nextSpeedSteps` in `src/lib/rideMode.ts`; applying them is `syncSpeed` in
+`src/lib/rideSync.ts`.
+
+The GPS needs the precise location, asked when the switch is turned on (the
+switch stays off without it), and then the location "all the time": on a
+ride the navigation app is in front, and from Android 10 an app behind
+another one gets no position without that second answer, which from
+Android 11 is given on the system's own screen. Without it the volume only
+follows the speed while the ride screen is in front.
 
 ## Starting it from the intercom
 
@@ -82,7 +130,8 @@ favourites shuffled, or the whole library shuffled.
 The same start and stop are the `ride_on` and `ride_off` commands of the
 intents API (docs/INTENTS.md), for a tag on the bike or a Tasker profile.
 
-Two permissions, each asked where it is first needed:
+Two permissions, each asked where it is first needed (and the location for
+the volume with the speed, above):
 
 - **Bluetooth** (Android 12 and later): to know which device connected. Asked
   when the list of paired devices is first opened.
@@ -120,7 +169,8 @@ floating player is for.
 The native half is `modules/ride-mode`: a manifest receiver for the Bluetooth
 connection broadcasts, which reads the chosen intercom from its own
 preferences so it works with no JavaScript running and starts the runtime
-when it has to; the overlay window; the text-to-speech engine. The JS half
+when it has to; the overlay window; the text-to-speech engine; the battery,
+the screen going on and off, and the GPS speed, sent up as events. The JS half
 is `src/lib/rideSync.ts`, started from `bootstrap` like the widget and the
 car, with the configuration in `src/store/rideMode.ts` and the screens in
 `src/app/ride.tsx` and `src/app/settings/ride.tsx`.

@@ -8,12 +8,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.media.AudioManager
 import android.os.BatteryManager
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.speech.RecognizerIntent
 import android.util.Log
 import android.view.WindowManager
@@ -38,6 +42,9 @@ class RideConfigRecord : Record {
   @Field val radioStationName: String = ""
   @Field val status: Boolean = true
   @Field val prepareCount: Int = 30
+  @Field val autoPrepare: Boolean = false
+  @Field val speedVolume: Boolean = false
+  @Field val speedStrength: String = "medium"
 }
 
 /** What the floating player shows, as JS pushes it. */
@@ -72,6 +79,9 @@ class RideModeModule : Module() {
   private var listening: Promise? = null
   private var modeListener: AudioManager.OnModeChangedListener? = null
   private var batteryReceiver: BroadcastReceiver? = null
+  private var screenReceiver: BroadcastReceiver? = null
+  /** The GPS listener while the speed is read; only ever touched on the main thread. */
+  private var speedListener: LocationListener? = null
 
   /** Null once React has torn its context down, which is a call to do nothing with, not to throw over. */
   private val context: Context?
@@ -80,7 +90,7 @@ class RideModeModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("RideMode")
 
-    Events("intercom", "action", "call", "battery")
+    Events("intercom", "action", "call", "battery", "screen", "speed")
 
     OnCreate { instance = this@RideModeModule }
 
@@ -88,6 +98,7 @@ class RideModeModule : Module() {
       observing = false
       unwatch()
       main.post {
+        stopSpeed()
         speaker?.shutdown()
         speaker = null
       }
@@ -99,6 +110,7 @@ class RideModeModule : Module() {
       observing = true
       watchCalls()
       watchBattery()
+      watchScreen()
     }
 
     OnStopObserving {
@@ -138,6 +150,9 @@ class RideModeModule : Module() {
         radioStationName = record.radioStationName,
         status = record.status,
         prepareCount = record.prepareCount,
+        autoPrepare = record.autoPrepare,
+        speedVolume = record.speedVolume,
+        speedStrength = record.speedStrength,
       ).save(ctx)
     }
 
@@ -271,6 +286,21 @@ class RideModeModule : Module() {
 
     /** The intercom that connected while JS was not running, if any; read once and cleared. */
     Function("takePendingIntercom") { Intercom.take() }
+
+    /** Whether the screen is lit, the lock screen included. */
+    Function("isScreenOn") {
+      (context?.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
+    }
+
+    /**
+     * Starts or stops reading the speed off the GPS, for the volume that
+     * follows it: a fix every two seconds, each sent up as a `speed` event
+     * in m/s. Nothing without the location permission, which the settings
+     * screen asks for when the switch is turned on.
+     */
+    Function("watchSpeed") { on: Boolean ->
+      main.post { if (on) startSpeed() else stopSpeed() }
+    }
   }
 
   private fun speechIntent(): Intent =
@@ -316,12 +346,63 @@ class RideModeModule : Module() {
     batteryReceiver = receiver
   }
 
+  /** The screen going on and off; only registered at runtime, the system sends it to no manifest. */
+  private fun watchScreen() {
+    if (screenReceiver != null) return
+    val receiver = object : BroadcastReceiver() {
+      override fun onReceive(context: Context, intent: Intent) {
+        sendEvent("screen", mapOf("on" to (intent.action == Intent.ACTION_SCREEN_ON)))
+      }
+    }
+    val filter = IntentFilter(Intent.ACTION_SCREEN_ON).apply { addAction(Intent.ACTION_SCREEN_OFF) }
+    val ctx = context ?: return
+    if (Build.VERSION.SDK_INT >= 33) {
+      ctx.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    } else {
+      ctx.registerReceiver(receiver, filter)
+    }
+    screenReceiver = receiver
+  }
+
+  private fun startSpeed() {
+    if (speedListener != null) return
+    val ctx = context ?: return
+    if (ctx.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
+    val manager = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
+    // Every method spelled out: before Android 11 the last three have no
+    // default, and a phone that calls one of them would crash the app.
+    val listener = object : LocationListener {
+      override fun onLocationChanged(location: Location) {
+        if (observing && location.hasSpeed()) sendEvent("speed", mapOf("speed" to location.speed.toDouble()))
+      }
+
+      override fun onProviderEnabled(provider: String) {}
+
+      override fun onProviderDisabled(provider: String) {}
+
+      @Deprecated("Never called from Android 10 on")
+      override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+    }
+    runCatching { manager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000L, 0f, listener, Looper.getMainLooper()) }
+      .onSuccess { speedListener = listener }
+      .onFailure { Log.w(Intercom.TAG, "could not read the speed: ${it.message}") }
+  }
+
+  private fun stopSpeed() {
+    val listener = speedListener ?: return
+    speedListener = null
+    val manager = appContext.reactContext?.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+    runCatching { manager?.removeUpdates(listener) }
+  }
+
   private fun unwatch() {
     val audio = appContext.reactContext?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     modeListener?.let { listener -> if (Build.VERSION.SDK_INT >= 31) audio?.removeOnModeChangedListener(listener) }
     modeListener = null
     batteryReceiver?.let { receiver -> runCatching { appContext.reactContext?.unregisterReceiver(receiver) } }
     batteryReceiver = null
+    screenReceiver?.let { receiver -> runCatching { appContext.reactContext?.unregisterReceiver(receiver) } }
+    screenReceiver = null
   }
 
   private fun applyShowWhenLocked() {

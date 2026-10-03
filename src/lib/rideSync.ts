@@ -14,6 +14,12 @@
  * (when asked for). Started by the intercom it also says so, with the
  * battery, the output and what is left of the queue after it (when asked
  * for), brings the ride screen up and, when asked, starts the queue again.
+ * With **Volume with the speed** on, the media volume also rises over the
+ * rider's own level as the bike goes faster, from the GPS (see `syncSpeed`).
+ *
+ * The preparation of the ride on its own, which has nothing to do with
+ * ride mode being on, is started from here too (`startAutoPrepare` in
+ * `lib/ridePrepare.ts`).
  */
 import { AppState } from 'react-native';
 
@@ -25,26 +31,32 @@ import {
   announcement,
   canDrawOverlays,
   hideRideOverlay,
+  nextSpeedSteps,
   onBattery,
   onCall,
   onIntercom,
   onRideAction,
+  onSpeed,
   openNavigationApp,
   openRideScreen,
   rideModeAvailable,
   setRideActive,
   setShowWhenLocked,
   showRideOverlay,
+  smoothSpeed,
   speak,
+  speedOffset,
   stopSpeaking,
   takePendingIntercom,
   updateRideOverlay,
+  watchSpeed,
   type RideOverlayState,
 } from '@/lib/rideMode';
+import { startAutoPrepare } from '@/lib/ridePrepare';
 import { pushOnce } from '@/lib/pushOnce';
 import { rideStatus, statusSentence } from '@/lib/rideVoice';
 import { waitFor, whenProfileReady } from '@/lib/storeWait';
-import { setVolumeLevel } from '@/lib/volumeLevel';
+import { onVolumeLevelChanged, setVolumeLevel, volumeLevel, volumeStep } from '@/lib/volumeLevel';
 import { currentSong, setDuckOthers, SOURCE_FAVORITES, usePlayerStore } from '@/store/player';
 import { useRideMode } from '@/store/rideMode';
 
@@ -93,6 +105,76 @@ const BATTERY_WARNINGS = [20, 10, 5];
 
 /** The levels already read out this ride. */
 let batteryWarned = new Set<number>();
+
+/** Whether the speed is being read for the volume. */
+let speedWatched = false;
+
+/** The speed, smoothed; null until the first reading of the ride. */
+let speedKmh: number | null = null;
+
+/** The whole volume steps the speed has added. */
+let speedSteps = 0;
+
+/**
+ * The rider's own level, under what the speed adds, 0 to 1. Not held to
+ * that range: turned all the way down at speed, it goes below 0 by what the
+ * speed was adding, so slowing down keeps the music off instead of
+ * bringing it back.
+ */
+let riderLevel = 0;
+
+/** The level last set from here, to tell its echo from the rider's hand. */
+let speedLevel = 0;
+
+let stopVolumeWatch: (() => void) | undefined;
+
+/**
+ * Starts or stops the volume that follows the speed, to match: ride mode
+ * on and the setting on. Started, the level as it is is the rider's own;
+ * stopped, the phone goes back to it, without what the speed had added.
+ */
+function syncSpeed(): void {
+  const { active, config } = useRideMode.getState();
+  const wanted = active && config.speedVolume;
+  if (wanted === speedWatched) return;
+  speedWatched = wanted;
+  watchSpeed(wanted);
+  if (wanted) {
+    speedKmh = null;
+    speedSteps = 0;
+    riderLevel = volumeLevel();
+    speedLevel = riderLevel;
+    stopVolumeWatch = onVolumeLevelChanged(riderMoved);
+    return;
+  }
+  stopVolumeWatch?.();
+  stopVolumeWatch = undefined;
+  if (speedSteps > 0) setVolumeLevel(riderLevel);
+  speedSteps = 0;
+}
+
+/**
+ * A move of the level that this file did not make: the volume keys, the
+ * ride screen's buttons, the start volume. It is the rider's say, so it is
+ * kept, and what the speed adds goes on top of it from now on rather than
+ * pulling it back.
+ */
+function riderMoved(level: number): void {
+  if (Math.abs(level - speedLevel) < volumeStep() / 2) return;
+  riderLevel += level - speedLevel;
+  speedLevel = level;
+}
+
+/** A speed reading: the boost moved by a step when the smoothed speed is worth it. */
+function speedRead(kmh: number): void {
+  if (!speedWatched) return;
+  speedKmh = smoothSpeed(speedKmh, kmh);
+  const steps = nextSpeedSteps(speedSteps, speedOffset(speedKmh, useRideMode.getState().config.speedStrength));
+  if (steps === speedSteps) return;
+  speedSteps = steps;
+  speedLevel = Math.max(0, Math.min(1, riderLevel + steps * volumeStep()));
+  setVolumeLevel(speedLevel);
+}
 
 /**
  * Puts the floating player up or takes it down, to match: ride mode on,
@@ -248,10 +330,14 @@ export function startRideSync(): void {
   if (takePendingIntercom()) void intercomConnected();
 
   AppState.addEventListener('change', syncOverlay);
-  // The switch flipped in the settings while ride mode is on. A change of
+  onSpeed(speedRead);
+  startAutoPrepare();
+  // A switch flipped in the settings while ride mode is on, or ride mode
+  // itself turned on and off, which the speed follows. A change of
   // size takes the pill down: the size is read as it is made, and it is
   // made again the next time another app is in front.
   useRideMode.subscribe((state, prev) => {
+    if (state.active !== prev.active || state.config.speedVolume !== prev.config.speedVolume) syncSpeed();
     if (state.config.overlay !== prev.config.overlay) syncOverlay();
     if (state.config.overlaySize !== prev.config.overlaySize && overlayShown) {
       overlayShown = false;

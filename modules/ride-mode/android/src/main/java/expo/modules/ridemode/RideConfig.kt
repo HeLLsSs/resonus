@@ -35,6 +35,12 @@ internal data class RideConfig(
   val status: Boolean,
   /** How many songs of the queue "Prepare the ride" downloads; 0 for the whole queue. */
   val prepareCount: Int,
+  /** The ride prepared on its own, on the charger and on Wi-Fi, at night or with the phone left alone. */
+  val autoPrepare: Boolean,
+  /** The media volume raised with the speed while ride mode is on, read off the GPS. */
+  val speedVolume: Boolean,
+  /** How far: "light", "medium" or "strong". */
+  val speedStrength: String,
 ) {
   /** Whether a connection is worth looking at: an intercom has been chosen. */
   val autoStart: Boolean
@@ -61,6 +67,9 @@ internal data class RideConfig(
       .putString(KEY_RADIO_NAME, radioStationName)
       .putBoolean(KEY_STATUS, status)
       .putInt(KEY_PREPARE_COUNT, prepareCount)
+      .putBoolean(KEY_AUTO_PREPARE, autoPrepare)
+      .putBoolean(KEY_SPEED_VOLUME, speedVolume)
+      .putString(KEY_SPEED_STRENGTH, speedStrength)
       .apply()
   }
 
@@ -78,6 +87,9 @@ internal data class RideConfig(
     "radioStationName" to radioStationName,
     "status" to status,
     "prepareCount" to prepareCount,
+    "autoPrepare" to autoPrepare,
+    "speedVolume" to speedVolume,
+    "speedStrength" to speedStrength,
   )
 
   companion object {
@@ -95,6 +107,9 @@ internal data class RideConfig(
     private const val KEY_RADIO_NAME = "radioStationName"
     private const val KEY_STATUS = "status"
     private const val KEY_PREPARE_COUNT = "prepareCount"
+    private const val KEY_AUTO_PREPARE = "autoPrepare"
+    private const val KEY_SPEED_VOLUME = "speedVolume"
+    private const val KEY_SPEED_STRENGTH = "speedStrength"
     /** Whether ride mode is on, as JS last said; what the quick settings tile shows. */
     private const val KEY_ACTIVE = "active"
 
@@ -114,6 +129,9 @@ internal data class RideConfig(
         radioStationName = prefs.getString(KEY_RADIO_NAME, null).orEmpty(),
         status = prefs.getBoolean(KEY_STATUS, true),
         prepareCount = prefs.getInt(KEY_PREPARE_COUNT, 30),
+        autoPrepare = prefs.getBoolean(KEY_AUTO_PREPARE, false),
+        speedVolume = prefs.getBoolean(KEY_SPEED_VOLUME, false),
+        speedStrength = prefs.getString(KEY_SPEED_STRENGTH, null).orEmpty().ifEmpty { "medium" },
       )
     }
 
