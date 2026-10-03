@@ -199,6 +199,10 @@ appear when it is switched off.
   of what it opens. Nothing is fetched to draw it — the tracks arrive with the
   page — which is what lets twenty shelves and a hundred and thirty tiles cost
   the one request that drew them.
+- **A die at the top of the YouTube tab**, which deals everything the account
+  likes and plays it, and Home's "Shuffle everything" deals YouTube in with
+  the library once the proxy has an account to read; the Shuffle chip on the
+  phone's Home does the same.
 - **The queue screen says where the queue came from** — the album, the
   playlist, "For you" — rather than heading a list of songs with nothing.
 - Pictures reach the car at all. It will not go and fetch one from a remote

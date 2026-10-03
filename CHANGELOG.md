@@ -7,6 +7,15 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.8.2] - 2026-10-03
+
+### Added
+
+- Android Auto: a die at the top of the YouTube tab deals everything the
+  account likes and plays it, and "Shuffle everything" on the car's Home,
+  like the Shuffle chip on the phone's Home, deals YouTube's picks in with
+  the library's once the proxy has an account to read.
+
 ## [1.8.1] - 2026-10-03
 
 ### Fixed

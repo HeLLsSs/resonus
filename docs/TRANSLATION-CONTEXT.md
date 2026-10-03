@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1324 of them.
+Every string the app can show, under the screen it shows up on. 1326 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -385,6 +385,7 @@ you are actually typing into, which is easier than reading it here.
 | `at {time}` |  |
 | `Built from what you play` |  |
 | `Continue listening` |  |
+| `Library and YouTube` |  |
 | `Nothing downloaded` |  |
 | `Offline, only downloads can play` |  |
 | `Pinned` |  |
@@ -395,6 +396,7 @@ you are actually typing into, which is easier than reading it here.
 | `Shuffle everything` |  |
 | `Sign in on your phone` |  |
 | `Unknown title` | Fallback when the file and the server have no title |
+| `Your likes and picks, dealt` |  |
 
 ## in playbackLock
 
