@@ -1,7 +1,7 @@
 /**
  * Config plugin: drops permissions the app never asks for.
  *
- * Three of them end up in the manifest without anyone here wanting them:
+ * Two of them end up in the manifest without anyone here wanting them:
  *
  * - RECORD_AUDIO, declared by expo-audio's own manifest. `recordAudioAndroid:
  *   false` in app.json only stops the plugin from ADDING it; the library
@@ -10,16 +10,17 @@
  * - CAMERA, declared by expo-image-picker. Both places that pick an image
  *   (a station's artwork, a playlist cover) call `launchImageLibraryAsync`,
  *   never the camera.
- * - RECEIVE_BOOT_COMPLETED, declared by expo-notifications so that scheduled
- *   notifications survive a reboot. The one notification here is sent on the
- *   spot, never scheduled, so there is nothing to restore after a boot.
  *
  * None of them is a hole: they are runtime permissions and the app never
  * requests them, so Android would ask first anyway. They are a trust problem.
  * A music player whose store listing reads "can record audio" and "can take
  * pictures" invites exactly the question nobody wants to keep answering.
  *
- * All three arrive from libraries, so they need an explicit `tools:node
+ * RECEIVE_BOOT_COMPLETED used to be dropped as well, expo-notifications'
+ * leftover. The wake-up alarm (modules/alarm) needs it now: an alarm set
+ * with AlarmManager does not survive a reboot unless something sets it again.
+ *
+ * Both arrive from libraries, so they need an explicit `tools:node
  * ="remove"` to survive the merge.
  *
  * SYSTEM_ALERT_WINDOW used to be dropped here too, as the Expo template's own
@@ -38,7 +39,6 @@ const TOOLS_NS = 'http://schemas.android.com/tools';
 const BLOCKED = [
   'android.permission.RECORD_AUDIO',
   'android.permission.CAMERA',
-  'android.permission.RECEIVE_BOOT_COMPLETED',
 ];
 
 module.exports = function withTrimmedPermissions(config) {

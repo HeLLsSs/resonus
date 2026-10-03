@@ -1,0 +1,7 @@
+{
+  "name": "alarm",
+  "version": "0.0.1",
+  "description": "The wake-up alarm: the next ring kept in AlarmManager with the app closed, sent to the intents API when it comes (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

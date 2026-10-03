@@ -18,15 +18,17 @@ import { type StoreApi } from 'zustand';
 import { getAlbum, getArtist, getPlaylist, getSongsByIds, getStarred, getTopSongs, searchSongs } from '@/api/data';
 import { type Song } from '@/api/subsonic';
 import { tg } from '@/i18n';
+import { ALARM_MIN_LEVEL, alarmRampLevel } from '@/lib/alarm';
 import { publishHaState } from '@/lib/haBridge';
 import { playShuffle } from '@/lib/playShuffle';
 import { isRepeatMode } from '@/lib/playerMath';
 import { queryClient } from '@/lib/query';
 import { applyTransport } from '@/lib/transport';
-import { setVolumeLevel } from '@/lib/volumeLevel';
+import { onVolumeLevelChanged, setVolumeLevel, volumeLevel, volumeStep } from '@/lib/volumeLevel';
 import { useAuthStore } from '@/store/auth';
 import { haConnect, haPlayerById, useHomeAssistant } from '@/store/homeAssistant';
 import { leaveRemoteOutputs, usePlayerStore } from '@/store/player';
+import { useSettings } from '@/store/settings';
 
 /** A command as the broadcast carried it: `command` and every other extra. */
 type IntentCommand = Record<string, string | number | boolean>;
@@ -269,6 +271,9 @@ async function run(command: IntentCommand): Promise<void> {
       await haConnect(target);
       return;
     }
+    case 'alarm':
+      await ringAlarm();
+      return;
     case 'sleep_timer': {
       // Whole minutes within reason: past a day the timeout would overflow
       // and fire at once, which is the opposite of what was asked.
@@ -323,6 +328,89 @@ async function playContainer(kind: string, id: string, shuffled: boolean): Promi
     return;
   }
   await usePlayerStore.getState().playQueue(songs, 0, name, href, { shuffled });
+}
+
+/** How often the alarm's rise moves while nothing else moves it. */
+const ALARM_TICK_MS = 1_000;
+
+/** Stops the alarm's rise in progress, if any. */
+let stopAlarmRise: (() => void) | null = null;
+
+/**
+ * The wake-up alarm, sent by its own module when it rings (`lib/alarm.ts`):
+ * the music chosen in the settings, on the phone or on the home speaker,
+ * from silence up to the volume that was left there. Music already playing
+ * is somebody awake and is left alone. A speaker that does not answer leaves
+ * the phone to ring: an alarm silent because the Wi-Fi is down wakes nobody.
+ */
+async function ringAlarm(): Promise<void> {
+  // Started from nothing, the settings are still being read back, and the
+  // factory alarm is off.
+  await waitFor(useSettings, (s) => s.hydrated, QUEUE_WAIT_MS);
+  const { alarm, homeSpeakerHost } = useSettings.getState();
+  if (!alarm.enabled || usePlayerStore.getState().isPlaying) return;
+  const speakerLevel = alarm.where === 'speaker' && homeSpeakerHost ? await alarmSpeaker(homeSpeakerHost) : null;
+  if (speakerLevel === null) await leaveRemoteOutputs(true);
+  const target = Math.max(ALARM_MIN_LEVEL, speakerLevel ?? volumeLevel());
+  const rampMs = alarm.rampMinutes * 60_000;
+  if (rampMs > 0) setVolumeLevel(0);
+  try {
+    if (alarm.what === 'playlist' && alarm.playlistId) await playContainer('playlist', alarm.playlistId, false);
+    else if (alarm.what === 'forYou') await (await import('@/lib/forYouMix')).playForYou();
+    else await playShuffle();
+  } catch (e) {
+    // The server out of reach: whatever queue was left still wakes somebody.
+    console.warn('[intents] alarm: could not gather the music', e);
+    applyTransport('resume');
+  }
+  if (rampMs <= 0) {
+    setVolumeLevel(target);
+    return;
+  }
+  stopAlarmRise?.();
+  const t0 = Date.now();
+  let sent = 0;
+  const tick = () => {
+    const level = Math.round(alarmRampLevel(target, rampMs, Date.now() - t0) * 100) / 100;
+    if (level !== sent) {
+      sent = level;
+      setVolumeLevel(level);
+    }
+    if (level >= target) stopAlarmRise?.();
+  };
+  const timer = setInterval(tick, ALARM_TICK_MS);
+  // The interval sleeps with the screen off, as the sleep fade's does; the
+  // player's own updates go on arriving there and move the rise along.
+  const stopPlayer = usePlayerStore.subscribe(tick);
+  // A hand on the volume is somebody awake: the rise stops where they put it.
+  const stopVolume = onVolumeLevelChanged((level) => {
+    if (Math.abs(level - sent) > volumeStep() * 1.5) stopAlarmRise?.();
+  });
+  stopAlarmRise = () => {
+    clearInterval(timer);
+    stopPlayer();
+    stopVolume();
+    stopAlarmRise = null;
+  };
+}
+
+/**
+ * The home speaker taken as the output, the way its row in the output sheet
+ * is. Returns its volume, which the alarm rises back to, or null when it does
+ * not answer.
+ */
+async function alarmSpeaker(host: string): Promise<number | null> {
+  const [lp, { linkPlayConnect, useLinkPlay }] = await Promise.all([import('@/lib/linkplay'), import('@/store/linkplay')]);
+  const status = lp.statusFrom(await lp.ask(host, lp.cmd.player).catch(() => null));
+  if (!status) return null;
+  const { connected, host: current } = useLinkPlay.getState();
+  if (!connected || current !== host) {
+    const device = await lp.describe(host);
+    if (!device) return null;
+    await leaveRemoteOutputs(true, 'linkplay');
+    if (!(await linkPlayConnect(device))) return null;
+  }
+  return status.volume;
 }
 
 /** What was last broadcast, so nothing goes out twice and bursts are thinned. */

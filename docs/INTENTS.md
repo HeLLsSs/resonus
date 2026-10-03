@@ -34,6 +34,7 @@ or as text (`--es position 90`, `--es on true`).
 | `publish_state` |                                                   | Pushes what is playing to Home Assistant (docs/HOME-ASSISTANT.md). |
 | `output`        | `id`: `phone`, or a Home Assistant `media_player` entity id | Moves the music to this phone, or to that player of the house's. |
 | `sleep_timer`   | `minutes` (0 cancels, at most 600)                 | Starts or cancels the sleep timer.                        |
+| `alarm`         |                                                   | Rings the wake-up alarm now, as set in Settings › Wake-up alarm (its own module sends it at the time). |
 | `ride_on`       |                                                   | Starts ride mode the way the intercom does (docs/RIDE-MODE.md). |
 | `ride_off`      |                                                   | Stops ride mode.                                          |
 

@@ -1,0 +1,33 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- The alarm is an exact one (`setAlarmClock`), which from Android 12 takes
+       one of these two. USE_EXACT_ALARM is granted with the install from
+       Android 13 on and cannot be taken back, which is what an alarm clock is
+       meant to hold; SCHEDULE_EXACT_ALARM covers 12, where it is granted with
+       the install too. Should neither be held, AlarmScheduler falls back to an
+       alarm the system may delay by a few minutes rather than none. -->
+  <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+  <uses-permission
+    android:name="android.permission.SCHEDULE_EXACT_ALARM"
+    android:maxSdkVersion="32" />
+  <!-- The system forgets every alarm at a reboot: this is what puts the next
+       ring back without the app having to be opened. plugins/
+       withTrimmedPermissions.js has to leave it in for that. -->
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+  <application>
+    <!-- The ring itself, then the reasons the next one has to be worked out
+         again: a reboot, the app updated, the clock or the time zone changed.
+         Not exported: the ring arrives through the app's own PendingIntent,
+         and the system broadcasts reach an unexported receiver all the same. -->
+    <receiver
+      android:name="expo.modules.alarm.AlarmReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        <action android:name="android.intent.action.TIME_SET" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

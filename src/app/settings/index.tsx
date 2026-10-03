@@ -12,6 +12,7 @@ import { ScreenHeader, SettingsSafeArea, settingsStyles } from '@/components/Set
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
 import { anyDownloads, useDownloads } from '@/store/downloads';
+import { alarmAvailable } from '@/lib/alarm';
 import { rideModeAvailable } from '@/lib/rideMode';
 import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
@@ -119,6 +120,8 @@ export default function SettingsScreen() {
     // The motorbike: the intercom, the floating player and the spoken titles
     // are the native module's, so only a phone that has it gets the row.
     ...(rideModeAvailable ? [{ key: 'ride', title: 'Ride mode', icon: 'speedometer-outline' as const }] : []),
+    // The alarm rings through its native module, and plays from the server.
+    ...(alarmAvailable && auth ? [{ key: 'alarm', title: 'Wake-up alarm', icon: 'alarm-outline' as const }] : []),
     // Theme lives inside Appearance (row with chevron, like Language).
     { key: 'webdav', title: 'Network shares', icon: 'folder-outline' as const },
     { key: 'personalization', title: 'Appearance', icon: 'color-palette-outline' as const },
