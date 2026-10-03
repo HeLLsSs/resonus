@@ -14,6 +14,7 @@ import { dealt,
   gainFactor,
   isRepeatMode,
   nextQueueIndex,
+  remoteFadeVolume,
   SLEEP_FADE_MS,
   sleepFadeSchedule, mixedPool } from '@/lib/playerMath';
 
@@ -131,5 +132,15 @@ describe('mixedPool', () => {
       pool.map((s) => s.id).sort(),
       ['a', 'b'],
     );
+  });
+});
+
+describe('remoteFadeVolume', () => {
+  it('starts at the speaker volume and ends silent', () => {
+    assert.deepEqual([remoteFadeVolume(0.6, 0), remoteFadeVolume(0.6, 0.5), remoteFadeVolume(0.6, 1)], [0.6, 0.3, 0]);
+  });
+
+  it('lands on whole percent and stays within bounds', () => {
+    assert.deepEqual([remoteFadeVolume(0.333, 0.1), remoteFadeVolume(1.4, -1), remoteFadeVolume(0.5, 2)], [0.3, 1, 0]);
   });
 });

@@ -32,12 +32,23 @@ import {
   errorTag,
   fadeProgress,
   gainFactor as replayGainFactor,
-  isRepeatMode,
   nextQueueIndex,
+  remoteFadeVolume,
   type RepeatMode,
   SLEEP_FADE_MS,
   sleepFadeSchedule,
 } from '@/lib/playerMath';
+import { contextKey, PlayHistoryStack } from '@/lib/playHistoryStack';
+import { appendedToQueue,
+  insertedNext,
+  movedInQueue,
+  notYetQueued,
+  reinserted,
+  removedFromQueue,
+  shuffledQueue,
+  unshuffledIndex, originalWith, withoutOne } from '@/lib/queueOps';
+import { radioBatch } from '@/lib/radioBatch';
+import { restoredQueueState, storedListening, type StoredQueue } from '@/lib/storedQueue';
 import { applyTransport } from '@/lib/transport';
 import { bindMediaSession } from '@/lib/webMedia';
 import {
@@ -212,14 +223,48 @@ let sleepFadeTimer: ReturnType<typeof setInterval> | null = null;
 /** When the fade began and how long it has, so any clock can advance it. */
 let sleepFade: { t0: number; ms: number } | null = null;
 
-/** Cuts the sleep fade in progress, if any. Volume is restored by whoever
- *  calls (`cutCrossfade`, which is the path all interventions go through). */
+/**
+ * On a remote output the fade lowers the speaker itself, through the same
+ * `remoteSetVolume` as the output sheet's slider, and the speaker keeps
+ * whatever it was last sent: so its volume before the fade is noted, with the
+ * output it belongs to, to be given back. The store's `volume` is no use for
+ * that, since the speaker's echo of each step lands in it.
+ */
+let sleepRemote: { kind: RemoteKind; from: number; sent: number } | null = null;
+
+/** How long the stop gets to reach the speaker before its volume is given
+ *  back, so the volume does not arrive first and play the end out loud. */
+const SLEEP_RESTORE_DELAY_MS = 2_000;
+
+/** Puts the speaker back at its volume from before the fade, if it is still
+ *  the output playing; the next play would be silent otherwise. */
+function restoreSleepRemote(noted = sleepRemote) {
+  if (sleepRemote === noted) sleepRemote = null;
+  if (!noted || remoteKind() !== noted.kind) return;
+  remoteSetVolume(noted.from);
+  usePlayerStore.setState({ volume: noted.from });
+}
+
+/** Cuts the sleep fade in progress, if any, and gives a speaker back its
+ *  volume. The local volume is restored by whoever calls (`cutCrossfade`,
+ *  which is the path all interventions go through). */
 function clearSleepFade() {
   if (sleepFadeTimeout) clearTimeout(sleepFadeTimeout);
   sleepFadeTimeout = null;
   if (sleepFadeTimer) clearInterval(sleepFadeTimer);
   sleepFadeTimer = null;
   sleepFade = null;
+  if (!sleepRemote) return;
+  restoreSleepRemote();
+  // An intervention (a skip, a seek) releases the fade as it does on the
+  // phone, where the player's heartbeat re-arms it; a speaker sends no such
+  // beat, so it is re-armed here with whatever is left.
+  setTimeout(() => {
+    const endsAt = sleepDeadline();
+    if (!endsAt || sleepFadeTimer || sleepFadeTimeout || !remoteKind()) return;
+    const left = endsAt - Date.now();
+    if (left > 0 && left <= SLEEP_FADE_MS) startSleepFade(left);
+  }, 1_000);
 }
 
 /**
@@ -236,6 +281,21 @@ function clearSleepFade() {
 function tickSleepFade() {
   if (!sleepFade) return;
   const x = fadeProgress(sleepFade.t0, sleepFade.ms, Date.now());
+  if (sleepRemote) {
+    const v = remoteFadeVolume(sleepRemote.from, x);
+    if (v !== sleepRemote.sent && remoteKind() === sleepRemote.kind) {
+      sleepRemote.sent = v;
+      remoteSetVolume(v);
+    }
+    // Done, but not cleared: the speaker stays at zero until the stop, which
+    // is what gives its volume back.
+    if (x >= 1) {
+      if (sleepFadeTimer) clearInterval(sleepFadeTimer);
+      sleepFadeTimer = null;
+      sleepFade = null;
+    }
+    return;
+  }
   const p = activePlayer();
   if (p) {
     try {
@@ -249,8 +309,13 @@ function tickSleepFade() {
 
 /** Lowers the volume to zero in `ms`. */
 function startSleepFade(ms: number) {
-  if (remoteKind()) return; // the remote device's volume is not ours
+  const kind = remoteKind();
+  // Started again mid-fade, the speaker's volume from before it is the one to
+  // keep, and it is not given back only to be lowered again.
+  const from = sleepRemote?.kind === kind ? sleepRemote.from : usePlayerStore.getState().volume;
+  sleepRemote = null;
   clearSleepFade();
+  if (kind) sleepRemote = { kind, from, sent: from };
   sleepFade = { t0: Date.now(), ms };
   sleepFadeTimer = setInterval(tickSleepFade, 100);
 }
@@ -266,7 +331,7 @@ function armSleepFade(msLeft: number) {
 /** Releases the fade and returns volume to normal: for when the timer is
  *  canceled with the music already at mid-fade. */
 function abortSleepFade() {
-  if (!sleepFadeTimer && !sleepFadeTimeout) return;
+  if (!sleepFadeTimer && !sleepFadeTimeout && !sleepRemote) return;
   clearSleepFade();
   const p = activePlayer();
   if (p) {
@@ -285,12 +350,16 @@ function fireSleepTimer() {
   // Pause BEFORE restoring volume: the other way around, the fade just left
   // it at zero and `cutCrossfade` would bring it back to full a few
   // milliseconds before the pause — a sound burst right at falling asleep,
-  // which is what we're avoiding.
+  // which is what we're avoiding. A speaker's volume waits for the pause the
+  // same way, given back once the stop has had time to reach it.
+  const noted = sleepRemote;
+  sleepRemote = null;
   clearSleepFade();
   if (remoteKind()) remotePause();
   else activePlayer()?.pause();
   cutCrossfade();
   usePlayerStore.setState({ isPlaying: false, sleepEndsAt: null });
+  if (noted) setTimeout(() => restoreSleepRemote(noted), SLEEP_RESTORE_DELAY_MS);
 }
 
 // ── Audio engine (expo-audio) ───────────────────────────────────────────────
@@ -435,22 +504,6 @@ function playableOffline(song: Song | null | undefined): boolean {
   // looks like otherwise.
   if (song && parseDavId(song.id)) return !!downloadedUri(song);
   return !!song && (!!song.url || !!song.localUri || !!downloadedUri(song));
-}
-
-/** The same song as it goes into the queue by hand: autoplay's mark comes off
- *  (it is here because you put it here, whatever it was doing before) and it
- *  takes one of its own, which is what the player announces while it plays. */
-function handAdded(song: Song): Song {
-  const { fromMix: _fromMix, ...rest } = song;
-  return { ...rest, queued: true };
-}
-
-/** The same song with neither mark on it, for when the queue stops having the
- *  blocks they name (see `toggleShuffle`). */
-function unmarked(song: Song): Song {
-  if (!song.fromMix && !song.queued) return song;
-  const { fromMix: _fromMix, queued: _queued, ...rest } = song;
-  return rest;
 }
 
 /** Max streaming bitrate according to current network (Wi-Fi or mobile data). */
@@ -1332,27 +1385,8 @@ async function loadIndex(index: number, autoplay: boolean): Promise<boolean> {
 }
 
 // ── "Back" history, Spotify-style ────────────────────────────────────────────
-// Stack of already-played contexts so the previous button/gesture returns to
-// the prior song even if it comes from a different playlist or album (not the
-// previous track of the current context). Pushed on each advance/skip forward
-// and popped in previous(). Entries share the `queue` reference within the
-// same context, so they only weigh what changes between skips.
-type HistoryEntry = {
-  queue: Song[];
-  index: number;
-  source: string | null;
-  sourceHref: string | null;
-  originalQueue: Song[] | null;
-  shuffle: boolean;
-  queueDealt: boolean;
-  // Whether that context was a mix, and around which song. Left out, going
-  // back from a mix to the album it was started from kept the mix switched on,
-  // and the album grew similar songs at its end as if it were one.
-  radioMode: boolean;
-  radioSeed: Song | null;
-};
-const HISTORY_MAX = 100;
-let playedHistory: HistoryEntry[] = [];
+/** Where ⏮ goes back to across lists (see `PlayHistoryStack`). */
+const playedHistory = new PlayHistoryStack();
 
 /**
  * Why the queue is moving, which decides whether paused stays paused.
@@ -1395,7 +1429,6 @@ function rememberQueue() {
 function pushHistory() {
   const { queue, index, source, sourceHref, originalQueue, shuffle, queueDealt, radioMode, radioSeed } =
     usePlayerStore.getState();
-  if (!queue[index]) return;
   playedHistory.push({
     queue,
     index,
@@ -1407,22 +1440,6 @@ function pushHistory() {
     radioMode,
     radioSeed,
   });
-  if (playedHistory.length > HISTORY_MAX) playedHistory.shift();
-}
-
-/** What tells one playing context from another: the screen it came from, and
- *  its name when it has no screen (the library shuffle, a mix). */
-function contextKey(source: string | null, sourceHref: string | null) {
-  return sourceHref ?? source ?? null;
-}
-
-/**
- * Forgets the back history of a list being started again: its entries point
- * into the queue about to be replaced, so ⏮ walked back into the discarded one
- * (#100). Other lists keep theirs.
- */
-function forgetHistoryOf(key: string) {
-  playedHistory = playedHistory.filter((e) => contextKey(e.source, e.sourceHref) !== key);
 }
 
 // ── Honest scrobble ──────────────────────────────────────────────────────────
@@ -1924,23 +1941,7 @@ async function genreCandidates(auth: SubsonicAuth, seed: Song): Promise<Song[]> 
  * takes a folder and a song does not say which library it came from (#39).
  */
 async function radioCandidates(auth: SubsonicAuth, seed: Song, have: Set<string>): Promise<Song[]> {
-  const picked: Song[] = [];
-  const seen = new Set(have);
-  const perArtist = new Map<string, number>();
-
-  /** Adds what fits from a pool, in random order and respecting the cap. */
-  const take = (songs: Song[]) => {
-    for (const s of dealt(songs)) {
-      if (picked.length >= BATCH_SIZE) return;
-      if (s.url || seen.has(s.id)) continue;
-      const artist = s.artistId ?? s.artist ?? '';
-      const n = perArtist.get(artist) ?? 0;
-      if (n >= MAX_PER_ARTIST) continue;
-      perArtist.set(artist, n + 1);
-      seen.add(s.id);
-      picked.push(s);
-    }
-  };
+  const { picked, take } = radioBatch(have, BATCH_SIZE, MAX_PER_ARTIST);
 
   const affinity = await Promise.all([
     getSimilarSongs(auth, seed.id, 30).catch(() => [] as Song[]),
@@ -1965,7 +1966,7 @@ async function radioCandidates(auth: SubsonicAuth, seed: Song, have: Set<string>
   // cap can eat every candidate there was. A batch by one artist beats the mix
   // going silent.
   const anything = await getRandomSongs(50).catch(() => [] as Song[]);
-  return anything.filter((s) => !s.url && !have.has(s.id)).slice(0, BATCH_SIZE);
+  return notYetQueued(anything, have).slice(0, BATCH_SIZE);
 }
 
 // ── The rest of the artist ─────────────────────────────────────────────────
@@ -2012,8 +2013,7 @@ async function extendWithArtistCatalog(auth: SubsonicAuth, artistId: string, hre
     const st = usePlayerStore.getState();
     // The queue may have moved on while the server answered.
     if (st.sourceHref !== href) return false;
-    const have = new Set(st.queue.map((s) => s.id));
-    const fresh = songs.filter((s) => !have.has(s.id) && !s.url);
+    const fresh = notYetQueued(songs, new Set(st.queue.map((s) => s.id)));
     // Nothing new: the album was already in the queue (it came from "Play
     // discography", or its songs are the popular ones). On to the next.
     if (fresh.length === 0) continue;
@@ -2080,8 +2080,7 @@ async function fetchAutoplay(
   // The queue may have changed while the server was responding; we only add if
   // the last song is still the same.
   if (st.queue[st.queue.length - 1]?.id !== last.id) return;
-  const have = new Set(st.queue.map((s) => s.id));
-  const picked = similar.filter((s) => !have.has(s.id) && !s.url).slice(0, 10);
+  const picked = notYetQueued(similar, new Set(st.queue.map((s) => s.id))).slice(0, 10);
   if (picked.length === 0) return;
   // Marked so the player can stop announcing the album or the playlist once
   // playback reaches them (`mixSeedOf`). Not in a radio: there the whole queue
@@ -3102,42 +3101,6 @@ function queueStorageKey(): string | null {
   return null;
 }
 
-interface StoredQueue {
-  queue: Song[];
-  index: number;
-  positionSec: number;
-  /** The queue was a radio: when restoring it must keep extending itself. */
-  radioMode?: boolean;
-  /** Track the radio was started from, so it keeps extending from the same
-   *  place after a restart. Absent in queues saved by older versions: those
-   *  fall back to seeding off the tail. */
-  radioSeed?: Song | null;
-  /** Where the queue came from, for the player's "playing from" header. */
-  source?: string | null;
-  /** Route of that origin, so tapping the header still navigates there. */
-  sourceHref?: string | null;
-  /**
-   * Shuffle and repeat as they were left (#102). Both are how someone listens
-   * rather than something they set up once, and finding them off after every
-   * cold start meant turning them on again each morning. `originalQueue` is
-   * NOT saved: it would double what a queue weighs, and turning shuffle off
-   * without it keeps the order that is playing instead of restoring the
-   * album's, which is a fair price for a session that already ended.
-   */
-  shuffle?: boolean;
-  repeat?: RepeatMode;
-  /** The queue was dealt when it was started (see `queueDealt`). */
-  dealt?: boolean;
-  /**
-   * When this device last wrote it (ms). Only read to compare against the
-   * server's copy: what is newer decides which of the two is somebody's last
-   * word, and a phone that listened all afternoon with no connection must not
-   * be handed yesterday's queue from another player on reconnecting.
-   */
-  savedAt?: number;
-}
-
-
 /**
  * Something other than the position changed since the last write. Set by the
  * store subscription at the end of this file.
@@ -3169,11 +3132,14 @@ let localSavedAt = 0;
  * header being right and its link stale.
  */
 export function remapQueueIds(f: Remap) {
-  const { queue, radioSeed } = usePlayerStore.getState();
+  const { queue, radioSeed, originalQueue } = usePlayerStore.getState();
   if (queue.length === 0 && !radioSeed) return;
   usePlayerStore.setState({
     queue: queue.map((s) => remapSong(s, f)),
     radioSeed: radioSeed ? remapSong(radioSeed, f) : radioSeed,
+    // The order shuffle goes back to has to speak the same ids, or turning
+    // shuffle off finds no current track in it and lands on another song.
+    originalQueue: originalQueue ? originalQueue.map((s) => remapSong(s, f)) : null,
   });
   saveQueueLocal(true);
 }
@@ -4202,7 +4168,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // that is already playing is not a jump: there is nowhere to go back to,
     // and what it kept of this list is about to stop existing.
     const key = contextKey(source ?? null, sourceHref ?? null);
-    if (key) forgetHistoryOf(key);
+    if (key) playedHistory.forget(key);
     if (!key || key !== contextKey(get().source, get().sourceHref)) pushHistory();
     // Mark the source as recently listened (Library "Recents" order, Home grid).
     // Its name travels with it: what was played is drawn from this alone when
@@ -4344,7 +4310,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       void get().playQueue([song], 0);
       return;
     }
-    set({ queue: [...queue, handAdded(song)] });
+    set({ queue: appendedToQueue(queue, [song]), ...originalWith(get().originalQueue, [song]) });
     scheduleSync();
   },
 
@@ -4358,10 +4324,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       void get().playQueue([song], 0);
       return;
     }
-    const next = [...queue];
-    next.splice(index + 1, 0, handAdded(song));
     // It jumps to the front of the "queued" block; the block grows with it.
-    set({ queue: next, queuedCount: queuedCount + 1 });
+    set({ ...insertedNext(queue, index, queuedCount, [song]), ...originalWith(get().originalQueue, [song]) });
     scheduleSync();
   },
 
@@ -4377,16 +4341,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       void get().playQueue(songs, 0);
       return;
     }
-    // Built by hand rather than spread into `splice`: a playlist of thousands
-    // would be that many arguments in one call.
-    if (where === 'end') {
-      set({ queue: queue.concat(songs.map(handAdded)) });
-      scheduleSync();
-      return;
-    }
-    const at = index + 1;
-    const next = queue.slice(0, at).concat(songs.map(handAdded), queue.slice(at));
-    set({ queue: next, queuedCount: queuedCount + songs.length });
+    set({
+      ...(where === 'end' ? { queue: appendedToQueue(queue, songs) } : insertedNext(queue, index, queuedCount, songs)),
+      ...originalWith(get().originalQueue, songs),
+    });
     scheduleSync();
   },
 
@@ -4586,47 +4544,41 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   removeAt: async (index) => {
-    const { queue, index: cur, queuedCount } = get();
+    const { queue, index: cur, queuedCount, originalQueue } = get();
     if (index < 0 || index >= queue.length) return undefined;
     const removed = queue[index];
+    const unshuffledWithout = originalQueue ? { originalQueue: withoutOne(originalQueue, removed) } : {};
     // The session removes it for everybody; there is no undoing that here.
     if (isJamActive()) {
       void jamSend({ type: 'remove', index, id: removed.id });
       return undefined;
     }
-    const next = queue.filter((_, i) => i !== index);
-    if (next.length === 0) {
+    const removal = removedFromQueue(queue, index, cur, queuedCount);
+    if (!removal) return undefined;
+    if (removal.kind === 'emptied') {
       clearQueueLocal();
       await get().reset();
       return undefined;
     }
-    if (index === cur) {
+    if (removal.kind === 'current') {
       // We remove the current one: load the song now at that position. If it was
       // the first in the "queued" block, it now plays and is consumed.
-      const newIndex = Math.min(cur, next.length - 1);
-      set({ queue: next, index: newIndex, queuedCount: Math.max(0, queuedCount - 1) });
-      await loadIndex(newIndex, get().isPlaying);
+      set({ queue: removal.queue, index: removal.index, queuedCount: removal.queuedCount, ...unshuffledWithout });
+      await loadIndex(removal.index, get().isPlaying);
       scheduleSync();
       return undefined;
     }
-    const inQueuedBlock = index > cur && index <= cur + queuedCount;
-    set({
-      queue: next,
-      index: index < cur ? cur - 1 : cur,
-      queuedCount: inQueuedBlock ? queuedCount - 1 : queuedCount,
-    });
+    const { queue: next, inQueuedBlock } = removal;
+    set({ queue: next, index: removal.index, queuedCount: removal.queuedCount, ...unshuffledWithout });
     scheduleSync();
     return () => {
       // Only if the queue hasn't changed since then (same reference; auto-advance
       // does not replace it, so the index is adjusted).
       const st = get();
       if (st.queue !== next) return;
-      const q = [...st.queue];
-      q.splice(index, 0, removed);
       set({
-        queue: q,
-        index: st.index >= index ? st.index + 1 : st.index,
-        queuedCount: inQueuedBlock ? st.queuedCount + 1 : st.queuedCount,
+        ...reinserted(st.queue, index, removed, st.index, st.queuedCount, inQueuedBlock),
+        ...(originalQueue && st.originalQueue ? { originalQueue } : {}),
       });
       scheduleSync();
     };
@@ -4729,42 +4681,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   moveTrack: async (from, to) => {
     const { queue, index, queuedCount } = get();
-    if (
-      from === to ||
-      from < 0 ||
-      to < 0 ||
-      from >= queue.length ||
-      to >= queue.length
-    ) {
-      return;
-    }
+    const moved = movedInQueue(queue, from, to, index, queuedCount);
+    if (!moved) return;
     if (isJamActive()) {
       void jamSend({ type: 'move', from, to });
       return;
     }
-    const next = [...queue];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    // Re-position the current index so it keeps pointing to the same song.
-    let newIndex = index;
-    if (from === index) newIndex = to;
-    else if (from < index && to >= index) newIndex = index - 1;
-    else if (from > index && to <= index) newIndex = index + 1;
-    // The "queued" block (index+1..index+queuedCount) is preserved when
-    // reordering within what's coming: if a source one enters the queue zone it
-    // becomes queued, and if a queued one leaves it stops being (Spotify-style).
-    // Any move that touches the current song or what's already played dissolves
-    // the block.
-    let newQueuedCount = 0;
-    if (from > index && to > index) {
-      const fromQueued = from - (index + 1) < queuedCount;
-      const toQueued = to - (index + 1) < queuedCount;
-      newQueuedCount = Math.max(
-        0,
-        queuedCount + (!fromQueued && toQueued ? 1 : 0) - (fromQueued && !toQueued ? 1 : 0),
-      );
-    }
-    set({ queue: next, index: newIndex, queuedCount: newQueuedCount });
+    set(moved);
     scheduleSync();
   },
 
@@ -4778,56 +4701,40 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { shuffle, queue, index, originalQueue, source, sourceHref } = get();
     const current = queue[index];
     const remoteHoldsQueue = remoteKind() === 'upnp' || remoteKind() === 'ha' || remoteKind() === 'ma';
-    // Same reasoning as starting a list again (see `forgetHistoryOf`): the
-    // order changes under the list being played, so where the back history had
-    // you in it no longer means anything. Left in, ⏮️ restored one of those
+    // Same reasoning as starting a list again (see `PlayHistoryStack.forget`):
+    // the order changes under the list being played, so where the back history
+    // had you in it no longer means anything. Left in, ⏮️ restored one of those
     // positions along with the shuffle it was taken with, which turned the
     // button you had just pressed back off by itself.
     const key = contextKey(source, sourceHref);
-    if (key) forgetHistoryOf(key);
+    if (key) playedHistory.forget(key);
 
     if (!shuffle) {
-      const rest = dealt(queue.filter((_, i) => i !== index));
       // Both marks come off with the shuffle, the same as the "queued" block
       // does and for the same reason: they name blocks (the mix at the end, the
       // added songs after the current one) and there are no blocks left in
       // here. Left on, their songs would be scattered among the album's and the
       // header would have flipped on every track. `originalQueue` keeps the
       // marked copies, so turning shuffle off brings them back with them.
-      if (remoteHoldsQueue && current) {
-        // While the device holds a queue of its own (UPnP, a Home Assistant
-        // or Music Assistant player), keep the current track index stable and only
-        // shuffle upcoming tracks. This keeps its queue and the app's aligned.
-        const preservedHead = queue.slice(0, index + 1);
-        const shuffledTail = dealt(queue.slice(index + 1));
-        set({
-          shuffle: true,
-          queueDealt: true,
-          originalQueue: queue,
-          queue: [...preservedHead, ...shuffledTail].map(unmarked),
-          index,
-          queuedCount: 0,
-        });
-      } else {
-        const newQueue = (current ? [current, ...rest] : rest).map(unmarked);
-        // The current song keeps playing; we only reorder and leave it at index 0.
-        // Shuffling dissolves the "queued" block (the positions no longer exist).
-        set({
-          shuffle: true,
-          queueDealt: true,
-          originalQueue: queue,
-          queue: newQueue,
-          index: 0,
-          queuedCount: 0,
-        });
-      }
+      //
+      // While the device holds a queue of its own (UPnP, a Home Assistant or
+      // Music Assistant player), the current track index stays stable and only
+      // upcoming tracks are dealt. Otherwise the current song keeps playing at
+      // index 0. Shuffling dissolves the "queued" block (the positions no
+      // longer exist).
+      set({
+        shuffle: true,
+        queueDealt: true,
+        originalQueue: queue,
+        ...shuffledQueue(queue, index, remoteHoldsQueue),
+        queuedCount: 0,
+      });
     } else if (originalQueue && current) {
-      const newIndex = Math.max(0, originalQueue.findIndex((s) => s.id === current.id));
       set({
         shuffle: false,
         queueDealt: false,
         queue: originalQueue,
-        index: newIndex,
+        index: unshuffledIndex(originalQueue, current),
         originalQueue: null,
         queuedCount: 0,
       });
@@ -4949,43 +4856,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // and there is no reason for it to stop doing so because the app was
     // closed.
     if (saved.queue.length === 0) {
-      set({
-        shuffle: saved.shuffle === true,
-        queueDealt: false,
-        repeat: isRepeatMode(saved.repeat) ? saved.repeat : 'off',
-      });
+      set(storedListening(saved));
       return true;
     }
     // If something already started playing in the meantime, don't override the queue.
     if (get().queue.length > 0) return true;
-    const index = Math.min(Math.max(0, saved.index ?? 0), saved.queue.length - 1);
-    const positionSec =
-      typeof saved.positionSec === 'number' && Number.isFinite(saved.positionSec)
-        ? Math.max(0, saved.positionSec)
-        : 0;
+    const restored = restoredQueueState(saved);
+    const { index, positionSec } = restored;
     attachAppState();
-    set({
-      queue: saved.queue,
-      index,
-      positionSec,
-      durationSec: saved.queue[index]?.duration ?? 0,
-      isPlaying: false,
-      // Restored like `radioMode`: without this the "playing from" header
-      // vanished once Android killed the app in the background and the queue
-      // came back from disk.
-      source: typeof saved.source === 'string' ? saved.source : null,
-      sourceHref: typeof saved.sourceHref === 'string' ? saved.sourceHref : null,
-      // If it was a radio, it still is: closing the app should not leave it
-      // silent when reaching the end of what was already queued.
-      radioMode: saved.radioMode === true,
-      radioSeed: saved.radioSeed ?? null,
-      // The queue was saved already shuffled, so this only restores the button:
-      // nothing is reordered on the way back in. `originalQueue` stays null
-      // (see `StoredQueue`), which turning shuffle off handles on its own.
-      shuffle: saved.shuffle === true,
-      queueDealt: saved.dealt === true,
-      repeat: isRepeatMode(saved.repeat) ? saved.repeat : 'off',
-    });
+    set({ ...restored, isPlaying: false });
     await loadIndex(index, false);
     // Same as the server restore above: only if this queue is still the one.
     if (get().queue !== saved.queue) return true;
@@ -5064,7 +4943,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // ignore
     }
     clearLockScreen();
-    playedHistory = [];
+    playedHistory.clear();
     // What was still to come for this queue: the lyrics of its next song, the
     // streams warming for it, and the look at the server's copy of it. Each of
     // them would otherwise fire on the next account's behalf.

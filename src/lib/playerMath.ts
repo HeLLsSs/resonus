@@ -100,6 +100,16 @@ export function fadeProgress(t0: number, ms: number, now: number): number {
 }
 
 /**
+ * A remote output's volume `progress` (0 to 1) into a fade down from `from`,
+ * in whole percent: speakers take percent, so a step that rounds to the same
+ * value is a request saved, and the fade sends one per percent at most.
+ */
+export function remoteFadeVolume(from: number, progress: number): number {
+  const x = Math.min(1, Math.max(0, progress));
+  return Math.round(Math.max(0, Math.min(1, from)) * (1 - x) * 100) / 100;
+}
+
+/**
  * The error in its own words, with anything that looks like an address taken
  * out: this is counted, and counts are what the Diagnostics report is made of.
  * A stream URL carries the credentials, so none of them can go in it.
