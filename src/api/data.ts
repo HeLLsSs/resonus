@@ -31,6 +31,7 @@ import { usePlayHistory } from '@/store/playHistory';
 import { isManualOffline } from './netGate';
 import { getLocalLyrics, getOnlineLyrics } from '@/lib/localLyrics';
 import { setFeedback } from '@/lib/listenBrainz';
+import { isImportedByNavifind } from '@/lib/navifind';
 import { useSettings, type LyricsSource } from '@/store/settings';
 import * as Navidrome from './navidrome';
 import * as Subsonic from './backend';
@@ -653,6 +654,25 @@ export function getSongList(
     });
   }
   return subsonicSongList(a, sort, count, offset);
+}
+
+/** How far back in the library's arrivals the "From YouTube" shelf looks. */
+const IMPORTED_POOL = 300;
+
+/**
+ * The songs the navifind proxy copied into the library after they were heard,
+ * newest first (the "From YouTube" shelf).
+ *
+ * Nothing on the server lists them as such, so this is the latest arrivals
+ * sifted by where they were filed (`isImportedByNavifind`). The listing is the
+ * one the Songs screen uses for this order: a single request on Navidrome, and
+ * on a server that cannot sort songs the fifteen newest albums, which is as
+ * far back as the shelf then sees.
+ */
+export async function importedFromNavifind(count: number): Promise<Subsonic.Song[]> {
+  if (isOffline()) return [];
+  const recent = await getSongList('added', IMPORTED_POOL);
+  return recent.filter(isImportedByNavifind).slice(0, count);
 }
 
 /**

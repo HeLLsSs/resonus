@@ -37,6 +37,7 @@ const LABEL: Record<HomeSectionKey, string> = {
   mostPlayedSongs: 'Most played songs',
   discover: 'Discover',
   mixes: 'Made for you',
+  fromYouTube: 'From YouTube',
   playlists: 'Playlists',
   randomAlbums: 'Random albums',
   randomArtists: 'Random artists',
@@ -75,7 +76,7 @@ function SectionRow({ section }: { section: HomeSection }) {
 
 /** Sections that don't exist locally: their row here would promise something
  *  Home never renders (same criteria as folder browsing in Appearance). */
-const SERVER_ONLY: HomeSectionKey[] = ['discover', 'mixes'];
+const SERVER_ONLY: HomeSectionKey[] = ['discover', 'mixes', 'fromYouTube'];
 
 export default function HomeSectionsSettings() {
   // Repaints on a change of appearance or accent: a stack keeps this screen
@@ -85,11 +86,14 @@ export default function HomeSectionsSettings() {
   const { width } = useScreenSize();
   const t = useT();
   const offline = useAuthStore((s) => s.offline);
+  const navifind = useSettings((s) => s.navifind);
   const homeSections = useSettings((s) => s.homeSections);
   const setHomeSections = useSettings((s) => s.setHomeSections);
-  const visible = offline
-    ? homeSections.filter((s) => !SERVER_ONLY.includes(s.key))
-    : homeSections;
+  // «From YouTube» is the proxy's: on a plain server the row would offer a
+  // shelf that never has anything in it.
+  const hidden = (key: HomeSectionKey) =>
+    (offline && SERVER_ONLY.includes(key)) || (key === 'fromYouTube' && !navifind);
+  const visible = homeSections.filter((s) => !hidden(s.key));
 
   return (
     <SettingsSafeArea>
@@ -106,9 +110,7 @@ export default function HomeSectionsSettings() {
           // Hidden ones go back to their absolute position: reordering locally
           // must not lose or reposition the config of server-only rows.
           let vi = 0;
-          const next = homeSections.map((s) =>
-            offline && SERVER_ONLY.includes(s.key) ? s : nextVisible[vi++],
-          );
+          const next = homeSections.map((s) => (hidden(s.key) ? s : nextVisible[vi++]));
           setHomeSections(next);
         }}
         contentContainerStyle={[

@@ -243,6 +243,7 @@ interface NdSong {
   discNumber?: number;
   year?: number;
   duration?: number;
+  path?: string;
   suffix?: string;
   bitRate?: number;
   bitDepth?: number;
@@ -299,6 +300,7 @@ function toSong(m: NdSong): Song {
     track: m.trackNumber,
     discNumber: m.discNumber,
     year: m.year,
+    path: m.path,
     suffix: m.suffix,
     bitRate: m.bitRate,
     bitDepth: m.bitDepth,

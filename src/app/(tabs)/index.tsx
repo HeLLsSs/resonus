@@ -21,6 +21,7 @@ import {
   getArtists,
   getSongList,
   getPlaylists,
+  importedFromNavifind,
   type Album,
   type Artist,
   type Playlist,
@@ -294,34 +295,33 @@ function AlbumSection({
 /** How many songs the "Most played" shelf holds, and plays. */
 const MOST_PLAYED_SONGS = 30;
 
+/** How many songs the "From YouTube" shelf holds, and plays. */
+const FROM_YOUTUBE_SONGS = 30;
+
 /**
- * The songs played most, as songs.
- *
- * The shelf beside it answers the same question with records, which is the only
- * thing a Subsonic server can sort, and reads wrong for anyone who does not
- * listen to albums whole: a record turns up there because one of its songs is
- * on repeat, which is how a user put it. This is the other half of that answer,
- * and it is a queue rather than a place to go — tapping a song plays the shelf
- * from it, in the order it is drawn in, which is the order of how much each was
- * played.
+ * A shelf of songs, which is a queue rather than a place to go: tapping a song
+ * plays the shelf from it, in the order it is drawn in. `href` is where "Show
+ * all" leads, for a shelf whose list has a screen of its own; without one the
+ * title is just a title.
  */
-function MostPlayedSongsSection({ title }: { title: string }) {
+function SongShelf({
+  title,
+  queryKey,
+  queryFn,
+  href,
+}: {
+  title: string;
+  queryKey: unknown[];
+  queryFn: () => Promise<Song[]>;
+  href?: string;
+}) {
   const openSongMenu = useSongMenu((s) => s.open);
   const canFetch = useAuthStore((s) => !!s.auth || s.offline);
   const card = useShelfCard();
   const playQueue = usePlayerStore((s) => s.playQueue);
   const currentId = usePlayerStore((s) => s.queue[s.index]?.id);
   const { accent } = useTheme();
-  // Through the same door the Songs screen uses for this order, and not
-  // through `getMostPlayedSongs`: Navidrome and Jellyfin sort songs by plays
-  // themselves, one request, and only a server that can do neither pays for
-  // the fifteen albums the answer has to be built out of (#50). That is also
-  // why this shelf is off until someone turns it on.
-  const { data, isLoading } = useQuery({
-    queryKey: ['browseSongs', 'frequent', MOST_PLAYED_SONGS],
-    queryFn: () => getSongList('frequent', MOST_PLAYED_SONGS),
-    enabled: canFetch,
-  });
+  const { data, isLoading } = useQuery({ queryKey, queryFn, enabled: canFetch });
 
   if (isLoading) {
     return (
@@ -335,7 +335,11 @@ function MostPlayedSongsSection({ title }: { title: string }) {
 
   return (
     <View style={styles.section}>
-      <SectionHeader title={title} href="/browse/songs?sort=frequent" />
+      {href ? (
+        <SectionHeader title={title} href={href} />
+      ) : (
+        <Text style={styles.sectionTitle}>{title}</Text>
+      )}
       <FlatList
         {...listPerf}
         horizontal
@@ -365,6 +369,48 @@ function MostPlayedSongsSection({ title }: { title: string }) {
         )}
       />
     </View>
+  );
+}
+
+/**
+ * The songs played most, as songs.
+ *
+ * The shelf beside it answers the same question with records, which is the only
+ * thing a Subsonic server can sort, and reads wrong for anyone who does not
+ * listen to albums whole: a record turns up there because one of its songs is
+ * on repeat, which is how a user put it. This is the other half of that answer,
+ * in the order of how much each was played.
+ *
+ * Through the same door the Songs screen uses for this order, and not through
+ * `getMostPlayedSongs`: Navidrome and Jellyfin sort songs by plays themselves,
+ * one request, and only a server that can do neither pays for the fifteen
+ * albums the answer has to be built out of (#50). That is also why this shelf
+ * is off until someone turns it on.
+ */
+function MostPlayedSongsSection({ title }: { title: string }) {
+  return (
+    <SongShelf
+      title={title}
+      href="/browse/songs?sort=frequent"
+      queryKey={['browseSongs', 'frequent', MOST_PLAYED_SONGS]}
+      queryFn={() => getSongList('frequent', MOST_PLAYED_SONGS)}
+    />
+  );
+}
+
+/**
+ * The songs the navifind proxy copied into the library after they were heard
+ * online, newest first: what was found on YouTube and is now the library's.
+ * Only drawn for a profile with the proxy switched on, and empty until the
+ * first import has been scanned in.
+ */
+function FromYouTubeSection({ title }: { title: string }) {
+  return (
+    <SongShelf
+      title={title}
+      queryKey={['navifind', 'imported', FROM_YOUTUBE_SONGS]}
+      queryFn={() => importedFromNavifind(FROM_YOUTUBE_SONGS)}
+    />
   );
 }
 
@@ -681,7 +727,10 @@ function ScanningPanel() {
 /** Title (i18n key) and list type for the sections that use AlbumSection.
  *  «discover» and «randomArtists» are drawn by components of their own. */
 const HOME_ALBUM_CONFIG: Record<
-  Exclude<HomeSectionKey, 'randomArtists' | 'discover' | 'playlists' | 'mostPlayedSongs' | 'mixes'>,
+  Exclude<
+    HomeSectionKey,
+    'randomArtists' | 'discover' | 'playlists' | 'mostPlayedSongs' | 'mixes' | 'fromYouTube'
+  >,
   { title: string; type: 'newest' | 'recent' | 'frequent' | 'random' | 'byYear' }
 > = {
   recentlyAdded: { title: 'Recently added', type: 'newest' },
@@ -824,6 +873,7 @@ export default function HomeScreen() {
   const customGreeting = useSettings((s) => s.customGreeting);
   const language = useSettings((s) => s.language);
   const homeSections = useSettings((s) => s.homeSections);
+  const navifind = useSettings((s) => s.navifind);
   useSettings((s) => s.appFont); // re-render when font changes
   // Four slots, and when each one starts comes from the language rather than
   // from here: at 6pm English is in the evening and Spanish is still in the
@@ -957,6 +1007,12 @@ export default function HomeScreen() {
               if (s.key === 'discover' && offline) return null;
               if (s.key === 'mixes' && offline) return null;
               if (s.key === 'mixes') return <MixesShelf key={s.key} title={t('Made for you')} />;
+              // «From YouTube» is the proxy's imports: nothing to list without
+              // the proxy, and nothing to ask offline.
+              if (s.key === 'fromYouTube' && (offline || !navifind)) return null;
+              if (s.key === 'fromYouTube') {
+                return <FromYouTubeSection key={s.key} title={t('From YouTube')} />;
+              }
               if (s.key === 'discover') {
                 return (
                   <DiscoverSection key={s.key} title={t('Discover')} reshuffleKey={reshuffleKey} />

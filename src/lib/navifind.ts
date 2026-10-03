@@ -1,3 +1,5 @@
+import type { Song } from '@/api/subsonic';
+
 /**
  * Whether the navifind features are switched on for the profile in use.
  *
@@ -21,4 +23,22 @@ export function navifindActive(): boolean {
 /** Set by the settings store, on hydration and on every change. */
 export function setNavifindActive(value: boolean): void {
   active = value;
+}
+
+/**
+ * The folder the proxy files its imports under, at the root of the library:
+ * `Navifind/<artist>/<artist> - <title>.m4a`. The tags are no guide, since a
+ * track whose source named its album keeps that album, so the path is the one
+ * mark every import carries.
+ */
+const IMPORT_FOLDER = /(^|\/)Navifind\//;
+
+/**
+ * Whether a library song was put there by the proxy after being listened to.
+ * The path comes relative to the music folder over Subsonic and may carry the
+ * folder on disk in front of it over Navidrome's own API, hence a segment
+ * anywhere rather than a prefix.
+ */
+export function isImportedByNavifind(song: Pick<Song, 'path'>): boolean {
+  return !!song.path && IMPORT_FOLDER.test(song.path);
 }
