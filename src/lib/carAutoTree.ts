@@ -32,7 +32,8 @@ import { bump } from '@/lib/perfLog';
 import { playForYou } from '@/lib/forYouMix';
 import { getPlaylists as getLocalPlaylists } from '@/lib/localQueries';
 import { navifindActive } from '@/lib/navifind';
-import { cardTarget } from '@/lib/youtube';
+import { playShuffle, youtubeJoinsShuffle } from '@/lib/playShuffle';
+import { cardTarget, tasteOf } from '@/lib/youtube';
 import { queryClient } from '@/lib/query';
 import { profileScopeId, useAuthStore } from '@/store/auth';
 import { anyDownloads, getDownloadShelf, useDownloads } from '@/store/downloads';
@@ -429,8 +430,10 @@ const SHUFFLE_ID = 'shuffle:all';
 /** The favourites dealt once and played through, the way the button on the
  *  Favorites screen plays them. */
 const SHUFFLE_FAVORITES_ID = 'shuffle:favorites';
-/** How many it queues. Enough for a drive without asking again. */
+/** How many a genre queues. Enough for a drive without asking again. */
 const SHUFFLE_SONGS = 100;
+/** The die at the top of the YouTube tab: what the account likes, dealt. */
+const YOUTUBE_DICE_ID = 'yt:dice';
 
 // ── Genres ───────────────────────────────────────────────────────────────────
 
@@ -846,7 +849,17 @@ async function youtubeTab(into: Resolve, tree: Record<string, CarNode[]>): Promi
   ]);
   if (liked.length === 0 && playlists.length === 0 && shelves.length === 0) return null;
 
-  const rows: CarNode[] = [];
+  // The die first: the one row of the tab that needs nothing read to be
+  // pressed, which at the wheel is the row that gets pressed.
+  const rows: CarNode[] = [
+    {
+      id: YOUTUBE_DICE_ID,
+      title: tg('YouTube shuffle'),
+      subtitle: tg('Your likes and picks, dealt'),
+      artworkUrl: icon('ic_car_dice'),
+      playable: true,
+    },
+  ];
   const shelfRows: CarNode[] = [];
   if (liked.length > 0) {
     tree['yt:liked'] = songRows(into, 'yt:liked', liked);
@@ -1164,7 +1177,15 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
           artworkUrl: icon('ic_car_foryou'),
           playable: true,
         },
-        { id: SHUFFLE_ID, title: tg('Shuffle everything'), artworkUrl: icon('ic_car_shuffle'), playable: true },
+        {
+          id: SHUFFLE_ID,
+          title: tg('Shuffle everything'),
+          // Said when YouTube is dealt in, since "everything" then means more
+          // than the library (`playShuffle`).
+          subtitle: youtubeJoinsShuffle() ? tg('Library and YouTube') : undefined,
+          artworkUrl: icon('ic_car_shuffle'),
+          playable: true,
+        },
         {
           id: SHUFFLE_FAVORITES_ID,
           title: tg('Favorites'),
@@ -1524,9 +1545,26 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
     return;
   }
 
+  // The same shuffle the Home chip plays: the library, and YouTube with it
+  // where there is an account to read.
   if (mediaId === SHUFFLE_ID) {
-    const songs = await data.getRandomSongs(SHUFFLE_SONGS).catch(() => [] as Song[]);
-    if (songs.length > 0) await store.playQueue(songs, 0, tg('Shuffle'));
+    await playShuffle();
+    return;
+  }
+
+  // The YouTube tab's die: everything the account's YouTube says it likes,
+  // the home page's own tracks and the liked songs, dealt and played.
+  if (mediaId === YOUTUBE_DICE_ID) {
+    const [shelves, liked] = await Promise.all([
+      data.youtubeHomeShelves().catch(() => []),
+      data.youtubeLikedSongs(YOUTUBE_TRACKS).catch(() => [] as Song[]),
+    ]);
+    const pool = tasteOf(shelves, liked);
+    if (pool.length === 0) {
+      bump('car · youtube dice resolved to nothing');
+      return;
+    }
+    await store.playQueue(pool, 0, tg('YouTube shuffle'), undefined, { shuffled: true });
     return;
   }
 

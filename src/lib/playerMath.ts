@@ -112,3 +112,21 @@ export function errorTag(message: string): string {
     .trim();
   return clean.length > 80 ? `${clean.slice(0, 80)}…` : clean;
 }
+
+/**
+ * One queue out of the library's random pick and what YouTube knows the
+ * account likes: each song once, dealt together, `size` of them at most. The
+ * library's share already comes shuffled from the server and YouTube's in
+ * the order of its shelves, so dealing the two together is what makes it a
+ * mix rather than one list stuck behind the other.
+ */
+export function mixedPool<T extends { id: string }>(library: T[], online: T[], size: number): T[] {
+  const seen = new Set<string>();
+  const once: T[] = [];
+  for (const song of [...library, ...online]) {
+    if (seen.has(song.id)) continue;
+    seen.add(song.id);
+    once.push(song);
+  }
+  return dealt(once).slice(0, size);
+}

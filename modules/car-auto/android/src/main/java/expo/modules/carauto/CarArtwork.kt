@@ -64,6 +64,7 @@ internal object CarArtwork {
     "ic_car_albums" to R.drawable.ic_car_albums,
     "ic_car_artists" to R.drawable.ic_car_artists,
     "ic_car_bookmark" to R.drawable.ic_car_bookmark,
+    "ic_car_dice" to R.drawable.ic_car_dice,
     "ic_car_downloaded" to R.drawable.ic_car_downloaded,
     "ic_car_favorites" to R.drawable.ic_car_favorites,
     "ic_car_foryou" to R.drawable.ic_car_foryou,

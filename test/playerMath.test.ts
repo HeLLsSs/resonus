@@ -6,8 +6,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import {
-  dealt,
+import { dealt,
   errorTag,
   fadeProgress,
   GAIN_MAX,
@@ -16,8 +15,7 @@ import {
   isRepeatMode,
   nextQueueIndex,
   SLEEP_FADE_MS,
-  sleepFadeSchedule,
-} from '@/lib/playerMath';
+  sleepFadeSchedule, mixedPool } from '@/lib/playerMath';
 
 describe('dealt', () => {
   it('keeps the same songs, and hands back a new list', () => {
@@ -113,6 +111,25 @@ describe('errorTag', () => {
         errorTag('x'.repeat(100)).length,
       ],
       ['Cannot load url (404)', 'open failed: path', 81],
+    );
+  });
+});
+
+describe('mixedPool', () => {
+  const song = (id: string) => ({ id });
+
+  it('deals both sides together, each song once, no more than asked', () => {
+    const pool = mixedPool([song('a'), song('b'), song('c')], [song('c'), song('yt_1'), song('yt_2')], 4);
+    assert.equal(pool.length, 4);
+    assert.equal(new Set(pool.map((s) => s.id)).size, 4);
+    for (const s of pool) assert.ok(['a', 'b', 'c', 'yt_1', 'yt_2'].includes(s.id));
+  });
+
+  it('is the library alone when YouTube has nothing', () => {
+    const pool = mixedPool([song('a'), song('b')], [], 10);
+    assert.deepEqual(
+      pool.map((s) => s.id).sort(),
+      ['a', 'b'],
     );
   });
 });
