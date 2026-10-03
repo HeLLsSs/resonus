@@ -58,6 +58,10 @@ appear when it is switched off.
 - **Import from a link**: paste a YouTube, SoundCloud or Spotify address and a
   playlist or album becomes a playlist of the same name on the server once its
   tracks have arrived. A notification says when the proxy has finished.
+- **"From YouTube" on Home**: the songs the proxy filed into the library after
+  they were listened to, newest first, as a shelf of their own; and a YouTube
+  track that will not play (gone, blocked) is left out of the dice and the
+  mixes for a week rather than tried again at every pass.
 - **A YouTube tab**: the shelves of the YouTube Music home page your account is
   shown, your playlists, the tracks you liked and the records you keep. It
   starts off and is offered only where Navifind is on. A die at the top deals
@@ -157,8 +161,8 @@ appear when it is switched off.
   the output sheet, one control per speaker, the way Sonos rooms do. The
   speaker only speaks HTTPS with a certificate of LinkPlay's own, which the
   app pins and trusts for nothing else. When the music starts on the phone at
-  home and a speaker played on before answers, a toast offers to continue on
-  it, once per speaker.
+  home and a speaker answers, a toast asks "Continue at home?": the home
+  speaker chosen in Settings › Playback, or else the one last played on.
 - **Music Assistant**, spoken to directly rather than through Home Assistant.
   Nothing is polled, and no address is handed to a speaker: a song is named by
   its id in the library Music Assistant already keeps, and it fetches the song
@@ -171,6 +175,8 @@ appear when it is switched off.
   buttons a glove can hit, a floating player over Waze or any other app,
   each new song read out in the helmet, and all of it started on its own
   when the helmet's intercom connects. Android only.
+- **A die on the ride screen**, between Voice and Radio: the library and
+  YouTube's picks, dealt, without a list to read.
 - **Prepare the ride**: one button downloads the next songs of the queue
   before the bike leaves the network behind, 15, 30, 60 or the whole queue,
   with the count on the button while they come.
@@ -203,6 +209,10 @@ appear when it is switched off.
   likes and plays it, and Home's "Shuffle everything" deals YouTube in with
   the library once the proxy has an account to read; the Shuffle chip on the
   phone's Home does the same.
+- **"For the road"** on the car's Home: the downloaded songs of the queue,
+  in order from the one playing, for the stretch with no network.
+- **The die by voice**: "YouTube shuffle" or "shuffle" said to the car lands
+  on the die rows before any song merely called that.
 - **The queue screen says where the queue came from** — the album, the
   playlist, "For you" — rather than heading a list of songs with nothing.
 - Pictures reach the car at all. It will not go and fetch one from a remote

@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1326 of them.
+Every string the app can show, under the screen it shows up on. 1331 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -348,6 +348,7 @@ you are actually typing into, which is easier than reading it here.
 | `Evening mix` |  |
 | `For you` | One of the values of “With an empty queue” |
 | `For you · {date}` |  |
+| `From YouTube` |  |
 | `Good afternoon` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
 | `Good evening` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
 | `Good morning` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
@@ -382,9 +383,11 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `{n} songs, no network needed` |  |
 | `at {time}` |  |
 | `Built from what you play` |  |
 | `Continue listening` |  |
+| `For the road` |  |
 | `Library and YouTube` |  |
 | `Nothing downloaded` |  |
 | `Offline, only downloads can play` |  |
@@ -411,7 +414,7 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
-| `Continue on {name}?` |  |
+| `Continue at home?` |  |
 | `Play on {name}` |  |
 
 ## Jam
@@ -1301,8 +1304,11 @@ you are actually typing into, which is easier than reading it here.
 | `Cuts the quiet gaps inside and between tracks` | The line under “Skip silence”, explaining it |
 | `Equalizer` |  |
 | `Evens out loudness between songs using your files' ReplayGain tags.` | The line under “Normalize volume”, explaining it |
+| `Home speaker` |  |
 | `Keep playing similar songs when your queue ends. A mix you start yourself always does, even with this off.` | The line under “Autoplay”, explaining it |
 | `Keep screen on` |  |
+| `Last one used` | One of the values of “Home speaker” |
+| `Lost contact with the speaker` |  |
 | `Mobile data` | Group header under `Streaming`: the settings that apply on mobile data, as opposed to Wi-Fi |
 | `Never` | A value of `Play downloaded songs from the phone`: always stream, never use the file on the phone. The share sheet's own "never expires" is a separate key, `Never::expiry`, so a language that needs two different words can have them |
 | `No` | A setting value meaning none or zero, not the answer to a question: no crossfade, no seek buttons |
@@ -1329,6 +1335,8 @@ you are actually typing into, which is easier than reading it here.
 | `Streaming quality (Wi-Fi)` |  |
 | `Suggest a known speaker` |  |
 | `The screen never turns off while the app is visible.` | The line under “Keep screen on”, explaining it |
+| `The speaker couldn't play this song` |  |
+| `The speaker offered when you play on the phone. Without one, it is the speaker you last played on.` |  |
 | `Tune the sound band by band.` | The line under “Equalizer”, explaining it |
 | `Warn about battery optimization` |  |
 | `When a song counts as played.` | Under the `Scrobbling` row, saying what the screen it opens is about |
@@ -1830,7 +1838,6 @@ you are actually typing into, which is easier than reading it here.
 | `Hold to go back to {tab}` | The hint on holding the back arrow. `{tab}` is Home, Search or Library |
 | `Jam` |  |
 | `List` | An option in that menu: one row per item, instead of cards |
-| `Lost contact with the speaker` |  |
 | `Lyrics` | The words of the song. Also a line of the storage bar, where it is their size on the phone |
 | `Mix of “{name}”` | What the player calls the queue once it has grown past its album into songs the app picked itself. `{name}` is the song it was grown from |
 | `More` | A "see more" action, and the third button of the selection bar, the one that opens the rest of what it can do |
@@ -1881,7 +1888,6 @@ you are actually typing into, which is easier than reading it here.
 | `The receiver can't play this format` |  |
 | `The receiver couldn't fetch this song` |  |
 | `The receiver couldn't play this song` |  |
-| `The speaker couldn't play this song` |  |
 | `This song can't be cast` | Toast: the speaker or TV will not take this file |
 | `This song is already in “{name}”.` | The line under that title. `{name}` is the playlist |
 | `Undo` | The button in a toast that takes back what just happened. It is there for a few seconds |

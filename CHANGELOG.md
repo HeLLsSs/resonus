@@ -7,6 +7,27 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.8.3] - 2026-10-03
+
+### Added
+
+- A home speaker (Settings › Playback): the "Continue at home?" toast asks
+  for it when the music starts on the phone, or for the speaker last played
+  on when none is chosen.
+- A die on the ride screen, and "For the road" on the car's Home: the
+  downloaded songs of the queue, in order, for the stretch with no network.
+- "YouTube shuffle" and "shuffle" said to the car land on the dice rows
+  before any song merely called that.
+- "From YouTube" on Home: the songs the proxy filed into the library after
+  they were listened to, newest first.
+- A YouTube or SoundCloud track that will not play for a reason of its own
+  is left out of the dice and the mixes for a week.
+
+### Fixed
+
+- A playback error now carries its cause, so a removed video (404) is no
+  longer taken for the proxy being down (502), and the other way round.
+
 ## [1.8.2] - 2026-10-03
 
 ### Added
