@@ -13,22 +13,26 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import {
   forgetSpotifyAccount,
   type ImportRefusal,
   importIntoLibrary,
+  navifindSources,
+  type NavifindSources,
   navifindStatus,
+  type SourceHealth,
   spotifyAccount,
 } from '@/api/subsonic';
 import { SettingRow, SettingsPage, settingsStyles, SwitchList, TextRow } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
 import { askNotificationPermission, NAVIFIND_STATUS_KEY, navifindWorkStarted } from '@/lib/navifindWatch';
+import { queryClient } from '@/lib/query';
 import { useAuthStore } from '@/store/auth';
 import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
-import { useTheme } from '@/theme';
+import { colors, useTheme } from '@/theme';
 
 /** A pasted link, with room for the long ones Spotify and YouTube make. */
 const URL_MAX = 300;
@@ -38,6 +42,13 @@ const URL_MAX = 300;
  * it was given is done, and says so.
  */
 const STATUS_EVERY_MS = 5_000;
+/** The proxy's online sources, by the names they go by. */
+const SOURCES: { key: keyof NavifindSources; label: string }[] = [
+  { key: 'invidious', label: 'Invidious' },
+  { key: 'piped', label: 'Piped' },
+  { key: 'ytdlp', label: 'yt-dlp' },
+  { key: 'soundcloud', label: 'SoundCloud' },
+];
 
 export default function NavifindSettings() {
   // Repaints on a change of appearance or accent: a stack keeps this screen
@@ -52,8 +63,11 @@ export default function NavifindSettings() {
   const setNavifind = useSettings((s) => s.setNavifind);
   const exclusivePlayback = useSettings((s) => s.exclusivePlayback);
   const setExclusivePlayback = useSettings((s) => s.setExclusivePlayback);
+  const autoImportLiked = useSettings((s) => s.autoImportLiked);
+  const setAutoImportLiked = useSettings((s) => s.setAutoImportLiked);
   const [url, setUrl] = useState('');
   const [importing, setImporting] = useState(false);
+  const [probing, setProbing] = useState(false);
 
   const canAsk = navifind && !!auth && !offline;
   const status = useQuery({
@@ -71,6 +85,15 @@ export default function NavifindSettings() {
   const spotify = useQuery({
     queryKey: ['navifind', 'spotify', auth?.serverUrl, auth?.username],
     queryFn: () => spotifyAccount(auth!),
+    enabled: canAsk,
+    retry: false,
+  });
+  // A proxy too old to know the route fails the query, and the section is
+  // then left out like the Spotify one.
+  const sourcesKey = ['navifind', 'sources', auth?.serverUrl, auth?.username];
+  const sources = useQuery({
+    queryKey: sourcesKey,
+    queryFn: () => navifindSources(auth!),
     enabled: canAsk,
     retry: false,
   });
@@ -126,6 +149,36 @@ export default function NavifindSettings() {
       toast(t("The proxy couldn't be asked"));
     }
     void spotify.refetch();
+  };
+
+  /** The proxy asks each source on the spot and keeps what it hears. */
+  const probeSources = async () => {
+    if (!auth || probing) return;
+    setProbing(true);
+    try {
+      queryClient.setQueryData(sourcesKey, await navifindSources(auth, true));
+    } catch {
+      toast(t("The proxy couldn't be asked"));
+    } finally {
+      setProbing(false);
+    }
+  };
+
+  const sourceSaid = (key: keyof NavifindSources, source: SourceHealth): string => {
+    switch (source.state) {
+      case 'ok':
+        return key === 'ytdlp' && source.version ? t('Version {version}, with deno', { version: source.version }) : t('Answering');
+      case 'down':
+        if (key === 'ytdlp') return source.deno ? t('Does not run') : t('deno is missing, so YouTube cannot be read');
+        // Counted to when the proxy answered, which is when the screen last asked.
+        return source.downSince
+          ? t('Noted down {n} min ago', { n: Math.max(1, Math.round((sources.dataUpdatedAt / 1000 - source.downSince) / 60)) })
+          : t('Not answering');
+      case 'off':
+        return key === 'ytdlp' ? t('Not installed') : t('Not configured');
+      case 'unknown':
+        return t('Not checked yet');
+    }
   };
 
   const runImport = async () => {
@@ -213,6 +266,18 @@ export default function NavifindSettings() {
               description={t('Which account Navifind reads, and where to sign in to another.')}
               chevron
               onPress={() => router.push('/settings/youtube')}
+            />
+            <SwitchList
+              options={[
+                {
+                  label: t('File my liked songs'),
+                  description: t(
+                    'Every six hours, the songs you liked on YouTube go into the library, twenty at most each time.',
+                  ),
+                  value: autoImportLiked,
+                  onChange: setAutoImportLiked,
+                },
+              ]}
             />
 
             {/* Spotify closed playlists to an application holding only its
@@ -309,6 +374,48 @@ export default function NavifindSettings() {
                         }
                       />
                     ))}
+                  </>
+                ) : null}
+
+                {/* Where an online track is looked for, and whether each
+                    place answers. Not drawn for a proxy too old to say. */}
+                {sources.data ? (
+                  <>
+                    <Text style={settingsStyles.sectionTitle}>{t('Sources')}</Text>
+                    <Text style={settingsStyles.sectionDescription}>
+                      {t(
+                        'Where the proxy looks for an online track. One noted down is left aside for five minutes, then tried again.',
+                      )}
+                    </Text>
+                    {SOURCES.map(({ key, label }) => {
+                      const source = sources.data[key];
+                      return (
+                        <View key={key} style={[settingsStyles.cardBox, settingsStyles.row]}>
+                          <View
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 5,
+                              backgroundColor:
+                                source.state === 'ok'
+                                  ? colors.success
+                                  : source.state === 'down'
+                                    ? colors.danger
+                                    : colors.textMuted,
+                            }}
+                          />
+                          <View style={settingsStyles.rowLabelBox}>
+                            <Text style={settingsStyles.rowLabel}>{label}</Text>
+                            <Text style={settingsStyles.rowDescription}>{sourceSaid(key, source)}</Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                    <SettingRow
+                      icon="pulse-outline"
+                      label={probing ? t('Checking…') : t('Check now')}
+                      onPress={probing ? undefined : () => void probeSources()}
+                    />
                   </>
                 ) : null}
               </>

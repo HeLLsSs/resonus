@@ -1733,6 +1733,60 @@ export async function navifindStatus(auth: SubsonicAuth): Promise<NavifindStatus
   return { done: res.navifind?.done ?? [], inProgress: res.navifind?.inProgress ?? 0, imports };
 }
 
+/**
+ * How one of the proxy's online sources is doing: answering, noted down after
+ * failing to, not set up on that proxy, or not known until it is probed.
+ */
+export type SourceState = 'ok' | 'down' | 'off' | 'unknown';
+
+export interface SourceHealth {
+  state: SourceState;
+  /** When it was last seen failing, seconds since the epoch; only while down. */
+  downSince?: number | null;
+  /** The version the tool gave, for yt-dlp. */
+  version?: string | null;
+  /** Whether deno, which yt-dlp needs to read YouTube, is there. */
+  deno?: boolean;
+}
+
+export interface NavifindSources {
+  invidious: SourceHealth;
+  piped: SourceHealth;
+  ytdlp: SourceHealth;
+  soundcloud: SourceHealth;
+}
+
+const SOURCE_STATES: readonly string[] = ['ok', 'down', 'off', 'unknown'];
+
+/**
+ * What the proxy knows of its online sources. With `probe` it asks them first
+ * (a few seconds each at most) and remembers the answer, which is what the
+ * search and the player then go by; without, it only says what it has noted.
+ */
+export async function navifindSources(auth: SubsonicAuth, probe = false): Promise<NavifindSources> {
+  const res = await request<{ navifind?: { sources?: Partial<Record<keyof NavifindSources, Partial<SourceHealth>>> } }>(
+    auth,
+    'navifind/sources.view',
+    probe ? { probe: 1 } : {},
+  );
+  const sources = res.navifind?.sources;
+  // A proxy too old for the route answers without it, and that is an error
+  // for the screen, which then leaves the section out.
+  if (!sources) throw new Error('No sources in the answer');
+  const health = (s?: Partial<SourceHealth>): SourceHealth => ({
+    state: s?.state && SOURCE_STATES.includes(s.state) ? s.state : 'unknown',
+    downSince: s?.downSince ?? null,
+    version: s?.version ?? null,
+    deno: s?.deno === true,
+  });
+  return {
+    invidious: health(sources.invidious),
+    piped: health(sources.piped),
+    ytdlp: health(sources.ytdlp),
+    soundcloud: health(sources.soundcloud),
+  };
+}
+
 // ── navifind · YouTube ───────────────────────────────────────────────────────
 // The proxy can also be signed in to YouTube Music on the account holder's
 // behalf, and then it will answer for what that account has: the home page it

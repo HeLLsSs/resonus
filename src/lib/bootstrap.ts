@@ -234,4 +234,5 @@ export function startApp(): void {
   startPlaybackLock();
   startRideSync();
   startSpeakerSuggest();
+  void import('@/lib/likedImport').then((m) => m.startLikedImport());
 }
