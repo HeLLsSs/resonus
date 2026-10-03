@@ -24,9 +24,11 @@ import {
   SwitchList,
 } from '@/components/SettingsUI';
 import { useLocalProfile } from '@/hooks/useLocalProfile';
+import { normalizeOutputDisplayName } from '@/lib/format';
 import { linkPlayAvailable } from '@/lib/linkplay';
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
+import { useLinkPlay } from '@/store/linkplay';
 import { useTheme } from '@/theme';
 import {
   BITRATE_OPTIONS,
@@ -72,6 +74,9 @@ export default function PlaybackSettings() {
   const setKeepScreenAwake = useSettings((s) => s.setKeepScreenAwake);
   const suggestKnownSpeakers = useSettings((s) => s.suggestKnownSpeakers);
   const setSuggestKnownSpeakers = useSettings((s) => s.setSuggestKnownSpeakers);
+  const homeSpeakerHost = useSettings((s) => s.homeSpeakerHost);
+  const setHomeSpeakerHost = useSettings((s) => s.setHomeSpeakerHost);
+  const lpDevices = useLinkPlay((s) => s.devices);
   const skipSilence = useSettings((s) => s.skipSilence);
   const setSkipSilence = useSettings((s) => s.setSkipSilence);
 
@@ -313,6 +318,29 @@ export default function PlaybackSettings() {
               : []),
           ]}
         />
+        {/* Which speaker the suggestion is about. Greyed out rather than gone
+            with the switch above off, so it can still be found (#114). A home
+            speaker that is not on the network right now keeps its row, under
+            its address, instead of the choice silently reading as "last one
+            used". */}
+        {linkPlayAvailable() ? (
+          <SelectList
+            label={t('Home speaker')}
+            description={t(
+              'The speaker offered when you play on the phone. Without one, it is the speaker you last played on.',
+            )}
+            options={[
+              { value: '', label: t('Last one used') },
+              ...lpDevices.map((d) => ({ value: d.host, label: normalizeOutputDisplayName(d.name) })),
+              ...(homeSpeakerHost && !lpDevices.some((d) => d.host === homeSpeakerHost)
+                ? [{ value: homeSpeakerHost, label: homeSpeakerHost }]
+                : []),
+            ]}
+            value={homeSpeakerHost}
+            onChange={setHomeSpeakerHost}
+            disabled={!suggestKnownSpeakers}
+          />
+        ) : null}
 
         {/* Its own screen: two sliders and a line of explanation is more than
             fits under a heading here, and it is a thing somebody sets once

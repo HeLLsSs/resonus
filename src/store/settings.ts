@@ -329,6 +329,7 @@ export type HomeSectionKey =
   | 'mostPlayedSongs'
   | 'discover'
   | 'mixes'
+  | 'fromYouTube'
   | 'playlists'
   | 'randomAlbums'
   | 'randomArtists';
@@ -347,6 +348,7 @@ const HOME_SECTION_KEYS: HomeSectionKey[] = [
   'mostPlayedSongs',
   'discover',
   'mixes',
+  'fromYouTube',
   'playlists',
   'randomAlbums',
   'randomArtists',
@@ -356,6 +358,7 @@ const HOME_SECTION_KEYS: HomeSectionKey[] = [
 export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   { key: 'discover', enabled: true },
   { key: 'mixes', enabled: true },
+  { key: 'fromYouTube', enabled: true },
   { key: 'playlists', enabled: false },
   { key: 'recentlyAdded', enabled: true },
   { key: 'newReleases', enabled: false },
@@ -861,6 +864,11 @@ interface SettingsState {
    * the network and the music starts on the phone (`lib/speakerSuggest.ts`).
    */
   suggestKnownSpeakers: boolean;
+  /**
+   * The address of the LinkPlay speaker the suggestion is about, or `''` for
+   * whichever one was played on last.
+   */
+  homeSpeakerHost: string;
   /** Player background: flat, cover color, or blurred cover art. */
   playerBackground: ScreenBackground;
   /**
@@ -1064,6 +1072,7 @@ interface SettingsState {
   setShowGenreChips: (value: boolean) => void;
   setBatteryWarning: (value: boolean) => void;
   setSuggestKnownSpeakers: (value: boolean) => void;
+  setHomeSpeakerHost: (value: string) => void;
   setPlayerBackground: (value: ScreenBackground) => void;
   setAnimatedCoverBackground: (value: boolean) => void;
   setFitCoverArt: (value: boolean) => void;
@@ -1207,6 +1216,7 @@ function snapshot(get: () => SettingsState) {
     showGenreChips: s.showGenreChips,
     batteryWarning: s.batteryWarning,
     suggestKnownSpeakers: s.suggestKnownSpeakers,
+    homeSpeakerHost: s.homeSpeakerHost,
     playerBackground: s.playerBackground,
     animatedCoverBackground: s.animatedCoverBackground,
     fitCoverArt: s.fitCoverArt,
@@ -1340,6 +1350,7 @@ const DEFAULTS = {
   showGenreChips: false,
   batteryWarning: true,
   suggestKnownSpeakers: true,
+  homeSpeakerHost: '',
   playerBackground: 'cover' as ScreenBackground,
   animatedCoverBackground: false,
   fitCoverArt: false,
@@ -1701,6 +1712,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setSuggestKnownSpeakers: (suggestKnownSpeakers) => {
     set({ suggestKnownSpeakers });
+    persist(snapshot(get));
+  },
+
+  setHomeSpeakerHost: (homeSpeakerHost) => {
+    set({ homeSpeakerHost });
     persist(snapshot(get));
   },
 
@@ -2100,6 +2116,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           showGenreChips: boolean;
           batteryWarning: boolean;
           suggestKnownSpeakers?: boolean;
+          homeSpeakerHost?: string;
           playerBackground: ScreenBackground;
           animatedCoverBackground?: boolean;
           fitCoverArt: boolean;
@@ -2366,6 +2383,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         }
         if (typeof parsed.suggestKnownSpeakers === 'boolean') {
           set({ suggestKnownSpeakers: parsed.suggestKnownSpeakers });
+        }
+        if (typeof parsed.homeSpeakerHost === 'string') {
+          set({ homeSpeakerHost: parsed.homeSpeakerHost });
         }
         if (typeof parsed.showDiscHeaders === 'boolean') {
           set({ showDiscHeaders: parsed.showDiscHeaders });

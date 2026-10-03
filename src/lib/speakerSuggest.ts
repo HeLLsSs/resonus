@@ -29,11 +29,18 @@ export function shouldSuggest(flags: SuggestFlags): boolean {
 }
 
 /**
- * Among the known speakers that answered, the one played on most recently;
- * null when none did. Two used at the same moment keep the order given.
+ * Which speaker to offer among those that answered: the home speaker when
+ * one is chosen (`homeSpeakerHost`), and nothing else in its place when it
+ * did not answer; otherwise the known one played on most recently. Null when
+ * none fits. Two used at the same moment keep the order given.
  */
-export function pickSpeaker(known: readonly KnownSpeaker[], answering: Iterable<string>): string | null {
+export function pickSpeaker(
+  known: readonly KnownSpeaker[],
+  answering: Iterable<string>,
+  home = '',
+): string | null {
   const heard = new Set(answering);
+  if (home) return heard.has(home) ? home : null;
   let best: KnownSpeaker | null = null;
   for (const speaker of known) {
     if (!heard.has(speaker.host)) continue;

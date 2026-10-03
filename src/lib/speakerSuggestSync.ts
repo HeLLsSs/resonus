@@ -1,7 +1,9 @@
 /**
- * "Continue on <speaker>?": when the music starts on the phone and a LinkPlay
- * speaker played on before answers from the network, a toast offers it, and
- * taking the offer does what picking that speaker in the output sheet does.
+ * "Continue at home?": when the music starts on the phone and a LinkPlay
+ * speaker answers from the network, a toast offers it, and taking the offer
+ * does what picking that speaker in the output sheet does. The speaker is
+ * the home speaker from the settings when one is chosen, whether or not it
+ * was ever played on; otherwise the one played on most recently.
  *
  * Once per speaker per run of the app, so the toast is a suggestion and not
  * a nag; the rules for when to ask are in `lib/speakerSuggest.ts`. Which
@@ -62,9 +64,12 @@ async function playOn(device: LinkPlayDevice): Promise<void> {
 
 async function consider(): Promise<void> {
   if (probing || !shouldSuggest(flags())) return;
+  const home = useSettings.getState().homeSpeakerHost;
   const candidates = useLinkPlay
     .getState()
-    .devices.filter((d) => used[d.host] !== undefined && !suggested.has(d.host));
+    .devices.filter(
+      (d) => (home ? d.host === home : used[d.host] !== undefined) && !suggested.has(d.host),
+    );
   if (candidates.length === 0 || Date.now() - lastProbeAt < PROBE_COOLDOWN_MS) return;
   probing = true;
   lastProbeAt = Date.now();
@@ -74,12 +79,13 @@ async function consider(): Promise<void> {
     const host = pickSpeaker(
       candidates.map((d) => ({ host: d.host, usedAt: used[d.host] ?? 0 })),
       answering,
+      home,
     );
     const device = candidates.find((d) => d.host === host);
     // The probe took a moment: the music may have stopped or moved meanwhile.
     if (!device || !usePlayerStore.getState().isPlaying || !shouldSuggest(flags())) return;
     suggested.add(device.host);
-    useToast.getState().show(tg('Continue on {name}?', { name: device.name }), {
+    useToast.getState().show(tg('Continue at home?'), {
       label: tg('Play on {name}', { name: device.name }),
       run: () => void playOn(device),
     });

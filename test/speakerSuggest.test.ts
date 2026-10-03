@@ -1,5 +1,5 @@
 /**
- * The "Continue on <speaker>?" rules: when to ask, and which speaker.
+ * The "Continue at home?" rules: when to ask, and which speaker.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -63,5 +63,23 @@ describe('pickSpeaker', () => {
       { host: 'b', usedAt: 5 },
     ];
     assert.equal(pickSpeaker(tied, ['b', 'a']), 'a');
+  });
+
+  describe('with a home speaker', () => {
+    it('takes it over one played on more recently', () => {
+      assert.equal(pickSpeaker(known, ['10.0.0.5', '10.0.0.6'], '10.0.0.5'), '10.0.0.5');
+    });
+
+    it('takes it even when never played on', () => {
+      assert.equal(pickSpeaker(known, ['10.0.0.9'], '10.0.0.9'), '10.0.0.9');
+    });
+
+    it('is nothing, not another speaker, when it did not answer', () => {
+      assert.equal(pickSpeaker(known, ['10.0.0.6', '10.0.0.7'], '10.0.0.5'), null);
+    });
+
+    it('falls back to the most recent one when none is chosen', () => {
+      assert.equal(pickSpeaker(known, ['10.0.0.5', '10.0.0.6'], ''), '10.0.0.6');
+    });
   });
 });
