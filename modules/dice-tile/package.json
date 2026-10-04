@@ -1,0 +1,7 @@
+{
+  "name": "dice-tile",
+  "version": "0.0.1",
+  "description": "The \"Die\" tile of the quick settings shade, which rolls the die through the intents API (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

@@ -58,6 +58,7 @@ import {
 } from '@/api/subsonic';
 import { AlbumCardsSkeleton } from '@/components/AlbumCardsSkeleton';
 import { Cover } from '@/components/Cover';
+import { useDiceModeSheet } from '@/components/DiceModeSheet';
 import { EmptyState } from '@/components/EmptyState';
 import { Message } from '@/components/Message';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
@@ -70,13 +71,13 @@ import { columnsFor, useScreenSize } from '@/hooks/useScreenSize';
 import { useT } from '@/i18n';
 import { haptic } from '@/lib/haptics';
 import { listPerf } from '@/lib/listPerf';
-import { accountRefusal, cardTarget, openableShelves, tasteOf } from '@/lib/youtube';
+import { playShuffle } from '@/lib/playShuffle';
+import { accountRefusal, cardTarget, openableShelves } from '@/lib/youtube';
 import { useAuthStore } from '@/store/auth';
 import { currentSong, usePlayerStore } from '@/store/player';
 import { useSettings } from '@/store/settings';
 import { useSongMenu } from '@/store/songMenu';
 import { useToast } from '@/store/toast';
-import { withoutUnplayable } from '@/store/unplayable';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
 
 /** How much of each list is worth asking for. Generous, because one request
@@ -146,6 +147,7 @@ export default function YoutubeScreen() {
   const playQueue = usePlayerStore((s) => s.playQueue);
   const playing = usePlayerStore(currentSong);
   const openSongMenu = useSongMenu((s) => s.open);
+  const openDiceModes = useDiceModeSheet((s) => s.open);
   const [section, setSection] = useState<Section>('foryou');
   const card = wide ? SHELF_CARD_WIDE : SHELF_CARD;
   const columns = columnsFor(width, TILE_IDEAL);
@@ -237,31 +239,16 @@ export default function YoutubeScreen() {
    * The die: everything YouTube knows this account likes, dealt and played.
    *
    * No list to pick from first, as with the library's shuffle: the point of
-   * the button is not having to choose. The liked songs are fetched here if
-   * that chip was never opened, so the roll works from the first screen.
+   * the button is not having to choose. The die's YouTube mode, the same one
+   * the car's YouTube die and the mode picker play; a long press offers the
+   * others.
    */
   async function roll() {
     if (rolling) return;
     setRolling(true);
     try {
-      const likedSongs =
-        liked.data ??
-        (await queryClient.fetchQuery({
-          queryKey: ['youtube', 'me', 'liked'],
-          queryFn: () => youtubeLiked(auth!, LIKED),
-        })) ??
-        [];
-      // Without the tracks the player gave up on this week: a die has no hand
-      // behind it to ask for one of those.
-      const pool = withoutUnplayable(tasteOf(home.data ?? [], likedSongs));
-      if (pool.length === 0) {
-        toast(t('Nothing to shuffle yet'));
-        return;
-      }
       haptic('medium');
-      void playQueue(pool, 0, t('YouTube shuffle'), undefined, { shuffled: true });
-    } catch {
-      toast(t("Couldn't load songs."));
+      await playShuffle(undefined, 'youtube');
     } finally {
       setRolling(false);
     }
@@ -366,6 +353,7 @@ export default function YoutubeScreen() {
               accessibilityLabel={t('YouTube shuffle')}
               disabled={rolling}
               onPress={() => void roll()}
+              onLongPress={() => openDiceModes()}
             >
               {rolling ? (
                 <ActivityIndicator size="small" color={colors.onAccent} />

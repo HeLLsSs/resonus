@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COVER, songCoverUrl } from '@/api/data';
 import { type Song } from '@/api/subsonic';
 import { Cover } from '@/components/Cover';
+import { useDiceModeSheet } from '@/components/DiceModeSheet';
 import { Dialog } from '@/components/Dialog';
 import { useT } from '@/i18n';
 import { haptic } from '@/lib/haptics';
@@ -96,6 +97,7 @@ function BigButton({
 export default function RideScreen() {
   useKeepAwake();
   const t = useT();
+  const openDiceModes = useDiceModeSheet((s) => s.open);
   const router = useRouter();
   const { accent, onAccent } = useTheme();
   const insets = useSafeAreaInsets();
@@ -294,6 +296,8 @@ export default function RideScreen() {
                   haptic('medium');
                   void playShuffle();
                 }}
+                // The modes, in rows a glove can hit.
+                onLongPress={() => openDiceModes({ big: true })}
                 style={({ pressed }) => [styles.shortcut, pressed && { opacity: 0.7 }]}
               >
                 <Ionicons name="dice" size={36} color={WHITE} />

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 
 import { isLanguage, LANGUAGE_NAMES, type Language } from '@/i18n/languages';
 import { type AlarmConfig, DEFAULT_ALARM, parseAlarm, syncAlarm } from '@/lib/alarm';
+import { type DiceMode, isDiceMode } from '@/lib/diceModes';
 import { type TabSegment } from '@/lib/tabOrigin';
 import { hashKey } from '@/lib/localLibrary';
 import { getSystemAccent } from '@/lib/materialYou';
@@ -751,6 +752,12 @@ interface SettingsState {
   /** Crossfade seconds between songs (0 = disabled). */
   crossfadeSec: number;
   /**
+   * Crossfade seconds used instead of `crossfadeSec` while the queue is a mix
+   * (a die, "For you"): a longer blend, the way a DJ runs one track into the
+   * next. 0 leaves mixes on the normal crossfade.
+   */
+  mixCrossfadeSec: number;
+  /**
    * The two scrobble rules, in percent of the song and in seconds, each 0 when
    * it is off (see `scrobbleThresholdSec`). Both off means nothing is ever
    * scrobbled, which is a thing somebody may well want and the reason neither
@@ -820,6 +827,11 @@ interface SettingsState {
    */
   exclusivePlayback: boolean;
   /**
+   * A notification when YouTube can no longer be reached through the proxy,
+   * and another when it comes back (see `lib/outageAlert.ts`). On by default.
+   */
+  youtubeOutageAlert: boolean;
+  /**
    * The YouTube liked songs handed to the proxy to file in the library on
    * their own, a few at a time and at most every six hours (see
    * `lib/likedImport.ts`). Off unless turned on.
@@ -877,6 +889,13 @@ interface SettingsState {
    * (`lib/nightSleep.ts`).
    */
   nightSleepSuggest: boolean;
+  /** The Sunday evening report and the week's playlist (`lib/weeklyReport.ts`). */
+  weeklyReport: boolean;
+  /**
+   * What the die plays when nothing says otherwise (`lib/diceModes.ts`): the
+   * Home chip, the widget, the car's "Shuffle everything", the shortcuts.
+   */
+  diceMode: DiceMode;
   /**
    * What to do when the home speaker answers on the network while the music
    * plays on the phone: nothing, offer it, or move the music to it, and back
@@ -1068,6 +1087,7 @@ interface SettingsState {
   setNavidromeIdRepair: (value: boolean) => void;
   setBackupToProxy: (value: boolean) => void;
   setCrossfadeSec: (value: number) => void;
+  setMixCrossfadeSec: (value: number) => void;
   setScrobblePercent: (value: number) => void;
   setScrobbleSeconds: (value: number) => void;
   resetScrobbleRules: () => void;
@@ -1082,6 +1102,7 @@ interface SettingsState {
   setHapticsEnabled: (value: boolean) => void;
   setNavifind: (value: boolean) => void;
   setExclusivePlayback: (value: boolean) => void;
+  setYoutubeOutageAlert: (value: boolean) => void;
   setAutoImportLiked: (value: boolean) => void;
   /** Both at once, empty to forget: they are only ever set from a token that
    *  ListenBrainz has just said whose it is. */
@@ -1096,6 +1117,8 @@ interface SettingsState {
   setShowGenreChips: (value: boolean) => void;
   setBatteryWarning: (value: boolean) => void;
   setNightSleepSuggest: (value: boolean) => void;
+  setWeeklyReport: (value: boolean) => void;
+  setDiceMode: (value: DiceMode) => void;
   setHomeHandoff: (value: HandoffMode) => void;
   setHomeSpeakerHost: (value: string) => void;
   setAlarm: (value: AlarmConfig) => void;
@@ -1218,6 +1241,7 @@ function snapshot(get: () => SettingsState) {
     navidromeIdRepair: s.navidromeIdRepair,
     backupToProxy: s.backupToProxy,
     crossfadeSec: s.crossfadeSec,
+    mixCrossfadeSec: s.mixCrossfadeSec,
     scrobblePercent: s.scrobblePercent,
     scrobbleSeconds: s.scrobbleSeconds,
     preloadUpcoming: s.preloadUpcoming,
@@ -1231,6 +1255,7 @@ function snapshot(get: () => SettingsState) {
     hapticsEnabled: s.hapticsEnabled,
     navifind: s.navifind,
     exclusivePlayback: s.exclusivePlayback,
+    youtubeOutageAlert: s.youtubeOutageAlert,
     autoImportLiked: s.autoImportLiked,
     listenBrainzToken: s.listenBrainzToken,
     listenBrainzUser: s.listenBrainzUser,
@@ -1244,6 +1269,8 @@ function snapshot(get: () => SettingsState) {
     showGenreChips: s.showGenreChips,
     batteryWarning: s.batteryWarning,
     nightSleepSuggest: s.nightSleepSuggest,
+    weeklyReport: s.weeklyReport,
+    diceMode: s.diceMode,
     homeHandoff: s.homeHandoff,
     homeSpeakerHost: s.homeSpeakerHost,
     alarm: s.alarm,
@@ -1331,6 +1358,7 @@ const DEFAULTS = {
   playCacheGB: 2,
   searchEveryServer: false,
   exclusivePlayback: true,
+  youtubeOutageAlert: true,
   autoImportLiked: false,
   language: 'en' as Language,
   showAudioQuality: false,
@@ -1356,6 +1384,7 @@ const DEFAULTS = {
   navidromeIdRepair: false,
   backupToProxy: true,
   crossfadeSec: 0,
+  mixCrossfadeSec: 6,
   scrobblePercent: SCROBBLE_PERCENT_DEFAULT,
   scrobbleSeconds: SCROBBLE_SECONDS_DEFAULT,
   preloadUpcoming: false,
@@ -1382,6 +1411,8 @@ const DEFAULTS = {
   showGenreChips: false,
   batteryWarning: true,
   nightSleepSuggest: true,
+  weeklyReport: true,
+  diceMode: 'mix' as DiceMode,
   homeHandoff: 'ask' as HandoffMode,
   homeSpeakerHost: '',
   alarm: DEFAULT_ALARM,
@@ -1622,6 +1653,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
     persist(snapshot(get));
   },
 
+  setMixCrossfadeSec: (mixCrossfadeSec) => {
+    set({ mixCrossfadeSec });
+    persist(snapshot(get));
+  },
+
   setScrobblePercent: (scrobblePercent) => {
     set({ scrobblePercent });
     persist(snapshot(get));
@@ -1704,6 +1740,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
     persist(snapshot(get));
   },
 
+  setYoutubeOutageAlert: (youtubeOutageAlert) => {
+    set({ youtubeOutageAlert });
+    persist(snapshot(get));
+  },
+
   setAutoImportLiked: (autoImportLiked) => {
     set({ autoImportLiked });
     persist(snapshot(get));
@@ -1756,6 +1797,16 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setNightSleepSuggest: (nightSleepSuggest) => {
     set({ nightSleepSuggest });
+    persist(snapshot(get));
+  },
+
+  setWeeklyReport: (weeklyReport) => {
+    set({ weeklyReport });
+    persist(snapshot(get));
+  },
+
+  setDiceMode: (diceMode) => {
+    set({ diceMode });
     persist(snapshot(get));
   },
 
@@ -2145,6 +2196,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           navidromeIdRepair?: boolean;
           backupToProxy?: boolean;
           crossfadeSec: number;
+          mixCrossfadeSec?: number;
           scrobblePercent: number;
           scrobbleSeconds: number;
           preloadUpcoming: boolean;
@@ -2158,6 +2210,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           hapticsEnabled: boolean;
           navifind: boolean;
           exclusivePlayback?: boolean;
+          youtubeOutageAlert?: boolean;
           autoImportLiked?: boolean;
           listenBrainzToken?: string;
           listenBrainzUser?: string;
@@ -2173,7 +2226,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
           showGenreChips: boolean;
           batteryWarning: boolean;
           nightSleepSuggest: boolean;
+          weeklyReport?: boolean;
           suggestKnownSpeakers?: boolean;
+          diceMode?: unknown;
           homeHandoff?: unknown;
           homeSpeakerHost?: string;
           alarm?: unknown;
@@ -2339,6 +2394,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         if (typeof parsed.crossfadeSec === 'number' && parsed.crossfadeSec >= 0) {
           set({ crossfadeSec: parsed.crossfadeSec });
         }
+        if (typeof parsed.mixCrossfadeSec === 'number' && parsed.mixCrossfadeSec >= 0) {
+          set({ mixCrossfadeSec: parsed.mixCrossfadeSec });
+        }
         // Clamped rather than only checked: these two decide whether a listen
         // is reported at all, and a file with a percentage of 4000 in it would
         // otherwise turn scrobbling off in a way nothing on screen explains.
@@ -2449,11 +2507,20 @@ export const useSettings = create<SettingsState>((set, get) => ({
         if (typeof parsed.exclusivePlayback === 'boolean') {
           set({ exclusivePlayback: parsed.exclusivePlayback });
         }
+        if (typeof parsed.youtubeOutageAlert === 'boolean') {
+          set({ youtubeOutageAlert: parsed.youtubeOutageAlert });
+        }
         if (typeof parsed.batteryWarning === 'boolean') {
           set({ batteryWarning: parsed.batteryWarning });
         }
         if (typeof parsed.nightSleepSuggest === 'boolean') {
           set({ nightSleepSuggest: parsed.nightSleepSuggest });
+        }
+        if (typeof parsed.weeklyReport === 'boolean') {
+          set({ weeklyReport: parsed.weeklyReport });
+        }
+        if (isDiceMode(parsed.diceMode)) {
+          set({ diceMode: parsed.diceMode });
         }
         // The switch it replaced: off stays off, on was the offer.
         if (isHandoffMode(parsed.homeHandoff)) {

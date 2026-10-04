@@ -250,8 +250,8 @@ internal object HomeWidgetRenderer {
     )
 
   /**
-   * The dice: the intents API's `play_random`, the library mixed with
-   * YouTube's picks, as Tasker would ask for it. Its receiver hands the
+   * The dice: the intents API's `play_random`, in the die's default mode
+   * (Settings › Playback), as Tasker would ask for it. Its receiver hands the
    * command to JS, or starts JS with no screen when the app is not running,
    * so this receiver has nothing of its own to do for it.
    */

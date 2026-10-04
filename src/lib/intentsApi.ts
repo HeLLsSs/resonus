@@ -19,6 +19,7 @@ import { getAlbum, getArtist, getPlaylist, getSongsByIds, getStarred, getTopSong
 import { type Song } from '@/api/subsonic';
 import { tg } from '@/i18n';
 import { ALARM_MIN_LEVEL, alarmRampLevel } from '@/lib/alarm';
+import { isDiceMode } from '@/lib/diceModes';
 import { publishHaState } from '@/lib/haBridge';
 import { playShuffle } from '@/lib/playShuffle';
 import { isRepeatMode } from '@/lib/playerMath';
@@ -226,9 +227,13 @@ async function run(command: IntentCommand): Promise<void> {
       await player.playQueue(songs, 0, tg('Favorites'), '/favorites', { shuffled: flag(command, 'shuffle') });
       return;
     }
-    case 'play_random':
-      await playShuffle();
+    case 'play_random': {
+      // The die's mode when one is named and known; the default otherwise,
+      // which is what the widget and the quick settings tile send.
+      const mode = text(command, 'mode');
+      await playShuffle(undefined, isDiceMode(mode) ? mode : undefined);
       return;
+    }
     case 'ride_on':
     case 'ride_off': {
       // Ride mode from a tag on the bike or a Tasker profile, the way the

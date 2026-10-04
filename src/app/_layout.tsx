@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { AppStartupTab } from '@/components/AppStartupTab';
 import { ArtistPickerSheet } from '@/components/ArtistPickerSheet';
+import { DiceModeSheet } from '@/components/DiceModeSheet';
 import { BatteryWarning } from '@/components/BatteryWarning';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { GlobalMiniPlayer } from '@/components/GlobalMiniPlayer';
@@ -20,6 +21,7 @@ import { GlobalTabBar } from '@/components/GlobalTabBar';
 import { MediaMenuSheet } from '@/components/MediaMenuSheet';
 import { GlobalPlaylistPicker } from '@/components/PlaylistPickerSheet';
 import { GlobalShareSheet } from '@/components/ShareSheet';
+import { SharedLinkSheet } from '@/components/SharedLinkSheet';
 import { SongInfoSheet } from '@/components/SongInfoSheet';
 import { SongMenuSheet } from '@/components/SongMenuSheet';
 import { Toast } from '@/components/Toast';
@@ -274,8 +276,10 @@ export default function RootLayout() {
             {auth || offline ? <SongInfoSheet /> : null}
             {auth || offline ? <ArtistPickerSheet /> : null}
             {auth || offline ? <MediaMenuSheet /> : null}
+            {auth || offline ? <DiceModeSheet /> : null}
             {auth || offline ? <GlobalPlaylistPicker /> : null}
             {auth || offline ? <GlobalShareSheet /> : null}
+            {auth || offline ? <SharedLinkSheet /> : null}
             {auth || offline ? <BatteryWarning /> : null}
             {/* Not behind the profile guard on a whim: the check reaches
                 GitHub, not the music server, and somebody stuck on the login

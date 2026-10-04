@@ -12,11 +12,11 @@
  * ordinary screen with `?play=1`, and the screen starts playing once its songs
  * have loaded, which is the one place that knows when that is.
  *
- * `resonuls://play/random`, `play/favorites`, `play/foryou` and `play/resume` are
- * the launcher
- * shortcuts (plugins/withShortcuts.js). Those are actions with no screen of
- * their own: the link lands on the player, and the action runs once the
- * stores are back.
+ * `resonuls://play/random`, `play/dice`, `play/home`, `play/favorites`,
+ * `play/foryou` and `play/resume` are the launcher shortcuts
+ * (plugins/withShortcuts.js), which Google Assistant opens by name too.
+ * Those are actions with no screen of their own: the link lands on the
+ * player, and the action runs once the stores are back.
  */
 import { type StoreApi } from 'zustand';
 
@@ -24,7 +24,7 @@ import { type StoreApi } from 'zustand';
 // `resonuls://play/random` is the whole link, `play` being read as its host,
 // and a path alone comes from the router's own handling.
 const PLAY_LINK = /^(?:[a-z]+:\/\/)?\/?play\/(album|playlist|artist)\/([^/?#]+)/;
-const ACTION_LINK = /^(?:[a-z]+:\/\/)?\/?play\/(random|favorites|resume|foryou)(?:[/?#]|$)/;
+const ACTION_LINK = /^(?:[a-z]+:\/\/)?\/?play\/(random|dice|home|favorites|resume|foryou)(?:[/?#]|$)/;
 // `resonuls://jam/ABC123`, or the proxy's own `https://<host>/jam/ABC123`
 // (the address on the QR code, declared as an app link in app.json): the Jam
 // screen, which joins that session on arrival.
@@ -78,9 +78,14 @@ async function runAction(name: string, initial: boolean): Promise<void> {
   await waitFor(useAuthStore, (s) => !s.hydrating);
   if (initial) await waitFor(usePlayerStore, (s) => s.queue.length > 0, QUEUE_WAIT_MS);
   const player = usePlayerStore.getState();
-  if (name === 'random') {
+  if (name === 'random' || name === 'dice') {
+    // "Shuffle all" is the library, as its label says; the die is whatever
+    // mode is the default.
     const { playShuffle } = await import('@/lib/playShuffle');
-    await playShuffle();
+    await playShuffle(undefined, name === 'random' ? 'library' : undefined);
+  } else if (name === 'home') {
+    const { playAtHome } = await import('@/lib/speakerSuggestSync');
+    await playAtHome();
   } else if (name === 'foryou') {
     // The mix built from what this phone plays, gathered now: there is nothing
     // saved to start, and nothing about it that could have been prepared.

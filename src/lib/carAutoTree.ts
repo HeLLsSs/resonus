@@ -32,8 +32,9 @@ import { bump } from '@/lib/perfLog';
 import { playForYou } from '@/lib/forYouMix';
 import { getPlaylists as getLocalPlaylists } from '@/lib/localQueries';
 import { navifindActive } from '@/lib/navifind';
-import { playShuffle, youtubeJoinsShuffle } from '@/lib/playShuffle';
-import { cardTarget, tasteOf } from '@/lib/youtube';
+import { DICE_MODES, type DiceMode, isDiceMode } from '@/lib/diceModes';
+import { diceModeHint, diceModeName, playShuffle, youtubeJoinsShuffle } from '@/lib/playShuffle';
+import { cardTarget } from '@/lib/youtube';
 import { queryClient } from '@/lib/query';
 import { profileScopeId, useAuthStore } from '@/store/auth';
 import { anyDownloads, getDownloadShelf, useDownloads } from '@/store/downloads';
@@ -446,15 +447,33 @@ const YOUTUBE_DICE_ID = 'yt:dice';
  *  the phone, for the stretch of road with no signal. */
 const ROAD_ID = 'road:queue';
 
+/** The folder of the die's modes, under Home's die. */
+const DICE_MODES_ID = 'dice:modes';
+/** A mode of the die played once: `dice:mix`, `dice:discover`… */
+const DICE_PREFIX = 'dice:';
+
 /** The die of Home. Also what a shuffle asked for by name resolves to. */
 function shuffleRow(): CarNode {
+  const mode = useSettings.getState().diceMode;
   return {
     id: SHUFFLE_ID,
     title: tg('Shuffle everything'),
-    // Said when YouTube is dealt in, since "everything" then means more
-    // than the library (`playShuffle`).
-    subtitle: youtubeJoinsShuffle() ? tg('Library and YouTube') : undefined,
+    // The default mode, said: "everything" means something else in each
+    // (`playShuffle`). The mix with no YouTube to deal in is the library
+    // alone, which needs no saying.
+    subtitle: mode === 'mix' && !youtubeJoinsShuffle() ? undefined : diceModeName(mode),
     artworkUrl: icon('ic_car_shuffle'),
+    playable: true,
+  };
+}
+
+/** A mode of the die, played once, whatever the default. */
+function diceModeRow(mode: DiceMode): CarNode {
+  return {
+    id: `${DICE_PREFIX}${mode}`,
+    title: diceModeName(mode),
+    subtitle: diceModeHint(mode),
+    artworkUrl: icon('ic_car_dice'),
     playable: true,
   };
 }
@@ -1218,6 +1237,7 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
           playable: true,
         },
         shuffleRow(),
+        drawer(DICE_MODES_ID, tg('Die modes'), 'list', 'ic_car_dice'),
         {
           id: SHUFFLE_FAVORITES_ID,
           title: tg('Favorites'),
@@ -1244,6 +1264,7 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
     { heading: tg('Recently added'), nodes: newest.map((a) => albumNode(into, a)), max: HOME_RECENT_ALBUMS },
     { heading: tg('Pinned'), nodes: pinnedPlaylists(playlists).map((p) => playlistNode(into, p)), max: HOME_PINNED },
   ]);
+  tree[DICE_MODES_ID] = DICE_MODES.map(diceModeRow);
 
   // Marked for what it is: the lists, and none of the songs inside them. The
   // native side lays it over the tree it already has rather than taking it for
@@ -1415,7 +1436,14 @@ export async function carSearch(query: string, local: CarNode[]): Promise<CarNod
   // carries the word in its title (`spokenShuffle`). YouTube's with no
   // account to read is the library's die instead.
   const die = spokenShuffle(query);
-  const lead = die === 'youtube' && youtubeReachable() ? youtubeDiceRow() : die ? shuffleRow() : null;
+  const lead =
+    die === 'discover'
+      ? diceModeRow('discover')
+      : die === 'youtube' && youtubeReachable()
+        ? youtubeDiceRow()
+        : die
+          ? shuffleRow()
+          : null;
   return lead ? [lead, ...rows.filter((n) => n.id !== lead.id)] : rows;
 }
 
@@ -1530,6 +1558,7 @@ async function playSpoken(query: string): Promise<void> {
   // whatever song carries them in its title. YouTube's die asked for with no
   // account to read is the library's instead, which beats silence.
   const die = spokenShuffle(query);
+  if (die === 'discover') return handleBrowsePlay(`${DICE_PREFIX}discover`);
   if (die) return handleBrowsePlay(die === 'youtube' && youtubeReachable() ? YOUTUBE_DICE_ID : SHUFFLE_ID);
   const store = usePlayerStore.getState();
   const said = fold(query);
@@ -1610,18 +1639,17 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
   }
 
   // The YouTube tab's die: everything the account's YouTube says it likes,
-  // the home page's own tracks and the liked songs, dealt and played.
+  // the home page's own tracks and the liked songs, dealt and played. The
+  // die's YouTube mode, whatever the default.
   if (mediaId === YOUTUBE_DICE_ID) {
-    const [shelves, liked] = await Promise.all([
-      data.youtubeHomeShelves().catch(() => []),
-      data.youtubeLikedSongs(YOUTUBE_TRACKS).catch(() => [] as Song[]),
-    ]);
-    const pool = tasteOf(shelves, liked);
-    if (pool.length === 0) {
-      bump('car · youtube dice resolved to nothing');
-      return;
-    }
-    await store.playQueue(pool, 0, tg('YouTube shuffle'), undefined, { shuffled: true });
+    await playShuffle(undefined, 'youtube');
+    return;
+  }
+
+  // A mode of the die picked from its folder, played this once.
+  const diceMode = mediaId.startsWith(DICE_PREFIX) ? mediaId.slice(DICE_PREFIX.length) : null;
+  if (isDiceMode(diceMode)) {
+    await playShuffle(undefined, diceMode);
     return;
   }
 

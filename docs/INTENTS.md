@@ -30,7 +30,7 @@ or as text (`--es position 90`, `--es on true`).
 | `play_song`     | `id`                                              | Plays that one song.                                      |
 | `play_search`   | `query`                                           | Plays the first song matching the search, the rest queued. |
 | `play_favorites`| optional `shuffle` boolean                        | Plays the starred songs.                                  |
-| `play_random`   |                                                   | Plays random songs from the library.                      |
+| `play_random`   | optional `mode`: `mix`, `library`, `youtube` or `discover` | Rolls the die: that mode, or the default one from Settings › Quality & playback. |
 | `publish_state` |                                                   | Pushes what is playing to Home Assistant (docs/HOME-ASSISTANT.md). |
 | `output`        | `id`: `phone`, or a Home Assistant `media_player` entity id | Moves the music to this phone, or to that player of the house's. |
 | `sleep_timer`   | `minutes` (0 cancels, at most 600)                 | Starts or cancels the sleep timer.                        |
@@ -70,6 +70,7 @@ adb shell am broadcast -p $PKG -a $A --es command play_song --es id 5c4b3a2d1e0f
 adb shell am broadcast -p $PKG -a $A --es command play_search --es query "blue monday"
 adb shell am broadcast -p $PKG -a $A --es command play_favorites
 adb shell am broadcast -p $PKG -a $A --es command play_random
+adb shell am broadcast -p $PKG -a $A --es command play_random --es mode discover
 adb shell am broadcast -p $PKG -a $A --es command publish_state
 adb shell am broadcast -p $PKG -a $A --es command output --es id media_player.kitchen
 adb shell am broadcast -p $PKG -a $A --es command output --es id phone
@@ -98,9 +99,16 @@ alternative for a tag is a plain URL record `resonuls://play/album/<id>`, which
 needs no automation app at all. The same links take `playlist/<id>` and
 `artist/<id>`, and three that need no id: `resonuls://play/foryou` starts a mix built from what this phone plays,
 `resonuls://play/random` shuffles the
-whole library, `resonuls://play/favorites` shuffles the starred songs and
+whole library, `resonuls://play/dice` rolls the die in its default mode,
+`resonuls://play/home` moves the music to the home speaker,
+`resonuls://play/favorites` shuffles the starred songs and
 `resonuls://play/resume` picks up the queue, or the last one saved when the
-queue is empty. These three are also the app's launcher shortcuts.
+queue is empty. These are also the app's launcher shortcuts
+(`plugins/withShortcuts.js`), which is what Google Assistant opens for "Ok
+Google, open Resonuls Die" or "Ok Google, open Resonuls At home".
+
+The quick settings tile **Die** sends `play_random` without a mode, like the
+home-screen widget's die: the default mode, with the app closed or not.
 
 ## When the app is not running
 

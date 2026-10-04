@@ -24,8 +24,10 @@ import {
   SwitchList,
 } from '@/components/SettingsUI';
 import { useLocalProfile } from '@/hooks/useLocalProfile';
+import { DICE_MODES } from '@/lib/diceModes';
 import { normalizeOutputDisplayName } from '@/lib/format';
 import { linkPlayAvailable } from '@/lib/linkplay';
+import { diceModeName } from '@/lib/playShuffle';
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
 import { useLinkPlay } from '@/store/linkplay';
@@ -60,6 +62,8 @@ export default function PlaybackSettings() {
   const setAutoplaySimilar = useSettings((s) => s.setAutoplaySimilar);
   const crossfadeSec = useSettings((s) => s.crossfadeSec);
   const setCrossfadeSec = useSettings((s) => s.setCrossfadeSec);
+  const mixCrossfadeSec = useSettings((s) => s.mixCrossfadeSec);
+  const setMixCrossfadeSec = useSettings((s) => s.setMixCrossfadeSec);
   const preloadUpcoming = useSettings((s) => s.preloadUpcoming);
   const preferDownloads = useSettings((s) => s.preferDownloads);
   const setPreferDownloads = useSettings((s) => s.setPreferDownloads);
@@ -80,6 +84,8 @@ export default function PlaybackSettings() {
   const setHomeSpeakerHost = useSettings((s) => s.setHomeSpeakerHost);
   const lpDevices = useLinkPlay((s) => s.devices);
   const skipSilence = useSettings((s) => s.skipSilence);
+  const diceMode = useSettings((s) => s.diceMode);
+  const setDiceMode = useSettings((s) => s.setDiceMode);
   const setSkipSilence = useSettings((s) => s.setSkipSilence);
 
   // Only "Original" is a word; the rest are a number and a unit that read the
@@ -211,6 +217,16 @@ export default function PlaybackSettings() {
           formatValue={(v) => (v === 0 ? t('No') : `${v} s`)}
           onChange={setCrossfadeSec}
         />
+        {/* 6 is the default, so it is offered between 4 and 8. */}
+        <SelectList
+          label={t('Mix transitions')}
+          description={t(
+            'A longer blend, DJ style, in a die or "For you" mix; not into a radio or a song under 30 s. Volumes only: the beats are not matched.',
+          )}
+          options={[0, 4, 6, 8, 12].map((v) => ({ value: v, label: v === 0 ? t('Same as crossfade') : `${v} s` }))}
+          value={mixCrossfadeSec}
+          onChange={setMixCrossfadeSec}
+        />
         <SelectList
           label={t('Normalize volume')}
           description={t("Evens out loudness between songs using your files' ReplayGain tags.")}
@@ -313,6 +329,15 @@ export default function PlaybackSettings() {
               onChange: setBatteryWarning,
             },
           ]}
+        />
+        <SelectList
+          label={t('Die')}
+          description={t(
+            'What the die plays on a tap: the Shuffle chip, the widget, the car. A long press on a die picks another mode once.',
+          )}
+          options={DICE_MODES.map((mode) => ({ value: mode, label: diceModeName(mode) }))}
+          value={diceMode}
+          onChange={setDiceMode}
         />
         {/* Only where the phone can reach a speaker: a browser with no proxy
             has nothing to offer. */}

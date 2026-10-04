@@ -136,6 +136,30 @@ async function consider(trigger: HandoffTrigger): Promise<void> {
   }
 }
 
+/**
+ * The music to the home speaker now, the way taking the "Continue at home?"
+ * offer does: the home speaker from the settings, or the one played on last.
+ * For the "At home" launcher shortcut, which Google Assistant opens by name.
+ * A speaker not seen on the network yet this run is asked for directly.
+ */
+export async function playAtHome(): Promise<void> {
+  const last = Object.entries(used).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const host = useSettings.getState().homeSpeakerHost || last;
+  const device =
+    host && linkPlayAvailable()
+      ? (useLinkPlay.getState().devices.find((d) => d.host === host) ??
+        (await Promise.race([
+          describe(host),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), PROBE_MS)),
+        ])))
+      : null;
+  if (!device) {
+    useToast.getState().show(tg('No home speaker found'));
+    return;
+  }
+  await playOn(device);
+}
+
 function leaving(): boolean {
   const home = useSettings.getState().homeSpeakerHost;
   const { host } = useLinkPlay.getState();

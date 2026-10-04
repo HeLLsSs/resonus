@@ -33,6 +33,7 @@ import { PlaylistCard } from '@/components/PlaylistCard';
 import { AlbumCardsSkeleton } from '@/components/AlbumCardsSkeleton';
 import { ArtistCard } from '@/components/ArtistCard';
 import { Cover } from '@/components/Cover';
+import { useDiceModeSheet } from '@/components/DiceModeSheet';
 import { FavoritesArt } from '@/components/FavoritesArt';
 import { Message } from '@/components/Message';
 import { MixesShelf } from '@/components/MixesShelf';
@@ -623,6 +624,7 @@ function HomeChips({ offline }: { offline: boolean }) {
   // The shuffle one takes whatever the server returns: without this, you tap
   // and nothing happens for half a second and it feels broken.
   const [shuffling, setShuffling] = useState(false);
+  const openDiceModes = useDiceModeSheet((s) => s.open);
 
   async function onShuffle() {
     if (shuffling) return;
@@ -655,6 +657,7 @@ function HomeChips({ offline }: { offline: boolean }) {
               style={styles.chip}
               accessibilityRole="button"
               onPress={onShuffle}
+              onLongPress={() => openDiceModes()}
             >
               {/* The spinner stays even with the icons off: it is the only
                   thing saying the tap did something while the server picks the

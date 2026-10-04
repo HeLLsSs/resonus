@@ -187,18 +187,28 @@ const SPOKEN_FILLER = new Set([
 /** The die, in either language. */
 const SHUFFLE_WORDS = new Set(['shuffle', 'aleatoire', 'random', 'hasard', 'melange']);
 
+/** The die's discovery mode, in either language. */
+const DISCOVER_WORDS = new Set(['discover', 'discovery', 'decouverte', 'decouvertes', 'nouveaute', 'nouveautes']);
+
 /**
  * Whether what was said names a die rather than a thing to find: "shuffle",
  * "lecture aléatoire", "YouTube shuffle", "aléatoire YouTube". A search of the
  * library would answer those with whatever song has the word in its title,
  * which is not what anybody asking for a shuffle means. Words left over that
  * are neither the die nor YouTube ("shuffle Radiohead") are a request of
- * their own and go to the search as before.
+ * their own and go to the search as before. "Discover", "mode découverte",
+ * "nouveautés" name the die's discovery mode, with or without the die.
  */
-export function spokenShuffle(query: string): 'youtube' | 'library' | null {
+export function spokenShuffle(query: string): 'youtube' | 'library' | 'discover' | null {
   const words = fold(query)
     .split(' ')
     .filter((w) => w && !SPOKEN_FILLER.has(w));
+  if (
+    words.some((w) => DISCOVER_WORDS.has(w)) &&
+    words.every((w) => DISCOVER_WORDS.has(w) || SHUFFLE_WORDS.has(w))
+  ) {
+    return 'discover';
+  }
   if (!words.some((w) => SHUFFLE_WORDS.has(w))) return null;
   if (!words.every((w) => SHUFFLE_WORDS.has(w) || w === 'youtube')) return null;
   return words.includes('youtube') ? 'youtube' : 'library';

@@ -175,6 +175,18 @@ describe('spokenShuffle', () => {
     }
   });
 
+  it("hears the die's discovery mode, with or without the die", () => {
+    for (const said of ['discover', 'Mode découverte', 'nouveautés', 'aléatoire découverte', 'play discover']) {
+      assert.equal(spokenShuffle(said), 'discover', said);
+    }
+  });
+
+  it('leaves a discovery of something named to the search', () => {
+    for (const said of ['discover Radiohead', 'nouveautés jazz', 'YouTube découverte']) {
+      assert.equal(spokenShuffle(said), null, said);
+    }
+  });
+
   it('leaves a shuffle of something named, and a thing merely called shuffle, to the search', () => {
     for (const said of ['shuffle Radiohead', 'Shuffle Along', 'youtube', 'Moon River', '']) {
       assert.equal(spokenShuffle(said), null, said);

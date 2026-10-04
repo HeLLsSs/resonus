@@ -45,6 +45,7 @@ import { queryClient } from '@/lib/query';
 import { waitFor, whenProfileReady } from '@/lib/storeWait';
 import { applyTransport } from '@/lib/transport';
 import { useAuthStore } from '@/store/auth';
+import { useSettings } from '@/store/settings';
 import { useDownloads } from '@/store/downloads';
 import { useLastPlayed } from '@/store/lastPlayed';
 import { usePins } from '@/store/pins';
@@ -250,6 +251,10 @@ export function startCarAutoSync(): void {
   // replaced only then, not while a download is on its way.
   useDownloads.subscribe((state, prev) => {
     if (state.files !== prev.files) rebuild(false);
+  });
+  // "Shuffle everything" names the die's default mode under it.
+  useSettings.subscribe((state, prev) => {
+    if (state.diceMode !== prev.diceMode) rebuild(false);
   });
   // Plugging into a car is the one moment the tree is certain to be needed,
   // and the wait was being counted from the launch: forty five seconds of
