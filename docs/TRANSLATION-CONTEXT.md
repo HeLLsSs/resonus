@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1379 of them.
+Every string the app can show, under the screen it shows up on. 1399 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -407,6 +407,13 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `{n} liked songs sent to Navifind for the library` |  |
 | `1 liked song sent to Navifind for the library` |  |
+
+## in nightSleep
+
+| String | What it is |
+| --- | --- |
+| `Late night: stop in 30 minutes?` |  |
+| `Sleep in 30 min` |  |
 
 ## in playbackLock
 
@@ -905,6 +912,7 @@ you are actually typing into, which is easier than reading it here.
 | `App version` |  |
 | `Backup & restore` |  |
 | `Backup restored` |  |
+| `Couldn't reach the server` |  |
 | `Couldn't read the file` |  |
 | `Couldn't write the backup` |  |
 | `Created` |  |
@@ -912,7 +920,14 @@ you are actually typing into, which is easier than reading it here.
 | `Export a backup` |  |
 | `In this file` |  |
 | `Include tokens and proxy headers` |  |
+| `Keep my settings on the server` |  |
+| `Last saved` |  |
+| `Navifind has a copy of your settings saved on {date}. Restoring it replaces the settings on this phone.` |  |
+| `Navifind has a copy of your settings. Restoring it replaces the settings on this phone.` |  |
+| `Navifind has no copy of your settings yet` |  |
 | `New` |  |
+| `Not now` |  |
+| `On the Navifind server` |  |
 | `On, the ListenBrainz token and the custom headers of each profile go into the file, a proxy secret set as a header among them. Off, both are left out and have to be entered again.` |  |
 | `Optional. Without one the file is saved as plain JSON: keep it somewhere private.` |  |
 | `Passphrase` |  |
@@ -923,10 +938,14 @@ you are actually typing into, which is easier than reading it here.
 | `Profiles already on this phone are left as they are: a file can only add new ones. Settings in the file replace the ones here. After restoring, sign in to each new profile from the profile list.` |  |
 | `Restore` | Restore settings to their defaults |
 | `Restore from a file` |  |
+| `Restore from the server` |  |
 | `Restore this backup` |  |
+| `Restore your settings from the server?` |  |
 | `Restored` |  |
 | `Restoring…` |  |
+| `Saved on Navifind 30 seconds after each change, so a reinstall finds them again. Passwords, tokens and proxy headers are never sent.` |  |
 | `Settings entries written` |  |
+| `Settings saved on Navifind replace the ones on this phone.` |  |
 | `Sharing is not available on this device` |  |
 | `That file is not a backup` |  |
 | `The file is encrypted with it; you will need it to restore.` |  |
@@ -1389,6 +1408,7 @@ you are actually typing into, which is easier than reading it here.
 | `Streaming codec (Wi-Fi)` |  |
 | `Streaming quality (mobile data)` |  |
 | `Streaming quality (Wi-Fi)` |  |
+| `Suggest the sleep timer at night` |  |
 | `Switch on its own` | One of the values of “When you get home” |
 | `The screen never turns off while the app is visible.` | The line under “Keep screen on”, explaining it |
 | `The speaker couldn't play this song` |  |
@@ -1397,6 +1417,7 @@ you are actually typing into, which is easier than reading it here.
 | `Warn about battery optimization` |  |
 | `What to do when the music plays on the phone and the home speaker is on the network. Switching on its own, the music also comes back to the phone when you leave the Wi-Fi.` |  |
 | `When a song counts as played.` | Under the `Scrobbling` row, saying what the screen it opens is about |
+| `When the music starts between 11 pm and 5 am, offer to stop it in 30 minutes, once a night.` | The line under “Suggest the sleep timer at night”, explaining it |
 | `When you get home` |  |
 | `When you open the app with nothing playing, take the queue another player left on the server if it is newer than this one. The ⋯ of the queue screen asks for it at any time.` |  |
 
@@ -1789,10 +1810,13 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `{n} plays` |  |
+| `{percent}% of listens` |  |
 | `1 play` |  |
 | `All time` |  |
 | `By day and hour` |  |
 | `By hour of the day` |  |
+| `Discovered through YouTube` |  |
+| `Filed into the library` |  |
 | `Listening stats` |  |
 | `Listens` |  |
 | `No listens yet` |  |
@@ -1805,6 +1829,7 @@ you are actually typing into, which is easier than reading it here.
 | `Top albums` |  |
 | `Top artists` |  |
 | `Top songs` |  |
+| `YouTube` |  |
 
 ## Webdav
 

@@ -1,4 +1,16 @@
 {
+  "Restore your settings from the server?": "Restaurer tes réglages depuis le serveur ?",
+  "Navifind has a copy of your settings saved on {date}. Restoring it replaces the settings on this phone.": "Navifind a une copie de tes réglages enregistrée le {date}. La restaurer remplace les réglages de ce téléphone.",
+  "Navifind has a copy of your settings. Restoring it replaces the settings on this phone.": "Navifind a une copie de tes réglages. La restaurer remplace les réglages de ce téléphone.",
+  "Not now": "Pas maintenant",
+  "Navifind has no copy of your settings yet": "Navifind n'a pas encore de copie de tes réglages",
+  "Couldn't reach the server": "Impossible de joindre le serveur",
+  "On the Navifind server": "Sur le serveur Navifind",
+  "Keep my settings on the server": "Garder mes réglages sur le serveur",
+  "Saved on Navifind 30 seconds after each change, so a reinstall finds them again. Passwords, tokens and proxy headers are never sent.": "Enregistrés sur Navifind 30 secondes après chaque changement, pour qu'une réinstallation les retrouve. Les mots de passe, jetons et en-têtes de proxy ne sont jamais envoyés.",
+  "Last saved": "Dernier enregistrement",
+  "Restore from the server": "Restaurer depuis le serveur",
+  "Settings saved on Navifind replace the ones on this phone.": "Les réglages enregistrés sur Navifind remplacent ceux de ce téléphone.",
   "Version {version}, with deno": "Version {version}, avec deno",
   "Answering": "Répond",
   "Does not run": "Ne se lance pas",
@@ -581,6 +593,10 @@
   "Top songs": "Titres les plus écoutés",
   "1 play": "1 écoute",
   "{n} plays": "{n} écoutes",
+  "YouTube": "YouTube",
+  "{percent}% of listens": "{percent} % des écoutes",
+  "Filed into the library": "Rangés dans la bibliothèque",
+  "Discovered through YouTube": "Découverts grâce à YouTube",
   "Made for you": "Fait pour toi",
   "Morning mix": "Mix du matin",
   "Afternoon mix": "Mix de l'après-midi",
@@ -1386,5 +1402,9 @@
   "Choose your home speaker in Quality & playback to wake up on it.": "Choisis ton enceinte de la maison dans Qualité et lecture pour te réveiller avec.",
   "Rising volume": "Volume progressif",
   "From silence up to the volume the phone or the speaker was left at.": "Du silence jusqu'au volume laissé sur le téléphone ou l'enceinte.",
-  "{n} min": "{n} min"
+  "{n} min": "{n} min",
+  "Late night: stop in 30 minutes?": "Il est tard : on arrête dans 30 minutes ?",
+  "Sleep in 30 min": "Arrêter dans 30 min",
+  "Suggest the sleep timer at night": "Proposer la minuterie de sommeil la nuit",
+  "When the music starts between 11 pm and 5 am, offer to stop it in 30 minutes, once a night.": "Quand tu lances la musique entre 23 h et 5 h, propose de l'arrêter dans 30 minutes, une fois par nuit."
 }

@@ -1,4 +1,16 @@
 {
+  "Restore your settings from the server?": "Restore your settings from the server?",
+  "Navifind has a copy of your settings saved on {date}. Restoring it replaces the settings on this phone.": "Navifind has a copy of your settings saved on {date}. Restoring it replaces the settings on this phone.",
+  "Navifind has a copy of your settings. Restoring it replaces the settings on this phone.": "Navifind has a copy of your settings. Restoring it replaces the settings on this phone.",
+  "Not now": "Not now",
+  "Navifind has no copy of your settings yet": "Navifind has no copy of your settings yet",
+  "Couldn't reach the server": "Couldn't reach the server",
+  "On the Navifind server": "On the Navifind server",
+  "Keep my settings on the server": "Keep my settings on the server",
+  "Saved on Navifind 30 seconds after each change, so a reinstall finds them again. Passwords, tokens and proxy headers are never sent.": "Saved on Navifind 30 seconds after each change, so a reinstall finds them again. Passwords, tokens and proxy headers are never sent.",
+  "Last saved": "Last saved",
+  "Restore from the server": "Restore from the server",
+  "Settings saved on Navifind replace the ones on this phone.": "Settings saved on Navifind replace the ones on this phone.",
   "Version {version}, with deno": "Version {version}, with deno",
   "Answering": "Answering",
   "Does not run": "Does not run",
@@ -810,6 +822,10 @@
   "Top songs": "Top songs",
   "1 play": "1 play",
   "{n} plays": "{n} plays",
+  "YouTube": "YouTube",
+  "{percent}% of listens": "{percent}% of listens",
+  "Filed into the library": "Filed into the library",
+  "Discovered through YouTube": "Discovered through YouTube",
   "Made for you": "Made for you",
   "Morning mix": "Morning mix",
   "Afternoon mix": "Afternoon mix",
@@ -1384,5 +1400,9 @@
   "Choose your home speaker in Quality & playback to wake up on it.": "Choose your home speaker in Quality & playback to wake up on it.",
   "Rising volume": "Rising volume",
   "From silence up to the volume the phone or the speaker was left at.": "From silence up to the volume the phone or the speaker was left at.",
-  "{n} min": "{n} min"
+  "{n} min": "{n} min",
+  "Late night: stop in 30 minutes?": "Late night: stop in 30 minutes?",
+  "Sleep in 30 min": "Sleep in 30 min",
+  "Suggest the sleep timer at night": "Suggest the sleep timer at night",
+  "When the music starts between 11 pm and 5 am, offer to stop it in 30 minutes, once a night.": "When the music starts between 11 pm and 5 am, offer to stop it in 30 minutes, once a night."
 }

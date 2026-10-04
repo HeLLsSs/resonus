@@ -326,6 +326,10 @@ appear when it is switched off.
 
 - Custom HTTP headers reach casting, DLNA and the car: a server behind them is
   relayed through the phone rather than handed out as an address.
+- **The sleep timer offered late at night**, once, when the music starts.
+- **A die on the home-screen widget**, even when nothing is playing.
+- **YouTube in the stats**, and **settings saved on the proxy** to come back
+  after a reinstall.
 - **A wake-up alarm** that plays the shuffle, "For you" or a playlist on the
   phone or the home speaker, rising in volume, with the app closed.
 - **The sleep timer follows the output**: a speaker fades and stops too.

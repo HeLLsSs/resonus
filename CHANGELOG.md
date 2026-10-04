@@ -7,6 +7,24 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.10.0] - 2026-10-04
+
+### Added
+
+- Late at night, starting the music offers the sleep timer once ("stop in
+  30 minutes?"); Settings › Playback turns it off.
+- A die on the home-screen widget, which plays the shuffle with the app
+  closed, and on the empty widget too, where there was nothing to press.
+- A YouTube section in the listening stats: how much came from YouTube,
+  the songs filed into the library and the artists found through it.
+- Settings saved on the Navifind proxy, without passwords or tokens, and
+  offered back after a reinstall; ride settings are part of the backup.
+
+### Fixed
+
+- The proxy's sources route answers behind the proxy's own web server
+  (it was not routed, so Settings › Navifind could never show it).
+
 ## [1.9.0] - 2026-10-03
 
 ### Added
