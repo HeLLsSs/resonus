@@ -28,6 +28,7 @@ import {
 import { SettingRow, SettingsPage, settingsStyles, SwitchList, TextRow } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
 import { askNotificationPermission, NAVIFIND_STATUS_KEY, navifindWorkStarted } from '@/lib/navifindWatch';
+import { sourcesCheckedByHand } from '@/lib/outageAlert';
 import { queryClient } from '@/lib/query';
 import { useAuthStore } from '@/store/auth';
 import { useSettings } from '@/store/settings';
@@ -63,6 +64,8 @@ export default function NavifindSettings() {
   const setNavifind = useSettings((s) => s.setNavifind);
   const exclusivePlayback = useSettings((s) => s.exclusivePlayback);
   const setExclusivePlayback = useSettings((s) => s.setExclusivePlayback);
+  const youtubeOutageAlert = useSettings((s) => s.youtubeOutageAlert);
+  const setYoutubeOutageAlert = useSettings((s) => s.setYoutubeOutageAlert);
   const autoImportLiked = useSettings((s) => s.autoImportLiked);
   const setAutoImportLiked = useSettings((s) => s.setAutoImportLiked);
   const [url, setUrl] = useState('');
@@ -156,7 +159,9 @@ export default function NavifindSettings() {
     if (!auth || probing) return;
     setProbing(true);
     try {
-      queryClient.setQueryData(sourcesKey, await navifindSources(auth, true));
+      const checked = await navifindSources(auth, true);
+      queryClient.setQueryData(sourcesKey, checked);
+      sourcesCheckedByHand(checked);
     } catch {
       toast(t("The proxy couldn't be asked"));
     } finally {
@@ -415,6 +420,21 @@ export default function NavifindSettings() {
                       icon="pulse-outline"
                       label={probing ? t('Checking…') : t('Check now')}
                       onPress={probing ? undefined : () => void probeSources()}
+                    />
+                    <SwitchList
+                      options={[
+                        {
+                          label: t('Alert when YouTube is down'),
+                          description: t(
+                            'A notification when YouTube can no longer be reached through Navifind, and another when it is back. Checked every half hour.',
+                          ),
+                          value: youtubeOutageAlert,
+                          onChange: (on) => {
+                            setYoutubeOutageAlert(on);
+                            if (on) void askNotificationPermission();
+                          },
+                        },
+                      ]}
                     />
                   </>
                 ) : null}

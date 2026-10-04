@@ -61,7 +61,7 @@ let deviceId: Promise<string> | null = null;
  * and the device would then read `mine: false` for its own claim and pause
  * itself.
  */
-function thisDevice(): Promise<string> {
+export function thisDevice(): Promise<string> {
   deviceId ??= (async () => {
     const kept = await getItem(DEVICE_KEY);
     if (kept) return kept;

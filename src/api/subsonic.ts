@@ -1473,10 +1473,16 @@ export async function savePlayQueue(
   try {
     // POST with parameters in the body: avoids giant URLs with long queues.
     assertCanRequest();
+    const body = params.toString();
     await fetch(`${auth.serverUrl}/rest/savePlayQueue.view`, {
       method: 'POST',
       headers: { ...authHeaders(auth), 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
+      body,
+      // In a browser, a tab being closed cancels its requests, and the save
+      // made on the way out is the one that says where playback stopped.
+      // Browsers refuse a kept-alive body over 64 KB, so a long queue goes
+      // without, as it always did.
+      keepalive: body.length < 60_000,
     });
   } catch {
     // Best-effort; ignore network errors when saving the queue.
@@ -1897,11 +1903,13 @@ export interface PlaybackHolder {
   at: number;
   /** Whether that is this very device. */
   mine: boolean;
+  /** Whether it has stopped since, which only `lastPlayback` asks about. */
+  stopped?: boolean;
 }
 
 async function playbackSpot(
   auth: SubsonicAuth,
-  action: 'claim' | 'beat' | 'release',
+  action: 'claim' | 'beat' | 'release' | 'last',
   device: string,
   extra: { name?: string; song?: string } = {},
 ): Promise<PlaybackHolder | null> {
@@ -1938,6 +1946,11 @@ export function releasePlayback(
   device: string,
 ): Promise<PlaybackHolder | null> {
   return playbackSpot(auth, 'release', device);
+}
+
+/** The device that played last, still playing or stopped, and since when. */
+export function lastPlayback(auth: SubsonicAuth, device: string): Promise<PlaybackHolder | null> {
+  return playbackSpot(auth, 'last', device);
 }
 
 /** What it keeps: the records and artists added to its library, as tiles. */
