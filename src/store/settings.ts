@@ -743,6 +743,11 @@ interface SettingsState {
    * the repair cannot conclude anything either way.
    */
   navidromeIdRepair: boolean;
+  /**
+   * The settings kept on the Navifind proxy as well, for a reinstall to find
+   * them again (see `lib/proxyBackupSync.ts`). Only does anything with Navifind on.
+   */
+  backupToProxy: boolean;
   /** Crossfade seconds between songs (0 = disabled). */
   crossfadeSec: number;
   /**
@@ -867,6 +872,11 @@ interface SettingsState {
    * exactly when it needs saying again.
    */
   batteryWarning: boolean;
+  /**
+   * Offer the sleep timer once a night when the music starts late
+   * (`lib/nightSleep.ts`).
+   */
+  nightSleepSuggest: boolean;
   /**
    * What to do when the home speaker answers on the network while the music
    * plays on the phone: nothing, offer it, or move the music to it, and back
@@ -1056,6 +1066,7 @@ interface SettingsState {
   setDiagnostics: (value: boolean) => void;
   setUpdateCheck: (value: boolean) => void;
   setNavidromeIdRepair: (value: boolean) => void;
+  setBackupToProxy: (value: boolean) => void;
   setCrossfadeSec: (value: number) => void;
   setScrobblePercent: (value: number) => void;
   setScrobbleSeconds: (value: number) => void;
@@ -1084,6 +1095,7 @@ interface SettingsState {
   setShowDiscHeaders: (value: boolean) => void;
   setShowGenreChips: (value: boolean) => void;
   setBatteryWarning: (value: boolean) => void;
+  setNightSleepSuggest: (value: boolean) => void;
   setHomeHandoff: (value: HandoffMode) => void;
   setHomeSpeakerHost: (value: string) => void;
   setAlarm: (value: AlarmConfig) => void;
@@ -1204,6 +1216,7 @@ function snapshot(get: () => SettingsState) {
     diagnostics: s.diagnostics,
     updateCheck: s.updateCheck,
     navidromeIdRepair: s.navidromeIdRepair,
+    backupToProxy: s.backupToProxy,
     crossfadeSec: s.crossfadeSec,
     scrobblePercent: s.scrobblePercent,
     scrobbleSeconds: s.scrobbleSeconds,
@@ -1230,6 +1243,7 @@ function snapshot(get: () => SettingsState) {
     showDiscHeaders: s.showDiscHeaders,
     showGenreChips: s.showGenreChips,
     batteryWarning: s.batteryWarning,
+    nightSleepSuggest: s.nightSleepSuggest,
     homeHandoff: s.homeHandoff,
     homeSpeakerHost: s.homeSpeakerHost,
     alarm: s.alarm,
@@ -1340,6 +1354,7 @@ const DEFAULTS = {
   updateCheck: true,
   // Off until it has been watched doing its job against a migrated server.
   navidromeIdRepair: false,
+  backupToProxy: true,
   crossfadeSec: 0,
   scrobblePercent: SCROBBLE_PERCENT_DEFAULT,
   scrobbleSeconds: SCROBBLE_SECONDS_DEFAULT,
@@ -1366,6 +1381,7 @@ const DEFAULTS = {
   showDiscHeaders: true,
   showGenreChips: false,
   batteryWarning: true,
+  nightSleepSuggest: true,
   homeHandoff: 'ask' as HandoffMode,
   homeSpeakerHost: '',
   alarm: DEFAULT_ALARM,
@@ -1591,6 +1607,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
     persist(snapshot(get));
   },
 
+  setBackupToProxy: (backupToProxy) => {
+    set({ backupToProxy });
+    persist(snapshot(get));
+  },
+
   setAutoplaySimilar: (autoplaySimilar) => {
     set({ autoplaySimilar });
     persist(snapshot(get));
@@ -1730,6 +1751,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setBatteryWarning: (batteryWarning) => {
     set({ batteryWarning });
+    persist(snapshot(get));
+  },
+
+  setNightSleepSuggest: (nightSleepSuggest) => {
+    set({ nightSleepSuggest });
     persist(snapshot(get));
   },
 
@@ -2117,6 +2143,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           diagnostics: boolean;
           updateCheck?: boolean;
           navidromeIdRepair?: boolean;
+          backupToProxy?: boolean;
           crossfadeSec: number;
           scrobblePercent: number;
           scrobbleSeconds: number;
@@ -2145,6 +2172,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           showDiscHeaders: boolean;
           showGenreChips: boolean;
           batteryWarning: boolean;
+          nightSleepSuggest: boolean;
           suggestKnownSpeakers?: boolean;
           homeHandoff?: unknown;
           homeSpeakerHost?: string;
@@ -2296,6 +2324,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         if (typeof parsed.navidromeIdRepair === 'boolean') {
           set({ navidromeIdRepair: parsed.navidromeIdRepair });
         }
+        if (typeof parsed.backupToProxy === 'boolean') {
+          set({ backupToProxy: parsed.backupToProxy });
+        }
         if (typeof parsed.diagnostics === 'boolean') {
           set({ diagnostics: parsed.diagnostics });
         }
@@ -2420,6 +2451,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         }
         if (typeof parsed.batteryWarning === 'boolean') {
           set({ batteryWarning: parsed.batteryWarning });
+        }
+        if (typeof parsed.nightSleepSuggest === 'boolean') {
+          set({ nightSleepSuggest: parsed.nightSleepSuggest });
         }
         // The switch it replaced: off stays off, on was the offer.
         if (isHandoffMode(parsed.homeHandoff)) {

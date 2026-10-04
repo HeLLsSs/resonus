@@ -72,6 +72,8 @@ export default function PlaybackSettings() {
   const batteryWarning = useSettings((s) => s.batteryWarning);
   const setBatteryWarning = useSettings((s) => s.setBatteryWarning);
   const setKeepScreenAwake = useSettings((s) => s.setKeepScreenAwake);
+  const nightSleepSuggest = useSettings((s) => s.nightSleepSuggest);
+  const setNightSleepSuggest = useSettings((s) => s.setNightSleepSuggest);
   const homeHandoff = useSettings((s) => s.homeHandoff);
   const setHomeHandoff = useSettings((s) => s.setHomeHandoff);
   const homeSpeakerHost = useSettings((s) => s.homeSpeakerHost);
@@ -297,6 +299,12 @@ export default function PlaybackSettings() {
               description: t('The screen never turns off while the app is visible.'),
               value: keepScreenAwake,
               onChange: setKeepScreenAwake,
+            },
+            {
+              label: t('Suggest the sleep timer at night'),
+              description: t('When the music starts between 11 pm and 5 am, offer to stop it in 30 minutes, once a night.'),
+              value: nightSleepSuggest,
+              onChange: setNightSleepSuggest,
             },
             {
               label: t('Warn about battery optimization'),
