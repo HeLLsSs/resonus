@@ -1,0 +1,7 @@
+{
+  "name": "share-receiver",
+  "version": "0.0.1",
+  "description": "The text another app shares with Resonus (Android ACTION_SEND, text/plain), handed to JS (local Expo module)",
+  "main": "index.ts",
+  "private": true
+}

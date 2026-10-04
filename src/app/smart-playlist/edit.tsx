@@ -25,6 +25,7 @@ import {
   type SortField,
 } from '@/lib/smartPlaylists';
 import { useAuthStore } from '@/store/auth';
+import { useSettings } from '@/store/settings';
 import { newSmartPlaylistId, useSmartPlaylists } from '@/store/smartPlaylists';
 import { fontSize, radius, spacing, themed, useTheme } from '@/theme';
 
@@ -46,6 +47,7 @@ const FIELD_LABEL: Record<RuleField, string> = {
   artist: 'Artist',
   album: 'Album',
   title: 'Title',
+  navifind: 'Filed by Navifind',
 };
 
 const OP_LABEL: Record<RuleOp, string> = {
@@ -97,6 +99,7 @@ export default function SmartPlaylistEditScreen() {
   const existing = useSmartPlaylists((s) => s.lists.find((l) => l.id === id));
   const save = useSmartPlaylists((s) => s.save);
   const canFetch = useAuthStore((s) => !!s.auth || s.offline);
+  const navifind = useSettings((s) => s.navifind);
 
   const [name, setName] = useState(existing?.name ?? '');
   const [match, setMatch] = useState<SmartPlaylist['match']>(existing?.match ?? 'all');
@@ -153,7 +156,12 @@ export default function SmartPlaylistEditScreen() {
             <View key={i} style={styles.rule}>
               <Text style={styles.ruleTitle}>{t('Rule {n}', { n: i + 1 })}</Text>
               <SelectList<RuleField>
-                options={RULE_FIELDS.map((f) => ({ value: f, label: t(FIELD_LABEL[f]) }))}
+                // The proxy's field only where the proxy is on, or where a rule
+                // already uses it and has to show what it is set to.
+                options={RULE_FIELDS.filter((f) => f !== 'navifind' || navifind || f === rule.field).map((f) => ({
+                  value: f,
+                  label: t(FIELD_LABEL[f]),
+                }))}
                 value={rule.field}
                 onChange={(f) => changeField(i, f)}
               />

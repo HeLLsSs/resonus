@@ -9,6 +9,7 @@
  * reason about.
  */
 import type { Song } from '@/api/subsonic';
+import { isImportedByNavifind } from '@/lib/navifind';
 
 /** What a rule looks at. */
 export type RuleField =
@@ -23,7 +24,11 @@ export type RuleField =
   | 'artist'
   | 'album'
   | 'title'
-  | 'starred';
+  | 'starred'
+  /** Filed into the library by the navifind proxy, read off the song's path.
+   *  Whether a track was liked on YouTube is not: nothing in the library
+   *  carries it. */
+  | 'navifind';
 
 /** How a rule compares. Which ones apply depends on the field's kind. */
 export type RuleOp =
@@ -41,7 +46,7 @@ export interface Rule {
   field: RuleField;
   op: RuleOp;
   /** A number for the numeric kinds (days for the two about time), text for
-   *  the text kinds, unused for `starred`. */
+   *  the text kinds, unused for the flags. */
   value: string;
 }
 
@@ -85,6 +90,7 @@ export const RULE_KIND: Record<RuleField, RuleKind> = {
   album: 'text',
   title: 'text',
   starred: 'flag',
+  navifind: 'flag',
 };
 
 export const OPS_FOR_KIND: Record<RuleKind, RuleOp[]> = {
@@ -107,6 +113,7 @@ export const RULE_FIELDS: RuleField[] = [
   'artist',
   'album',
   'title',
+  'navifind',
 ];
 
 export const SORT_FIELDS: SortField[] = [
@@ -200,6 +207,8 @@ export function ruleMatches(song: Song, rule: Rule, now = Date.now()): boolean {
       return compareText(fold(song.title), rule.op, fold(rule.value));
     case 'starred':
       return rule.op === 'is' ? !!song.starred : !song.starred;
+    case 'navifind':
+      return rule.op === 'is' ? isImportedByNavifind(song) : !isImportedByNavifind(song);
   }
 }
 

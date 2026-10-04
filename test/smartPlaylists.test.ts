@@ -135,6 +135,35 @@ describe('ruleMatches', () => {
       assert.equal(ruleMatches(song({ id: 'u' }), rule('starred', 'isNot')), true);
     });
   });
+
+  describe('navifind', () => {
+    const filed = song({ id: 'n', path: 'Navifind/Artist/Artist - Song.m4a' });
+    const own = song({ id: 'o', path: 'Artist/Album/01 Song.flac' });
+
+    it('matches a song filed under the Navifind folder', () => {
+      assert.equal(ruleMatches(filed, rule('navifind', 'is')), true);
+    });
+
+    it('leaves out a song of the library\'s own', () => {
+      assert.equal(ruleMatches(own, rule('navifind', 'is')), false);
+    });
+
+    it('turns round with isNot, a song with no path included', () => {
+      assert.deepEqual(
+        [filed, own, song({ id: 'p' })].map((s) => ruleMatches(s, rule('navifind', 'isNot'))),
+        [false, true, true],
+      );
+    });
+
+    it('combines with added for "filed by Navifind this week"', () => {
+      const recent = { ...filed, created: new Date(NOW - 2 * DAY).toISOString() };
+      const rules = [rule('navifind', 'is'), rule('added', 'within', '7')];
+      assert.deepEqual(
+        [recent, filed].map((s) => songMatches(s, list({ rules }), NOW)),
+        [true, false],
+      );
+    });
+  });
 });
 
 describe('songMatches', () => {
