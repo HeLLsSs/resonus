@@ -6,6 +6,10 @@
  * bands are the same ten everywhere and a gain set here means the same thing on
  * the phone, in the car and on the television. Nothing is chosen but the gains;
  * they are saved and heard at once.
+ *
+ * With one equalizer per output, what is shown and changed is the setting of
+ * the phone output playing now. A speaker on the network plays the stream by
+ * itself, where the app's filtering cannot reach, which the screen says.
  */
 import { useState } from 'react';
 import { ScrollView, Text } from 'react-native';
@@ -18,7 +22,8 @@ import {
   SliderRow,
   SwitchList,
 } from '@/components/SettingsUI';
-import { useT } from '@/i18n';
+import { type TFunction, useT } from '@/i18n';
+import type { AudioOutputDevice } from '@/lib/audioOutput';
 import {
   BASS_BOOST_MAX,
   LOUDNESS_MAX_MB,
@@ -26,6 +31,7 @@ import {
   PREAMP_MIN,
   useEqualizer,
 } from '@/store/equalizer';
+import { currentOutput } from '@/store/player';
 import { useTheme } from '@/theme';
 
 /** 62 → «62 Hz»; 16000 → «16 kHz». */
@@ -37,6 +43,24 @@ function formatFreq(hz: number): string {
 function formatGain(millibels: number): string {
   const db = millibels / 100;
   return `${db > 0 ? '+' : ''}${db.toFixed(1)} dB`;
+}
+
+/** A phone output, named the way the output sheet names it. */
+function outputLabel(device: AudioOutputDevice | null, t: TFunction): string {
+  switch (device?.kind) {
+    case 'speaker':
+      return t('Phone speaker');
+    case 'wired':
+      return t('Wired headphones');
+    case 'usb':
+      return device.name || t('USB audio');
+    case 'hearingAid':
+      return device.name || t('Hearing aid');
+    case 'bluetooth':
+      return device.name || t('Bluetooth');
+    default:
+      return t('This phone');
+  }
 }
 
 export default function EqualizerSettings() {
@@ -63,6 +87,12 @@ export default function EqualizerSettings() {
   const setBassBoost = useEqualizer((s) => s.setBassBoost);
   const loudness = useEqualizer((s) => s.loudness);
   const setLoudness = useEqualizer((s) => s.setLoudness);
+  const perOutput = useEqualizer((s) => s.perOutput);
+  const setPerOutput = useEqualizer((s) => s.setPerOutput);
+  const output = useEqualizer((s) => s.output);
+  // Read on every render rather than followed: the outputs on the network
+  // live in five stores of their own.
+  const remote = currentOutput();
 
   // The selected preset is view-only: touching a band clears the preset
   // («Custom»). What's saved are the gains.
@@ -91,8 +121,29 @@ export default function EqualizerSettings() {
               value: enabled,
               onChange: setEnabled,
             },
+            {
+              label: t('One equalizer per output'),
+              description: t(
+                'The speaker, wired headphones and each Bluetooth device keep their own settings, switched with the output.',
+              ),
+              value: perOutput,
+              onChange: setPerOutput,
+            },
           ]}
         />
+
+        {remote.id !== 'phone' ? (
+          <Text style={settingsStyles.sectionDescription}>
+            {t(
+              'The music is playing on {name}, which plays the stream itself: the equalizer only applies to what this phone plays.',
+              { name: remote.name || t('another output') },
+            )}
+          </Text>
+        ) : perOutput ? (
+          <Text style={settingsStyles.sectionDescription}>
+            {t('Settings for: {output}', { output: outputLabel(output, t) })}
+          </Text>
+        ) : null}
 
         {/* Before the bands, because it is what makes room for them. */}
         <SliderRow

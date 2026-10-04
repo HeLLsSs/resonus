@@ -6,7 +6,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { dealt,
+import { crossfadeSecFor,
+  dealt,
+  equalPowerGains,
   errorTag,
   fadeProgress,
   GAIN_MAX,
@@ -142,5 +144,49 @@ describe('remoteFadeVolume', () => {
 
   it('lands on whole percent and stays within bounds', () => {
     assert.deepEqual([remoteFadeVolume(0.333, 0.1), remoteFadeVolume(1.4, -1), remoteFadeVolume(0.5, 2)], [0.3, 1, 0]);
+  });
+});
+
+describe('crossfadeSecFor', () => {
+  const settings = { crossfadeSec: 3, mixCrossfadeSec: 8 };
+
+  it('uses the normal crossfade outside a mix', () => {
+    assert.equal(crossfadeSecFor(settings, false, { duration: 200 }), 3);
+  });
+
+  it('uses the mix crossfade in a mix', () => {
+    assert.equal(crossfadeSecFor(settings, true, { duration: 200 }), 8);
+  });
+
+  it('falls back to the normal crossfade when the mix one is off', () => {
+    assert.equal(crossfadeSecFor({ crossfadeSec: 3, mixCrossfadeSec: 0 }, true, { duration: 200 }), 3);
+  });
+
+  it('skips the transition into a very short track or a radio', () => {
+    assert.deepEqual(
+      [crossfadeSecFor(settings, true, { duration: 20 }), crossfadeSecFor(settings, true, { url: 'http://radio' })],
+      [0, 0],
+    );
+  });
+
+  it('blends into a track of unknown length', () => {
+    assert.equal(crossfadeSecFor(settings, true, {}), 8);
+  });
+});
+
+describe('equalPowerGains', () => {
+  it('goes from the outgoing alone to the incoming alone', () => {
+    assert.deepEqual(
+      [equalPowerGains(0), equalPowerGains(1)].map((g) => g.map((v) => Math.round(v * 1000) / 1000)),
+      [
+        [1, 0],
+        [0, 1],
+      ],
+    );
+  });
+
+  it('keeps the power constant', () => {
+    const [out, inc] = equalPowerGains(0.37);
+    assert.equal(Math.round((out * out + inc * inc) * 1e9) / 1e9, 1);
   });
 });

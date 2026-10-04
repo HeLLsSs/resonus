@@ -83,6 +83,22 @@ export function onMediaVolumeChanged(cb: (volume: MediaVolume) => void): () => v
   return () => sub?.remove();
 }
 
+/**
+ * Every time an output comes or goes (headphones plugged in, a Bluetooth
+ * device connected), for as long as the caller keeps the subscription.
+ * Nothing, without the module.
+ */
+export function onAudioOutputsChanged(cb: (outputs: AudioOutputs) => void): () => void {
+  const sub = native?.addListener('devicesChanged', ({ devices, activeId }) => cb({ devices, activeId }));
+  return () => sub?.remove();
+}
+
+/** The output media goes to, or null when there is none to tell. */
+export function activeAudioOutput(): AudioOutputDevice | null {
+  const { devices, activeId } = getAudioOutputs();
+  return devices.find((d) => d.id === activeId) ?? null;
+}
+
 export function openSystemOutputPicker(): SystemOutputPicker {
   return native?.openSystemPicker() ?? '';
 }

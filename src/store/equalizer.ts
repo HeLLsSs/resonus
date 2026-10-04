@@ -20,10 +20,16 @@
  * are not equalisation: a bass boost (strength 0..1000) and a volume boost (a
  * gain in millibels). They attach to a player's audio session, which is why
  * `attach` is still here and still called for every player the app builds.
+ *
+ * There can be one setting per output (`lib/eqProfiles.ts`): the store then
+ * follows the phone's output and brings each one's setting back.
  */
 import { requireOptionalNativeModule } from 'expo-modules-core';
+import { AppState } from 'react-native';
 import { create } from 'zustand';
 
+import { activeAudioOutput, type AudioOutputDevice, onAudioOutputsChanged } from '@/lib/audioOutput';
+import { activeEqSetting, eqOutputKey, type EqProfiles, type EqSetting, storeEqSetting } from '@/lib/eqProfiles';
 import { getItem, setItem } from '@/lib/storage';
 
 const KEY = 'resonus.equalizer';
@@ -124,6 +130,10 @@ interface Stored {
   preamp?: number;
   bassBoost?: number;
   loudness?: number;
+  /** One setting per output (`lib/eqProfiles.ts`); the three above are then
+   *  the setting an output starts from. */
+  perOutput?: boolean;
+  profiles?: Record<string, Partial<EqSetting>>;
 }
 
 interface EqState {
@@ -133,12 +143,21 @@ interface EqState {
   minLevel: number;
   maxLevel: number;
   presets: string[];
+  /** The three below are the setting heard: the single one, or the current
+   *  output's when there is one per output. */
   enabled: boolean;
   /** Per-band gain in millibels. */
   levels: number[];
   /** Gain applied before the bands, in millibels. Negative is the useful
    *  direction: it is where the room for a boost comes from. */
   preamp: number;
+  /** One setting per output, switched with the output (off: one for all). */
+  perOutput: boolean;
+  /** The phone output media goes to, as last heard; null when unknown. */
+  output: AudioOutputDevice | null;
+  /** The setting for every output, and the one an output starts from. */
+  single: EqSetting;
+  profiles: EqProfiles;
   bassBoostSupported: boolean;
   loudnessSupported: boolean;
   /** Bass boost strength, 0 (off) to `BASS_BOOST_MAX`. */
@@ -157,24 +176,27 @@ interface EqState {
   setPreamp: (millibels: number) => void;
   /** Resets all bands to 0 dB. */
   reset: () => void;
+  setPerOutput: (on: boolean) => void;
   setBassBoost: (strength: number) => void;
   setLoudness: (gainMb: number) => void;
 }
 
-function persist(s: Pick<EqState, 'enabled' | 'levels' | 'preamp' | 'bassBoost' | 'loudness'>) {
+function persist(s: EqState) {
   const data: Stored = {
-    enabled: s.enabled,
-    levels: s.levels,
-    preamp: s.preamp,
+    enabled: s.single.enabled,
+    levels: s.single.levels,
+    preamp: s.single.preamp,
     bassBoost: s.bassBoost,
     loudness: s.loudness,
+    perOutput: s.perOutput,
+    profiles: s.profiles,
   };
   void setItem(KEY, JSON.stringify(data));
 }
 
 /** Hands the whole setting to the audio path. Called for every change: the
  *  bands are one state down there, not ten. */
-function pushToDsp(s: Pick<EqState, 'enabled' | 'levels' | 'preamp'>) {
+function pushToDsp(s: EqSetting) {
   dsp?.apply(
     s.enabled,
     s.preamp / 100,
@@ -196,131 +218,190 @@ function clampBoost(value: unknown, max: number): number {
     : 0;
 }
 
-export const useEqualizer = create<EqState>((set, get) => ({
-  supported: false,
-  bands: [],
-  minLevel: -1500,
-  maxLevel: 1500,
-  presets: [],
-  enabled: false,
-  levels: [],
-  preamp: 0,
-  bassBoostSupported: false,
-  loudnessSupported: false,
-  bassBoost: 0,
-  loudness: 0,
+/**
+ * A setting read from the disk, or null when it is not one of these ten
+ * bands. A setting saved before the bands became ours has five numbers in it,
+ * or three, and they meant frequencies these ten are not. Ignored rather than
+ * stretched onto the new ones: a guess at what somebody meant is worse than
+ * flat, which they can hear is flat.
+ */
+function readSetting(stored: Partial<EqSetting> | null | undefined): EqSetting | null {
+  if (!stored || !Array.isArray(stored.levels) || stored.levels.length !== EQ_BANDS.length) return null;
+  return {
+    enabled: !!dsp && !!stored.enabled,
+    levels: stored.levels.map((mb) => clampLevel(mb)),
+    preamp: clampLevel(stored.preamp ?? 0, PREAMP_MIN, PREAMP_MAX),
+  };
+}
 
-  hydrate: async () => {
-    // The framework is still asked about itself, but only for the two boosts:
-    // whether there are bands to show no longer depends on what a device
-    // offers, since the bands are the app's.
-    const info = native?.getInfo();
-    let stored: Stored | null = null;
-    try {
-      const raw = await getItem(KEY);
-      if (raw) stored = JSON.parse(raw) as Stored;
-    } catch {
-      // no previous data
-    }
-    // A setting saved before the bands became ours has five numbers in it, or
-    // three, and they meant frequencies these ten are not. Ignored rather than
-    // stretched onto the new ones: a guess at what somebody meant is worse
-    // than flat, which they can hear is flat.
-    const mine =
-      stored && Array.isArray(stored.levels) && stored.levels.length === EQ_BANDS.length
-        ? stored.levels.map((mb) => clampLevel(mb))
-        : null;
-    const levels = mine ?? EQ_BANDS.map(() => 0);
-    // And the switch goes with them. Keeping it on while the gains it belonged
-    // to have been dropped leaves an equaliser that is on and does nothing:
-    // the screen says it is working, the ears say otherwise, and the audio is
-    // kept off the device's low-power path for no benefit at all. What was
-    // left behind is left behind whole.
-    const enabled = !!dsp && !!stored?.enabled && null !== mine;
-    const preamp = clampLevel(stored?.preamp ?? 0, PREAMP_MIN, PREAMP_MAX);
-    const bassBoost = info?.bassBoost ? clampBoost(stored?.bassBoost, BASS_BOOST_MAX) : 0;
-    const loudness = info?.loudness ? clampBoost(stored?.loudness, LOUDNESS_MAX_MB) : 0;
-    set({
-      supported: !!dsp,
-      bands: EQ_BANDS,
-      minLevel: -EQ_MAX_LEVEL,
-      maxLevel: EQ_MAX_LEVEL,
-      presets: EQ_PRESETS.map((p) => p.name),
-      enabled,
-      levels,
-      preamp,
-      bassBoostSupported: !!info?.bassBoost,
-      loudnessSupported: !!info?.loudness,
-      bassBoost,
-      loudness,
+/** Listening to the outputs, only while there is one setting per output. */
+let stopWatchingOutputs: (() => void) | null = null;
+
+export const useEqualizer = create<EqState>((set, get) => {
+  /** Makes the setting of the output playing the one heard and shown. */
+  const applyCurrent = () => {
+    const { perOutput, output, single, profiles } = get();
+    const setting = activeEqSetting(perOutput, eqOutputKey(output), single, profiles);
+    set(setting);
+    pushToDsp(setting);
+  };
+
+  /** Notes where the music goes now and brings that output's setting back. */
+  const followOutput = (output: AudioOutputDevice | null) => {
+    if (eqOutputKey(output) === eqOutputKey(get().output)) return;
+    set({ output });
+    applyCurrent();
+  };
+
+  /** Starts or stops following the outputs, as the option says. Android says
+   *  when an output comes or goes; the return to the foreground covers a move
+   *  between two that were already there, made from the system's panel. */
+  const watchOutputs = () => {
+    stopWatchingOutputs?.();
+    stopWatchingOutputs = null;
+    if (!get().perOutput) return;
+    const outputs = onAudioOutputsChanged(({ devices, activeId }) =>
+      followOutput(devices.find((d) => d.id === activeId) ?? null),
+    );
+    const foreground = AppState.addEventListener('change', (state) => {
+      if (state === 'active') followOutput(activeAudioOutput());
     });
-    pushToDsp({ enabled, levels, preamp });
-    native?.setBassBoost(bassBoost);
-    native?.setLoudness(loudness);
-  },
+    stopWatchingOutputs = () => {
+      outputs();
+      foreground.remove();
+    };
+    followOutput(activeAudioOutput());
+  };
 
-  attach: (sessionId) => {
-    if (!native || !get().supported) return;
-    native.attach(sessionId);
-  },
-
-  detach: (sessionId) => {
-    if (!native) return;
-    native.detach(sessionId);
-  },
-
-  setEnabled: (on) => {
+  /** A change made on the screen: written to the output's setting or the
+   *  single one, heard and saved. */
+  const commit = (change: Partial<EqSetting>) => {
     if (!dsp) return;
-    set({ enabled: on });
-    pushToDsp(get());
+    const s = get();
+    const setting: EqSetting = {
+      enabled: change.enabled ?? s.enabled,
+      levels: change.levels ?? s.levels,
+      preamp: change.preamp ?? s.preamp,
+    };
+    set({ ...setting, ...storeEqSetting(s.perOutput, eqOutputKey(s.output), s.single, s.profiles, setting) });
+    pushToDsp(setting);
     persist(get());
-  },
+  };
 
-  setBandLevel: (band, millibels) => {
-    if (!dsp) return;
-    const levels = get().levels.slice();
-    levels[band] = clampLevel(millibels);
-    set({ levels });
-    pushToDsp(get());
-    persist(get());
-  },
+  const flat: EqSetting = { enabled: false, levels: EQ_BANDS.map(() => 0), preamp: 0 };
 
-  applyPreset: (preset) => {
-    if (!dsp) return;
-    const chosen = EQ_PRESETS[preset];
-    if (!chosen) return;
-    const levels = EQ_BANDS.map((band) => clampLevel((chosen.gains[band.index] ?? 0) * 100));
-    set({ levels });
-    pushToDsp(get());
-    persist(get());
-  },
+  return {
+    supported: false,
+    bands: [],
+    minLevel: -1500,
+    maxLevel: 1500,
+    presets: [],
+    enabled: false,
+    levels: [],
+    preamp: 0,
+    perOutput: false,
+    output: null,
+    single: flat,
+    profiles: {},
+    bassBoostSupported: false,
+    loudnessSupported: false,
+    bassBoost: 0,
+    loudness: 0,
 
-  setPreamp: (millibels) => {
-    if (!dsp) return;
-    set({ preamp: clampLevel(millibels, PREAMP_MIN, PREAMP_MAX) });
-    pushToDsp(get());
-    persist(get());
-  },
+    hydrate: async () => {
+      // The framework is still asked about itself, but only for the two boosts:
+      // whether there are bands to show no longer depends on what a device
+      // offers, since the bands are the app's.
+      const info = native?.getInfo();
+      let stored: Stored | null = null;
+      try {
+        const raw = await getItem(KEY);
+        if (raw) stored = JSON.parse(raw) as Stored;
+      } catch {
+        // no previous data
+      }
+      // A setting left behind by older bands is left behind whole, switch
+      // included: keeping it on while the gains it belonged to have been
+      // dropped leaves an equaliser that is on and does nothing, and the audio
+      // kept off the device's low-power path for no benefit at all.
+      const single = readSetting(stored) ?? flat;
+      const profiles: EqProfiles = {};
+      for (const [key, value] of Object.entries(stored?.profiles ?? {})) {
+        const setting = readSetting(value);
+        if (setting) profiles[key] = setting;
+      }
+      const bassBoost = info?.bassBoost ? clampBoost(stored?.bassBoost, BASS_BOOST_MAX) : 0;
+      const loudness = info?.loudness ? clampBoost(stored?.loudness, LOUDNESS_MAX_MB) : 0;
+      set({
+        supported: !!dsp,
+        bands: EQ_BANDS,
+        minLevel: -EQ_MAX_LEVEL,
+        maxLevel: EQ_MAX_LEVEL,
+        presets: EQ_PRESETS.map((p) => p.name),
+        perOutput: !!dsp && !!stored?.perOutput,
+        output: null,
+        single,
+        profiles,
+        bassBoostSupported: !!info?.bassBoost,
+        loudnessSupported: !!info?.loudness,
+        bassBoost,
+        loudness,
+      });
+      applyCurrent();
+      watchOutputs();
+      native?.setBassBoost(bassBoost);
+      native?.setLoudness(loudness);
+    },
 
-  reset: () => {
-    if (!dsp) return;
-    set({ levels: EQ_BANDS.map(() => 0), preamp: 0 });
-    pushToDsp(get());
-    persist(get());
-  },
+    attach: (sessionId) => {
+      if (!native || !get().supported) return;
+      native.attach(sessionId);
+    },
 
-  setBassBoost: (strength) => {
-    if (!native) return;
-    native.setBassBoost(clampBoost(strength, BASS_BOOST_MAX));
-    // What the effect rounded it to, so the slider shows what is actually set.
-    set({ bassBoost: native.getBassBoost() });
-    persist(get());
-  },
+    detach: (sessionId) => {
+      if (!native) return;
+      native.detach(sessionId);
+    },
 
-  setLoudness: (gainMb) => {
-    if (!native) return;
-    native.setLoudness(clampBoost(gainMb, LOUDNESS_MAX_MB));
-    set({ loudness: native.getLoudness() });
-    persist(get());
-  },
-}));
+    setEnabled: (enabled) => commit({ enabled }),
+
+    setBandLevel: (band, millibels) => {
+      const levels = get().levels.slice();
+      levels[band] = clampLevel(millibels);
+      commit({ levels });
+    },
+
+    applyPreset: (preset) => {
+      const chosen = EQ_PRESETS[preset];
+      if (!chosen) return;
+      commit({ levels: EQ_BANDS.map((band) => clampLevel((chosen.gains[band.index] ?? 0) * 100)) });
+    },
+
+    setPreamp: (millibels) => commit({ preamp: clampLevel(millibels, PREAMP_MIN, PREAMP_MAX) }),
+
+    reset: () => commit({ levels: EQ_BANDS.map(() => 0), preamp: 0 }),
+
+    setPerOutput: (perOutput) => {
+      if (!dsp) return;
+      set({ perOutput, output: null });
+      applyCurrent();
+      watchOutputs();
+      persist(get());
+    },
+
+    setBassBoost: (strength) => {
+      if (!native) return;
+      native.setBassBoost(clampBoost(strength, BASS_BOOST_MAX));
+      // What the effect rounded it to, so the slider shows what is actually set.
+      set({ bassBoost: native.getBassBoost() });
+      persist(get());
+    },
+
+    setLoudness: (gainMb) => {
+      if (!native) return;
+      native.setLoudness(clampBoost(gainMb, LOUDNESS_MAX_MB));
+      set({ loudness: native.getLoudness() });
+      persist(get());
+    },
+  };
+});

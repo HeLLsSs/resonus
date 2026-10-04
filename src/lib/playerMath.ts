@@ -140,3 +140,39 @@ export function mixedPool<T extends { id: string }>(library: T[], online: T[], s
   }
   return dealt(once).slice(0, size);
 }
+
+// ── Mix transitions ─────────────────────────────────────────────────────────
+
+/** A next track shorter than this, in seconds, is not blended into in a mix:
+ *  a long fade would eat most of it. */
+export const MIX_MIN_TRACK_SEC = 30;
+
+/**
+ * How many seconds of crossfade the change to `next` gets: the mix's own
+ * (`mixCrossfadeSec`) while the queue is a mix and that setting is on, the
+ * normal one otherwise. In a mix, a radio or a very short track gets no fade
+ * at all. Without `next`, the length a change would get, which is what says
+ * whether the crossfade owns the advance. 0 is no crossfade.
+ */
+export function crossfadeSecFor(
+  settings: { crossfadeSec: number; mixCrossfadeSec: number },
+  mix: boolean,
+  next?: { duration?: number; url?: string },
+): number {
+  if (!mix || settings.mixCrossfadeSec <= 0) return settings.crossfadeSec;
+  if (next?.url) return 0;
+  const duration = next?.duration ?? 0;
+  if (duration > 0 && duration < MIX_MIN_TRACK_SEC) return 0;
+  return settings.mixCrossfadeSec;
+}
+
+/**
+ * The two volumes of an equal-power crossfade at `progress` (0 to 1), outgoing
+ * first: a cosine and a sine, whose squares always add up to one, so the sum
+ * is heard at a constant loudness rather than dipping half way as a straight
+ * line would.
+ */
+export function equalPowerGains(progress: number): [number, number] {
+  const x = Math.min(1, Math.max(0, progress));
+  return [Math.cos((x * Math.PI) / 2), Math.sin((x * Math.PI) / 2)];
+}

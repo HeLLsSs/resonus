@@ -172,7 +172,7 @@ export async function playForYou(): Promise<ForYouResult> {
   }
 
   bump(`for you · ${songs.length} songs`);
-  await usePlayerStore.getState().playQueue(songs, 0, playlistName);
+  await usePlayerStore.getState().playQueue(songs, 0, playlistName, undefined, { mix: true });
 
   const playlistId = await createPlaylist(playlistName).catch(() => null);
   if (playlistId) void fill(playlistId, songs);

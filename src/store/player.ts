@@ -28,7 +28,9 @@ import { create } from 'zustand';
 import { CLIENT_NAME, isOnlineTrackId } from '@/api/subsonic';
 import { driftPlan, sameQueue } from '@/lib/jam';
 import {
+  crossfadeSecFor,
   dealt,
+  equalPowerGains,
   errorTag,
   fadeProgress,
   gainFactor as replayGainFactor,
@@ -2134,10 +2136,9 @@ function replaceSource(p: AudioPlayer, source: AudioSource) {
  * taking the change over.
  */
 function gaplessReady(): boolean {
-  const settings = useSettings.getState();
   // Crossfade drives the advance itself, starting the next track early on the
   // reserve player. Both cannot own the change.
-  if (settings.crossfadeSec > 0) return false;
+  if (activeCrossfadeSec() > 0) return false;
   if (remoteKind()) return false;
   const st = usePlayerStore.getState();
   // 'one' repeats through the native `loop`, and "stop at end of song" needs
@@ -2255,7 +2256,7 @@ function onTrackTransition() {
 // queued track depends on format and bitrate: all of them have to re-evaluate
 // what is (or is no longer) waiting behind the current track.
 const gaplessSettingsKey = (s: ReturnType<typeof useSettings.getState>) =>
-  `${s.crossfadeSec}|${s.streamFormat}|${s.streamFormatCellular}|${s.maxBitRate}|${s.maxBitRateCellular}`;
+  `${s.crossfadeSec}|${s.mixCrossfadeSec}|${s.streamFormat}|${s.streamFormatCellular}|${s.maxBitRate}|${s.maxBitRateCellular}`;
 let lastGaplessSettings = gaplessSettingsKey(useSettings.getState());
 useSettings.subscribe((s) => {
   const key = gaplessSettingsKey(s);
@@ -2369,6 +2370,24 @@ useSettings.subscribe((s, prev) => {
 // at volume 0 and both volumes cross (equal power curve).
 // The incoming player becomes the active one from the first instant: state,
 // notification and scrobble change when the fade starts, like Spotify.
+//
+// A mix (a die, "For you") gets its own, longer fade (`mixCrossfadeSec`), the
+// way a DJ runs one track into the next. Only the volumes are blended: tempo
+// and beats are not matched, which would take analysing the audio itself.
+
+/**
+ * The source the current queue was started with as a mix (`playQueue`'s
+ * `mix`), or null. Compared with the store's `source` rather than kept as a
+ * flag, so any other path that replaces the queue (a radio, a restore, a
+ * session) ends the mix without having to know about it.
+ */
+let mixSource: string | null = null;
+
+/** The crossfade the queue playing now gets, `next` being where it goes. */
+function activeCrossfadeSec(next?: Song): number {
+  const source = usePlayerStore.getState().source;
+  return crossfadeSecFor(useSettings.getState(), source !== null && source === mixSource, next);
+}
 
 let fadeTimer: ReturnType<typeof setInterval> | null = null;
 /** Outgoing player while a fade is in progress. */
@@ -2564,7 +2583,7 @@ function handoffToNewSource(index: number, song: Song, sec: number) {
 
 /** If it's time (setting active and ≤ N seconds left), starts the crossfade. */
 function maybeStartCrossfade(status: AudioStatus) {
-  const fadeSec = useSettings.getState().crossfadeSec;
+  const fadeSec = activeCrossfadeSec();
   // `handoffReserve`: a server handoff is using the reserve player.
   if (fadeSec <= 0 || fadingOut || handoffReserve || !status.playing) return;
   if (isJamActive()) return;
@@ -2589,7 +2608,11 @@ function maybeStartCrossfade(status: AudioStatus) {
   if (ni == null) return;
   const next = st.queue[ni];
   if (!next || next.url) return;
-  startCrossfade(ni, Math.min(fadeSec, remaining));
+  // In a mix, a very short next track is not blended into (it would be mostly
+  // fade): the change happens at the end, like any other.
+  const nextFadeSec = activeCrossfadeSec(next);
+  if (nextFadeSec <= 0) return;
+  startCrossfade(ni, Math.min(nextFadeSec, remaining));
 }
 
 function startCrossfade(index: number, fadeSec: number) {
@@ -2641,9 +2664,10 @@ function tickFade() {
   const x = Math.min(1, (Date.now() - t0) / (fadeSec * 1000));
   const volume = usePlayerStore.getState().volume;
   const out = fadingOut;
+  const [outCurve, inCurve] = equalPowerGains(x);
   try {
-    if (out) out.volume = volume * outGain * Math.cos((x * Math.PI) / 2);
-    incoming.volume = volume * inGain * Math.sin((x * Math.PI) / 2);
+    if (out) out.volume = volume * outGain * outCurve;
+    incoming.volume = volume * inGain * inCurve;
   } catch {
     // ignore
   }
@@ -3419,6 +3443,21 @@ function scheduleSync() {
 }
 
 /**
+ * Where playback stands, saved now on the way out of a profile. Signing out or
+ * switching a moment after pausing used to cancel the save the pause had
+ * scheduled, and signing out mid-song left the server up to twenty seconds
+ * behind, so the device offering to continue (`PlayingElsewhereCard`) found an
+ * older spot. Called before the queue and `playedHere` are cleared, so what it
+ * saves is the leaving profile's. Only then: a deliberate stop clears the
+ * queue, and it must stay cleared.
+ */
+function flushSyncOnLeave() {
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = null;
+  syncQueueNow(true, false);
+}
+
+/**
  * Every so often while a song plays: the queue, and where in the song it is.
  *
  * The server shows the position it was last told, and it is only told when
@@ -3971,6 +4010,11 @@ interface PlayerState {
        * next album you pressed play on come out shuffled too.
        */
       shuffled?: boolean;
+      /**
+       * The queue is a mix (a die, "For you"): its changes get the mix
+       * crossfade (`mixCrossfadeSec`) instead of the normal one.
+       */
+      mix?: boolean;
     },
   ) => Promise<boolean>;
   /**
@@ -4157,6 +4201,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return false;
     }
     attachAppState();
+    mixSource = opts?.mix ? (source ?? null) : null;
     autoplayFetchedFor = null;
     autoplayRound = null;
     // A new queue starts the artist's catalogue over, even the same artist's:
@@ -4918,6 +4963,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   reset: async (forProfile = false) => {
+    if (forProfile) flushSyncOnLeave();
     get().cancelSleepTimer();
     clearPlayedHere();
     autoplayFetchedFor = null;
