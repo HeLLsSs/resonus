@@ -10,13 +10,16 @@
  * The charts are plain views. There is no SVG library in the app and two bar
  * charts do not justify one: a bar is a view with a height, and a cell of the
  * heat map is a view with an opacity.
+ *
+ * With navifind on, a YouTube section says how much of it came through the
+ * proxy (`lib/youtubeStats`).
  */
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { COVER, coverArtUrl, songCoverUrl } from '@/api/data';
+import { COVER, coverArtUrl, importedFromNavifind, songCoverUrl } from '@/api/data';
 import { BackChevron } from '@/components/BackChevron';
 import { Cover } from '@/components/Cover';
 import { EmptyState } from '@/components/EmptyState';
@@ -25,7 +28,8 @@ import { useListPadding } from '@/hooks/useScreenSize';
 import { useT, type TFunction } from '@/i18n';
 import { formatTotalDuration } from '@/lib/format';
 import { pushOnce } from '@/lib/pushOnce';
-import { queryStats, type ListeningStats } from '@/lib/statsDb';
+import { queryPlaysBySong, queryStats, type ListeningStats } from '@/lib/statsDb';
+import { filedSince, youtubeListening, type YoutubeListening } from '@/lib/youtubeStats';
 import { profileScopeId } from '@/store/auth';
 import { useSettings } from '@/store/settings';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
@@ -73,6 +77,23 @@ function weekdayLabels(lang: string): string[] {
   );
 }
 
+/** As many filed songs as `importedFromNavifind` looks through. */
+const FILED_POOL = 300;
+
+type YoutubeStats = YoutubeListening & { filed: number };
+
+async function queryYoutubeStats(sinceMs: number | null): Promise<YoutubeStats> {
+  const [rows, filed] = await Promise.all([
+    queryPlaysBySong(sinceMs),
+    // The section still says what the log knows when the server cannot be asked.
+    importedFromNavifind(FILED_POOL).catch(() => []),
+  ]);
+  return {
+    ...youtubeListening(rows, new Set(filed.map((s) => s.id))),
+    filed: filedSince(filed, sinceMs).length,
+  };
+}
+
 function playsLabel(n: number, t: TFunction): string {
   return n === 1 ? t('1 play') : t('{n} plays', { n });
 }
@@ -95,6 +116,14 @@ export default function StatsScreen() {
     queryFn: () => queryStats(periodStart(period, new Date())),
     // Never served from the cache: a listen since the last look is exactly what
     // somebody coming back to this screen wants to see counted.
+    staleTime: 0,
+  });
+
+  const navifind = useSettings((s) => s.navifind);
+  const { data: youtube } = useQuery({
+    queryKey: ['youtube-stats', profileScopeId(), period],
+    queryFn: () => queryYoutubeStats(periodStart(period, new Date())),
+    enabled: navifind,
     staleTime: 0,
   });
 
@@ -140,14 +169,29 @@ export default function StatsScreen() {
             }
           />
         ) : (
-          <StatsBody stats={data} lang={lang} t={t} />
+          <StatsBody
+            stats={data}
+            youtube={navifind && youtube && (youtube.plays > 0 || youtube.filed > 0) ? youtube : undefined}
+            lang={lang}
+            t={t}
+          />
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function StatsBody({ stats, lang, t }: { stats: ListeningStats; lang: string; t: TFunction }) {
+function StatsBody({
+  stats,
+  youtube,
+  lang,
+  t,
+}: {
+  stats: ListeningStats;
+  youtube?: YoutubeStats;
+  lang: string;
+  t: TFunction;
+}) {
   return (
     <>
       <View style={styles.cards}>
@@ -214,6 +258,44 @@ function StatsBody({ stats, lang, t }: { stats: ListeningStats; lang: string; t:
               plays={playsLabel(s.plays, t)}
               // A song has no screen of its own; its album is where it lives.
               href={s.albumId ? `/album/${s.albumId}` : undefined}
+            />
+          ))}
+        </>
+      ) : null}
+
+      {youtube ? <YoutubeSection youtube={youtube} t={t} /> : null}
+    </>
+  );
+}
+
+function YoutubeSection({ youtube, t }: { youtube: YoutubeStats; t: TFunction }) {
+  return (
+    <>
+      <Text style={styles.sectionTitle}>{t('YouTube')}</Text>
+      <View style={styles.cards}>
+        <View style={styles.card}>
+          <Text style={styles.cardValue}>{youtube.plays}</Text>
+          <Text style={styles.cardLabel}>
+            {t('{percent}% of listens', { percent: Math.round(youtube.share * 100) })}
+          </Text>
+        </View>
+        <View style={styles.card}>
+          <Text style={styles.cardValue}>{youtube.filed}</Text>
+          <Text style={styles.cardLabel}>{t('Filed into the library')}</Text>
+        </View>
+      </View>
+      {youtube.discovered.length > 0 ? (
+        <>
+          <Text style={styles.sectionTitle}>{t('Discovered through YouTube')}</Text>
+          {youtube.discovered.map((a, i) => (
+            <TopRow
+              key={a.id ?? a.name}
+              rank={i + 1}
+              cover={coverArtUrl(a.id, COVER.thumb)}
+              rounded
+              title={a.name}
+              plays={playsLabel(a.plays, t)}
+              href={a.id ? `/artist/${a.id}` : undefined}
             />
           ))}
         </>

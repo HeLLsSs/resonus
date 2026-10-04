@@ -23,6 +23,7 @@ import * as SQLite from 'expo-sqlite';
 import type { Song } from '@/api/subsonic';
 import { profileScopeId } from '@/store/auth';
 import { hashKey } from './localLibrary';
+import type { SongPlayRow } from './youtubeStats';
 
 const DIR = FileSystem.documentDirectory + 'stats/';
 
@@ -264,4 +265,21 @@ export async function queryStats(sinceMs: number | null): Promise<ListeningStats
     topAlbums,
     topSongs,
   };
+}
+
+/**
+ * Every song heard since a moment (or for ever with `null`), with how many
+ * times: what the YouTube section sifts (`lib/youtubeStats`). Grouped by song,
+ * so a few hundred rows rather than one per listen; the sifting depends on the
+ * proxy's ids and the filed songs, neither of which SQLite knows about.
+ */
+export async function queryPlaysBySong(sinceMs: number | null): Promise<SongPlayRow[]> {
+  const db = await statsDb(profileScopeId());
+  const where = sinceMs === null ? '' : 'WHERE played_at >= ?';
+  const args = sinceMs === null ? [] : [sinceMs];
+  return db.getAllAsync<SongPlayRow>(
+    `SELECT song_id AS songId, MAX(artist) AS artist, MAX(artist_id) AS artistId, COUNT(*) AS plays
+       FROM plays ${where} GROUP BY song_id`,
+    args,
+  );
 }
