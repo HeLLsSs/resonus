@@ -7,6 +7,46 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.11.0] - 2026-10-04
+
+### Added
+
+- The die has four modes: Mix (the library and YouTube), Library, YouTube
+  and Discover (songs never played). Settings › Playback picks the default;
+  a long press on any die (Home, the YouTube tab, the ride screen) picks one
+  for this time, with "Always use this". In Android Auto, "Shuffle
+  everything" plays the default mode and "Die modes" offers all four; voice
+  understands "discover".
+- A "Die" quick settings tile, and launcher shortcuts "Die" and "At home"
+  (which Google Assistant can open too).
+- Share a link from YouTube, YouTube Music or SoundCloud to Resonuls to play
+  it now, next, or file it into the library.
+- Smart playlists can ask for the songs filed by Navifind.
+- One equalizer per output (phone speaker, headphones, each Bluetooth
+  device such as the intercom), switched as the output changes.
+- Longer, equal-power transitions for the die and "For you" mixes.
+- A weekly report on Sunday evening, with a "Your week" playlist on the
+  server.
+- Guest mode for the Jam: a big QR code, guests can only search and add
+  (five a minute), and the host can turn adding off.
+- "Continue: <song>, stopped on <device> at <time>" on Home when another
+  device stopped less than twelve hours ago, resuming at the same second.
+- A notification when YouTube cannot be reached through Navifind, and
+  another when it is back.
+
+### Fixed
+
+- The Jam's shared volume reached nobody: the proxy kept it but never sent
+  it.
+- Stopping on a profile switch or a logout now saves the queue to the
+  server first.
+
+### Changed
+
+- The "Shuffle all" shortcut plays the library alone; "Die" plays the
+  default mode. Shortcuts are reordered so the one-tap ones come first.
+- "For you" reads "Pour toi" in French, like the rest of the app.
+
 ## [1.10.0] - 2026-10-04
 
 ### Added

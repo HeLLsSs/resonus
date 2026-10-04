@@ -2,7 +2,7 @@
   "expo": {
     "name": "Resonuls",
     "slug": "resonuls",
-    "version": "1.10.0",
+    "version": "1.11.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "resonuls",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.hellsss.resonuls",
-      "versionCode": 97,
+      "versionCode": 98,
       "adaptiveIcon": {
         "backgroundColor": "#0D0E0F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -44,6 +44,17 @@
           ],
           "category": [
             "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "SEND",
+          "data": [
+            {
+              "mimeType": "text/plain"
+            }
+          ],
+          "category": [
             "DEFAULT"
           ]
         }

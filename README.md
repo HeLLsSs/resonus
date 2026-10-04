@@ -326,6 +326,13 @@ appear when it is switched off.
 
 - Custom HTTP headers reach casting, DLNA and the car: a server behind them is
   relayed through the phone rather than handed out as an address.
+- **The die's four modes** (mix, library, YouTube, discover): a default in
+  the settings, any of them on a long press, in the car as well, plus a
+  quick settings tile and launcher shortcuts.
+- **Share from YouTube** to play or file a link, an **equalizer per
+  output**, **DJ-style transitions** for mixes, a **weekly report**, a Jam
+  **guest mode** by QR code, **resume from another device** and an **alert
+  when YouTube is down**.
 - **The sleep timer offered late at night**, once, when the music starts.
 - **A die on the home-screen widget**, even when nothing is playing.
 - **YouTube in the stats**, and **settings saved on the proxy** to come back

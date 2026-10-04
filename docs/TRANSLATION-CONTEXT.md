@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1399 of them.
+Every string the app can show, under the screen it shows up on. 1452 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -52,6 +52,7 @@ you are actually typing into, which is easier than reading it here.
 | `Couldn't add it to the library` |  |
 | `Couldn't create the link` | The server would not make a share link |
 | `Couldn't find anything to mix with this song` | Toast: the server had nothing similar to carry on with |
+| `Couldn't read that link` |  |
 | `Couldn't remove the bookmark` |  |
 | `Couldn't save the bookmark` |  |
 | `Couldn't save the file` | Toast: writing to the chosen folder failed |
@@ -65,15 +66,20 @@ you are actually typing into, which is easier than reading it here.
 | `Explicit` | A value of `Content`: the recording carries a parental advisory (strong language). Also read out for the E badge next to a title |
 | `Export “{name}”?` | Confirms getting the files of an album or playlist out of the app |
 | `Export as M3U` |  |
+| `Fetching {n} tracks into the library` |  |
+| `Fetching 1 track into the library` |  |
 | `Format` | The file format (FLAC, MP3…), written as the player writes it |
 | `Genre` | Label of a field in the song information sheet |
 | `Go to album` | Leave this sheet and open the album the song is on |
 | `Go to artist` | Leave this sheet and open the artist |
 | `Mix started` | The toast that says the app is now picking the songs |
 | `Moods` | Mood tags the server has on the song: mellow, energetic… |
+| `Nothing to fetch at that link` |  |
+| `Only YouTube and SoundCloud links can be opened here` |  |
 | `Open settings` | Its confirm button: goes to Android's own settings, not the app's |
 | `Pick a date…` | Opens the calendar to choose the day the link stops working |
 | `Pin to top` | Keep this at the top of its list, above everything else. `Unpin` undoes it |
+| `Play now` |  |
 | `Playback stopped` | The mini player when there is nothing playing any more |
 | `Plays` | How many times the song has been played |
 | `Rate` | Verb: give it stars. Used for a song and for an artist. Not "bitrate" |
@@ -90,6 +96,9 @@ you are actually typing into, which is easier than reading it here.
 | `Sending to another app isn't available on this device` | Toast: this phone has nothing that takes a shared file |
 | `Server didn't allow downloads` | Warning after sharing: the link was made and works, but the call that turns downloading on did not go through |
 | `Share “{name}”` | The sheet's title, with what is being shared |
+| `Shared from SoundCloud` |  |
+| `Shared from YouTube` |  |
+| `Shared links need the Navifind proxy: turn it on in Settings › Navifind` |  |
 | `Size` | The size of the quick grid tiles |
 | `Sleep timer` | Stop playing after a while, for falling asleep to |
 | `Sleep timer ({n} min left)` | The menu row while it is counting down. `{n}` is minutes still to go |
@@ -97,8 +106,10 @@ you are actually typing into, which is easier than reading it here.
 | `Sleep timer off` | The toast that says it was turned off |
 | `Something went wrong` |  |
 | `Song information` | The menu action and the sheet's title: what is known about the track |
+| `SoundCloud links can only be filed into the library` |  |
 | `Start mix` | Start an auto-generated radio mix from this song |
 | `The link expires in` | Heading over the choices below. They are spans from the moment the link is made, not times of day |
+| `The proxy couldn't take that link` |  |
 | `This download is a {n} kbps copy, not the original file.` | Shown before exporting: the file on the phone was transcoded when it was downloaded. `{n}` is a bitrate |
 | `This song carries no information.` | Empty state: the file and the server had nothing to say |
 | `Track` | The track number on its album. Not the song itself |
@@ -339,9 +350,11 @@ you are actually typing into, which is easier than reading it here.
 | `{decade}s mix` |  |
 | `{genre} radio` |  |
 | `Afternoon mix` |  |
+| `another device` |  |
 | `Another device` |  |
 | `Back online` | The toast shown when the server answers again and the app comes out of offline mode |
 | `Based on what you listen to` |  |
+| `Continue` |  |
 | `Couldn't build a mix` |  |
 | `Couldn't reach the server. Check your connection.` | Error on Home when the server does not answer at all |
 | `Discover` | Home section: discovery suggestions |
@@ -366,14 +379,20 @@ you are actually typing into, which is easier than reading it here.
 | `Nothing to play in this mix yet` |  |
 | `Play here` |  |
 | `Playing "{name}"` |  |
+| `Playing on {device}` |  |
 | `Playing on {player}` |  |
 | `Playlists` | A section on Home and in the library, and a folder in the car |
 | `Random albums` | A section of Home: albums picked at random, to happen upon something |
 | `Random artists` | A section of Home: artists picked at random |
 | `Random songs from the genre` |  |
 | `Rediscover` |  |
+| `Resume here` |  |
 | `Scanning your music…` | Going through the phone's own files |
 | `Songs from those years` |  |
+| `Stopped on {device} at {time}` |  |
+| `Stopped on {device} yesterday at {time}` |  |
+| `the browser` |  |
+| `the phone` |  |
 | `What you play at night` |  |
 | `What you play in the afternoon` |  |
 | `What you play in the evening` |  |
@@ -387,8 +406,8 @@ you are actually typing into, which is easier than reading it here.
 | `at {time}` |  |
 | `Built from what you play` |  |
 | `Continue listening` |  |
+| `Die modes` |  |
 | `For the road` |  |
-| `Library and YouTube` |  |
 | `Nothing downloaded` |  |
 | `Offline, only downloads can play` |  |
 | `Pinned` |  |
@@ -399,7 +418,6 @@ you are actually typing into, which is easier than reading it here.
 | `Shuffle everything` |  |
 | `Sign in on your phone` |  |
 | `Unknown title` | Fallback when the file and the server have no title |
-| `Your likes and picks, dealt` |  |
 
 ## in likedImport
 
@@ -415,22 +433,29 @@ you are actually typing into, which is easier than reading it here.
 | `Late night: stop in 30 minutes?` |  |
 | `Sleep in 30 min` |  |
 
-## in playbackLock
-
-| String | What it is |
-| --- | --- |
-| `another device` |  |
-| `Playing on {device}` |  |
-| `the browser` |  |
-| `the phone` |  |
-
 ## in speakerSuggestSync
 
 | String | What it is |
 | --- | --- |
 | `Continue at home?` |  |
+| `No home speaker found` |  |
 | `Now playing at home on {name}` |  |
 | `Play on {name}` |  |
+
+## in weeklyReport
+
+| String | What it is |
+| --- | --- |
+| `{n} hours` |  |
+| `1 minute` |  |
+| `Your week: {duration}` |  |
+| `Your week: {duration}, top artist {artist}` |  |
+
+## in weeklyReportSync
+
+| String | What it is |
+| --- | --- |
+| `Your week` |  |
 
 ## Jam
 
@@ -442,10 +467,13 @@ you are actually typing into, which is easier than reading it here.
 | `A code has six letters or digits` |  |
 | `A Jam needs a connection to the server.` |  |
 | `A Jam needs the Navifind proxy: turn it on in Settings › Navifind.` |  |
+| `A Jam played on this phone only, its QR code full screen: guests scan it and add songs from their browser, no app or account needed.` | The line under “Guest mode”, explaining it |
 | `Code` |  |
 | `Could not reach the Jam` |  |
 | `End the Jam` |  |
 | `For everybody.` | The line under “End the Jam”, explaining it |
+| `Guest mode` |  |
+| `Guests can add songs` |  |
 | `Host` |  |
 | `Jam needs a server account` |  |
 | `Jam volume` |  |
@@ -458,10 +486,14 @@ you are actually typing into, which is easier than reading it here.
 | `No Jam with that code` |  |
 | `Play on this phone` |  |
 | `QR code to join from a browser` |  |
+| `Scan to add songs` |  |
 | `Share the link` |  |
+| `Show the code to guests` |  |
 | `Start a Jam` |  |
 | `The Jam has ended` |  |
+| `The others only search and add songs, five a minute each; you keep every control.` | The line under “Guest mode”, explaining it |
 | `The phone that opened the Jam plays it; the ones that join are silent and steer, volume keys included. On, this phone plays too.` | The line under “Play on this phone”, explaining it |
+| `The QR code full screen: guests scan it and add songs from their browser.` | The line under “Show the code to guests”, explaining it |
 | `What is playing here becomes what everybody hears.` | The line under “Start a Jam”, explaining it |
 | `What is playing keeps playing, on this phone alone.` | The line under “Leave the Jam”, explaining it |
 
@@ -1056,19 +1088,30 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `another output` |  |
 | `Apply the equalizer to the app audio.` | The line under “Equalizer”, explaining it |
 | `Bands` | The equalizer's frequency sliders |
 | `Bass boost` |  |
+| `Bluetooth` |  |
 | `Boost` |  |
 | `Can distort or clip; the system volume stays the limit` | The line under “Volume boost”, explaining it |
 | `Custom` | Settings › Equalizer, the first option of the preset list: none of the presets below it, the bands left wherever you dragged them. The only place this word is used |
 | `Equalizer` |  |
+| `Hearing aid` |  |
+| `One equalizer per output` |  |
+| `Phone speaker` |  |
 | `Preamp` |  |
 | `Preset` | An equalizer preset. Not a bitrate |
 | `Reset bands` | Put the equalizer's frequency sliders back to flat |
+| `Settings for: {output}` |  |
 | `The equalizer is not available in this build.` |  |
+| `The music is playing on {name}, which plays the stream itself: the equalizer only applies to what this phone plays.` |  |
+| `The speaker, wired headphones and each Bluetooth device keep their own settings, switched with the output.` |  |
+| `This phone` | The on-device profile, with no server account |
+| `USB audio` |  |
 | `Volume boost` |  |
 | `Where the room for a boost comes from. Raising a band makes the music louder, and a track mastered near the top will clip: pull this down by about as much as the biggest band you raised.` |  |
+| `Wired headphones` |  |
 
 ## Settings › Explore sections
 
@@ -1227,7 +1270,9 @@ you are actually typing into, which is easier than reading it here.
 | `{name}: {found} of {total} tracks are in the library, {left} left out. The Navifind screen says which.` |  |
 | `{name}: all {total} tracks are in the library` |  |
 | `1 track is in the library now` |  |
+| `A notification when YouTube can no longer be reached through Navifind, and another when it is back. Checked every half hour.` |  |
 | `A YouTube, SoundCloud or Spotify link. A playlist or an album becomes a playlist of the same name on the server once its tracks are in.` |  |
+| `Alert when YouTube is down` |  |
 | `All {total} tracks found` |  |
 | `Answering` |  |
 | `Branch Spotify` |  |
@@ -1257,9 +1302,9 @@ you are actually typing into, which is easier than reading it here.
 | `Noted down {n} min ago` |  |
 | `Nothing new in the library` |  |
 | `Nothing to fetch at that link` |  |
-| `Offline: nothing to ask.` |  |
 | `On the proxy` |  |
 | `One device at a time` |  |
+| `Online tracks can be found and played again.` |  |
 | `Only the first 100 tracks came: Spotify shows no more of a playlist to anyone but its maker. If it holds more, make a copy of it on your Spotify account and import that one.` |  |
 | `Opens Spotify in a browser to ask for its permission.` |  |
 | `Sending…` |  |
@@ -1286,6 +1331,8 @@ you are actually typing into, which is easier than reading it here.
 | `Where the proxy looks for an online track. One noted down is left aside for five minutes, then tried again.` |  |
 | `Which account Navifind reads, and where to sign in to another.` | The line under “YouTube account”, explaining it |
 | `YouTube account` |  |
+| `YouTube is back through Navifind` |  |
+| `YouTube is unreachable through Navifind` |  |
 
 ## Settings › Navigation bar
 
@@ -1365,6 +1412,7 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `“Original” is the file exactly as it is on the server, with nothing transcoded. A lower bitrate saves data and may cost audible quality.` |  |
 | `A downloaded song normally plays from the file, which costs no data. Choose otherwise if your downloads are smaller copies and you would rather stream the good one when you can. Without a connection the file is always used.` |  |
+| `A longer blend, DJ style, in a die or "For you" mix; not into a radio or a song under 30 s. Volumes only: the beats are not matched.` |  |
 | `Always` | A value of when a downloaded song is played from the file instead of streamed |
 | `Ask` | One of the values of “When you get home” |
 | `Automatic` | A value of `Normalize volume`: let the app decide between per track and per album |
@@ -1384,6 +1432,7 @@ you are actually typing into, which is easier than reading it here.
 | `Keep screen on` |  |
 | `Last one used` | One of the values of “Home speaker” |
 | `Lost contact with the speaker` |  |
+| `Mix transitions` |  |
 | `Mobile data` | Group header under `Streaming`: the settings that apply on mobile data, as opposed to Wi-Fi |
 | `Never` | A value of `Play downloaded songs from the phone`: always stream, never use the file on the phone. The share sheet's own "never expires" is a separate key, `Never::expiry`, so a language that needs two different words can have them |
 | `No` | A setting value meaning none or zero, not the answer to a question: no crossfade, no seek buttons |
@@ -1399,6 +1448,7 @@ you are actually typing into, which is easier than reading it here.
 | `Preload upcoming tracks` |  |
 | `Quality & playback` |  |
 | `Request the next few tracks ahead of time so they start instantly. Helps with proxy servers and slow sources that fetch each track on demand.` | The line under “Preload upcoming tracks”, explaining it |
+| `Same as crossfade` |  |
 | `Scrobbling` | Reporting a song as played, to the user's own server and from there to Last.fm or ListenBrainz. The title of its own screen and the row that opens it. The word comes from Last.fm and most languages keep it; use whatever those services call it in yours if they do |
 | `Skip silence` |  |
 | `Songs blend into each other when one ends.` | The line under “Crossfade”, explaining it |
@@ -1415,6 +1465,7 @@ you are actually typing into, which is easier than reading it here.
 | `The speaker the music goes to when you get home. Without one, it is the speaker you last played on.` |  |
 | `Tune the sound band by band.` | The line under “Equalizer”, explaining it |
 | `Warn about battery optimization` |  |
+| `What the die plays on a tap: the Shuffle chip, the widget, the car. A long press on a die picks another mode once.` |  |
 | `What to do when the music plays on the phone and the home speaker is on the network. Switching on its own, the music also comes back to the phone when you leave the Wi-Fi.` |  |
 | `When a song counts as played.` | Under the `Scrobbling` row, saying what the screen it opens is about |
 | `When the music starts between 11 pm and 5 am, offer to stop it in 30 minutes, once a night.` | The line under “Suggest the sleep timer at night”, explaining it |
@@ -1710,7 +1761,6 @@ you are actually typing into, which is easier than reading it here.
 | `Navifind now reads {name}.` |  |
 | `Navifind tries it against YouTube and only keeps it if it works.` | The line under “Account number”, explaining it |
 | `No account yet` |  |
-| `Offline: nothing to ask.` |  |
 | `Open music.youtube.com in a browser signed in to the account Navifind should use, open the developer tools and reload the page. In the network list pick any request named youtubei, look at the headers it sent, and copy the whole Cookie line — all of it, about seventeen hundred characters.` |  |
 | `Paste a cookie instead` |  |
 | `Send to Navifind` | Hands the pasted cookie to the proxy, which tries it against YouTube before keeping it |
@@ -1766,6 +1816,7 @@ you are actually typing into, which is easier than reading it here.
 | `does not contain` |  |
 | `Edit smart playlist` |  |
 | `Favourite` |  |
+| `Filed by Navifind` |  |
 | `flac, mp3…` |  |
 | `Genre` | Label of a field in the song information sheet |
 | `in the last … days` |  |
@@ -1829,6 +1880,9 @@ you are actually typing into, which is easier than reading it here.
 | `Top albums` |  |
 | `Top artists` |  |
 | `Top songs` |  |
+| `Weekly report` |  |
+| `Weekly report off` |  |
+| `Weekly report on: every Sunday evening, your week in a notification and the "Your week" playlist` |  |
 | `YouTube` |  |
 
 ## Webdav
@@ -1850,13 +1904,11 @@ you are actually typing into, which is easier than reading it here.
 | `Navifind is not signed in to YouTube, so there is nothing of yours to show. What everyone else is listening to is below.` |  |
 | `No YouTube account on the proxy` |  |
 | `Nothing here yet` |  |
-| `Offline: nothing to ask.` |  |
 | `Sign in again` |  |
 | `Sign in an account` |  |
 | `Switch account` |  |
 | `The server did not answer as Navifind would. Check the address, or turn this off.` |  |
 | `Your YouTube session has expired` |  |
-| `YouTube shuffle` |  |
 
 ## Used all over the app
 
@@ -1889,6 +1941,7 @@ you are actually typing into, which is easier than reading it here.
 | `All {songs} are already in “{name}”.` | The same warning when every one of the several being added is already there. `{songs}` already reads as a count ("12 songs") |
 | `Alphabetical` | Sort option: the order of a list |
 | `Already added` | Title of the dialog that warns the song is in that playlist already |
+| `Always use this` |  |
 | `Ascending` | Sort option: the order of a list |
 | `Back` | Screen reader label for the back arrow. A direction, not a verb |
 | `Cancel` | The button that closes a dialog without doing anything, and the one beside a search box |
@@ -1909,6 +1962,7 @@ you are actually typing into, which is easier than reading it here.
 | `Delete` | The confirm button of a delete dialog, for a playlist or a radio station |
 | `Delete downloads` | Menu action: delete the downloaded files of everything here |
 | `Descending` | Sort option: the order of a list |
+| `Die` |  |
 | `Direction` | Sort sheet: the ascending vs descending toggle. Not a compass direction |
 | `Done` | The button that leaves drag-to-reorder, or accepts a fine-tuned number |
 | `Download` | The confirm button of the download dialog, and what the screen reader calls the download button. A verb |
@@ -1925,6 +1979,8 @@ you are actually typing into, which is easier than reading it here.
 | `History` | The listening history: what was played and when |
 | `Hold to go back to {tab}` | The hint on holding the back arrow. `{tab}` is Home, Search or Library |
 | `Jam` |  |
+| `Library and YouTube` |  |
+| `Library only` |  |
 | `List` | An option in that menu: one row per item, instead of cards |
 | `Lyrics` | The words of the song. Also a line of the storage bar, where it is their size on the phone |
 | `Mix of “{name}”` | What the player calls the queue once it has grown past its album into songs the app picked itself. `{name}` is the song it was grown from |
@@ -1936,12 +1992,14 @@ you are actually typing into, which is easier than reading it here.
 | `No results` | Nothing matched what was typed |
 | `No results for “{q}”` | Empty state. `{q}` is what was typed |
 | `Not available offline` | This one is not downloaded, so it cannot play without a connection |
+| `Not enough songs you have never played: here is the mix` |  |
 | `Not while in a Jam` |  |
 | `Nothing here is a favorite` | Shown in place of the rows when the favorites narrowing empties the list |
 | `Nothing here is downloaded` | Toast when playing something that is not downloaded, offline |
 | `Nothing to shuffle yet` | Empty state: there is nothing here to play in random order |
 | `Off` | A setting value meaning disabled (crossfade, normalization…) |
 | `Offline` | The toast shown when the app falls into offline mode by itself, and the badge that says it is in it |
+| `Offline: nothing to ask.` |  |
 | `Password` | The password field, on the login screen and wherever the server asks again |
 | `Pause` | Read out by the screen reader for the pause button. A verb |
 | `Play` | Read out by the screen reader for the play button. A verb |
@@ -1951,6 +2009,7 @@ you are actually typing into, which is easier than reading it here.
 | `Playlist name` | The name field when making or renaming a playlist |
 | `Radio` | Internet radio stations. Most languages keep the word |
 | `Random` |  |
+| `Random songs from your library` |  |
 | `Rate {n} stars` | Read out by the screen reader for each star. `{n}` is which star it is |
 | `Remove` | Take something out of a list. Deleting for good is `Delete` |
 | `Remove download` | Delete the downloaded file, keeping the song in the library |
@@ -1970,6 +2029,7 @@ you are actually typing into, which is easier than reading it here.
 | `Song downloaded` | Toast: one song finished |
 | `Songs` | Always a heading, never a count, so it wants the plain plural your language uses for a list of them ("Songs", not "of songs"). Counting songs is a different thing and goes through the plural forms |
 | `Songs already downloaded will be kept.` | The line under that title: stopping does not undo what already arrived |
+| `Songs you have never played` |  |
 | `Sort` | Read out by the screen reader for the button that opens the sort options. A verb |
 | `Sort by` | Heading over the sort options |
 | `Stop` | Stop a download that is running. Not stop playback |
@@ -1985,6 +2045,11 @@ you are actually typing into, which is easier than reading it here.
 | `Username` | The username field |
 | `View` | Title of the menu that chooses how a collection is drawn, and the label of the button that opens it. A noun: what you are looking at, not the verb |
 | `View cover` | The same as `View image`, for album and playlist artwork |
+| `Your library and your YouTube likes, dealt together` |  |
+| `Your likes and picks, dealt` |  |
+| `YouTube is out of reach: shuffling your library` |  |
+| `YouTube only` |  |
+| `YouTube shuffle` |  |
 
 ## Left in English on purpose
 
