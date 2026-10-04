@@ -9,5 +9,6 @@
   <string name="widget_play">Reprodueix</string>
   <string name="widget_pause">Pausa</string>
   <string name="widget_next">Següent</string>
+  <string name="widget_shuffle">Aleatori</string>
   <string name="widget_play_song">Reprodueix %1$s</string>
 </resources>

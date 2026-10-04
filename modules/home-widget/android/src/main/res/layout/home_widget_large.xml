@@ -101,6 +101,16 @@
             android:scaleType="center"
             android:src="@drawable/ic_widget_next"
             android:tint="?android:attr/textColorPrimary" />
+
+        <ImageButton
+            android:id="@+id/widget_dice"
+            android:layout_width="44dp"
+            android:layout_height="40dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/widget_shuffle"
+            android:scaleType="center"
+            android:src="@drawable/ic_widget_dice"
+            android:tint="?android:attr/textColorPrimary" />
       </LinearLayout>
     </LinearLayout>
   </LinearLayout>

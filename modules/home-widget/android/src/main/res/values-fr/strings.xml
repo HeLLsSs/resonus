@@ -9,5 +9,6 @@
   <string name="widget_play">Lecture</string>
   <string name="widget_pause">Pause</string>
   <string name="widget_next">Suivant</string>
+  <string name="widget_shuffle">Aléatoire</string>
   <string name="widget_play_song">Lire %1$s</string>
 </resources>

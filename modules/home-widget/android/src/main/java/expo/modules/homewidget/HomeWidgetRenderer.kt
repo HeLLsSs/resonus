@@ -18,7 +18,9 @@ import java.util.concurrent.Executors
  * Each widget is drawn for the cells the launcher gave it (see [Shape]): a
  * square one is the cover with the title and play over it, a wide one the
  * cover beside the title, artist and buttons, and a tall one that plus the
- * next songs of the queue, as many as fit.
+ * next songs of the queue, as many as fit. The wide and tall ones add a dice
+ * after the buttons when they have the width for a fourth; with nothing
+ * playing, the dice is the one button left, at every size.
  *
  * The cover is the slow part, so a refresh draws twice when it has to: at once
  * with the cover already in hand (or the placeholder), and again when the
@@ -28,6 +30,14 @@ import java.util.concurrent.Executors
 internal object HomeWidgetRenderer {
   /** The deep link the cover opens. `resonus` is the app's scheme (app.json). */
   private const val PLAYER_LINK = "resonuls://player"
+
+  /**
+   * The intents API's broadcast (docs/INTENTS.md), spelt out rather than
+   * taken from its module, which this one does not depend on.
+   */
+  private const val ACTION_COMMAND = "com.hellsss.resonuls.COMMAND"
+  private const val EXTRA_COMMAND = "command"
+  private const val COMMAND_PLAY_RANDOM = "play_random"
 
   /**
    * Opens the app on the player, which is a route it already has. With [play]
@@ -80,20 +90,24 @@ internal object HomeWidgetRenderer {
    * A widget narrower than three columns is the square one. A wider one gets
    * a queue row for each [ROW_DP] left under the head, up to
    * [WidgetState.MAX_UPCOMING]; none fitting is the plain wide one. The
-   * launcher gives no options at all on some old ones: that is the wide one.
+   * dice comes with [DICE_MIN_WIDTH_DP], the width the cover and four buttons
+   * take side by side: on a three-column widget it would squeeze the others.
+   * The launcher gives no options at all on some old ones: that is the wide
+   * one, with its dice.
    */
-  private data class Shape(val small: Boolean, val rows: Int) {
+  private data class Shape(val small: Boolean, val rows: Int, val dice: Boolean) {
     companion object {
       private const val SMALL_MAX_WIDTH_DP = 180
+      private const val DICE_MIN_WIDTH_DP = 290
       private const val HEAD_DP = 112
       private const val ROW_DP = 30
 
       fun of(options: Bundle): Shape {
         val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
         val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
-        if (width in 1 until SMALL_MAX_WIDTH_DP) return Shape(small = true, rows = 0)
+        if (width in 1 until SMALL_MAX_WIDTH_DP) return Shape(small = true, rows = 0, dice = false)
         val rows = ((height - HEAD_DP) / ROW_DP).coerceIn(0, WidgetState.MAX_UPCOMING)
-        return Shape(small = false, rows = rows)
+        return Shape(small = false, rows = rows, dice = width == 0 || width >= DICE_MIN_WIDTH_DP)
       }
     }
   }
@@ -117,7 +131,9 @@ internal object HomeWidgetRenderer {
   /**
    * Nothing to show: the app's icon where the cover goes, and a tap anywhere
    * opens the app the way the launcher would, since there is no player to
-   * open on.
+   * open on. Anywhere but the dice, left alone where the buttons go at every
+   * size: with nothing to pause or skip, starting something is all a button
+   * can do.
    */
   private fun buildEmpty(context: Context, shape: Shape, views: RemoteViews) {
     val icon = WidgetArtwork.appIcon(context)
@@ -126,6 +142,7 @@ internal object HomeWidgetRenderer {
       views.setViewVisibility(R.id.widget_artwork, View.GONE)
       views.setViewVisibility(R.id.widget_app_icon, View.VISIBLE)
       views.setViewVisibility(R.id.widget_play_pause, View.GONE)
+      views.setViewVisibility(R.id.widget_dice, View.VISIBLE)
       if (icon != null) views.setImageViewBitmap(R.id.widget_app_icon, icon)
     } else {
       views.setTextViewText(R.id.widget_artist, context.getString(R.string.widget_open_app))
@@ -134,8 +151,12 @@ internal object HomeWidgetRenderer {
       } else {
         views.setImageViewResource(R.id.widget_artwork, R.drawable.ic_widget_artwork)
       }
-      views.setViewVisibility(R.id.widget_controls, View.GONE)
+      views.setViewVisibility(R.id.widget_prev, View.GONE)
+      views.setViewVisibility(R.id.widget_play_pause, View.GONE)
+      views.setViewVisibility(R.id.widget_next, View.GONE)
+      views.setViewVisibility(R.id.widget_dice, View.VISIBLE)
     }
+    views.setOnClickPendingIntent(R.id.widget_dice, dice(context))
     val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
       ?: playerIntent(context, play = false)
     val openApp = PendingIntent.getActivity(
@@ -190,6 +211,8 @@ internal object HomeWidgetRenderer {
     views.setOnClickPendingIntent(R.id.widget_body, openPlayer)
     views.setOnClickPendingIntent(R.id.widget_prev, transport(context, HomeWidgetProvider.ACTION_PREV, REQUEST_PREV))
     views.setOnClickPendingIntent(R.id.widget_next, transport(context, HomeWidgetProvider.ACTION_NEXT, REQUEST_NEXT))
+    views.setViewVisibility(R.id.widget_dice, if (shape.dice) View.VISIBLE else View.GONE)
+    views.setOnClickPendingIntent(R.id.widget_dice, dice(context))
   }
 
   /**
@@ -226,6 +249,22 @@ internal object HomeWidgetRenderer {
       PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
+  /**
+   * The dice: the intents API's `play_random`, the library mixed with
+   * YouTube's picks, as Tasker would ask for it. Its receiver hands the
+   * command to JS, or starts JS with no screen when the app is not running,
+   * so this receiver has nothing of its own to do for it.
+   */
+  private fun dice(context: Context): PendingIntent =
+    PendingIntent.getBroadcast(
+      context,
+      REQUEST_DICE,
+      Intent(ACTION_COMMAND)
+        .setPackage(context.packageName)
+        .putExtra(EXTRA_COMMAND, COMMAND_PLAY_RANDOM),
+      PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
   // One request code per row, so a redraw replaces the row's song rather than
   // piling up a pending intent per song ever shown.
   private fun jump(context: Context, index: Int, id: String, requestCode: Int): PendingIntent =
@@ -244,6 +283,7 @@ internal object HomeWidgetRenderer {
   private const val REQUEST_PLAY_PAUSE = 2
   private const val REQUEST_NEXT = 3
   private const val REQUEST_OPEN_APP = 4
+  private const val REQUEST_DICE = 5
   private const val REQUEST_JUMP = 10
 
   private val QUEUE_ROWS = listOf(

@@ -28,6 +28,8 @@ import android.view.KeyEvent
  * its job.
  *
  * A queue row has no key to press: it goes to JS too (see [HomeWidgetModule]).
+ * Nor has the dice, which does not come here at all: it is a command of the
+ * intents API, sent to that module's receiver (see [HomeWidgetRenderer]).
  */
 class HomeWidgetProvider : AppWidgetProvider() {
   override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
