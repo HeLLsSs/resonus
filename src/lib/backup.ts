@@ -44,6 +44,7 @@ import * as Sharing from 'expo-sharing';
 import { hashKey } from '@/lib/localLibrary';
 import { clearLocalFavs, clearLocalPlaylists } from '@/lib/localQueries';
 import { queryClient } from '@/lib/query';
+import { getRideConfig, NO_RIDE_CONFIG, type RideConfig, rideModeAvailable, setRideConfig } from '@/lib/rideMode';
 import { primaryUrl } from '@/lib/serverUrls';
 import { getItem, setItem } from '@/lib/storage';
 import { type OfflineSource, type Profile, type ServerProfile, useAuthStore } from '@/store/auth';
@@ -114,6 +115,7 @@ interface BackupFile {
   count: number;
   profiles?: unknown;
   data?: unknown;
+  ride?: unknown;
   encrypted?: { salt: string; iterations: number; sealed: string };
 }
 
@@ -121,6 +123,9 @@ interface BackupFile {
 export interface BackupPayload {
   profiles: Profile[];
   data: Record<string, string>;
+  /** Ride mode's settings, which live in the native module rather than in
+   *  storage; absent where there is no ride mode, or in an older file. */
+  ride?: RideConfig;
   /** Storage entries the file had that were not taken: an unknown key, or a
    *  blob that is not what its store would expect to read. */
   skipped: number;
@@ -230,7 +235,8 @@ async function read(key: string): Promise<string | null> {
   }
 }
 
-async function collect(includeTokens: boolean): Promise<BackupPayload> {
+/** Exported for `lib/proxyBackupSync.ts`, which keeps the same payload on the proxy. */
+export async function collect(includeTokens: boolean): Promise<BackupPayload> {
   const profiles = useAuthStore.getState().profiles;
   const scopes = new Set(FIXED_SCOPES);
   for (const p of profiles) if (p._type === 'server') scopes.add(scopeOf(p));
@@ -245,7 +251,8 @@ async function collect(includeTokens: boolean): Promise<BackupPayload> {
     if (raw === null) continue;
     data[key] = !includeTokens && isSettingsKey(key) ? withoutListenBrainz(raw) : raw;
   }
-  return { profiles: profiles.map((p) => exportable(p, includeTokens)), data, skipped: 0 };
+  const ride = rideModeAvailable ? getRideConfig() : undefined;
+  return { profiles: profiles.map((p) => exportable(p, includeTokens)), data, skipped: 0, ...(ride ? { ride } : {}) };
 }
 
 function toHex(bytes: Uint8Array): string {
@@ -311,6 +318,7 @@ export async function exportBackup(options: {
   } else {
     file.profiles = payload.profiles;
     file.data = payload.data;
+    file.ride = payload.ride;
   }
   const dir = new Directory(Paths.cache, 'backup');
   if (!dir.exists) dir.create({ intermediates: true });
@@ -411,7 +419,22 @@ function fits(raw: string, shape: Shape): boolean {
   }
 }
 
-function readPayload(profiles: unknown, data: unknown): BackupPayload {
+/**
+ * Ride mode's settings as a file gives them, field by field: each one is taken
+ * only when it has the type of its default, so the native module is never
+ * handed something it cannot store. Undefined for anything that is not one.
+ */
+function readRide(value: unknown): RideConfig | undefined {
+  if (!isRecord(value)) return undefined;
+  const ride: Record<string, unknown> = { ...NO_RIDE_CONFIG };
+  for (const [key, fallback] of Object.entries(NO_RIDE_CONFIG)) {
+    if (typeof value[key] === typeof fallback) ride[key] = value[key];
+  }
+  return ride as unknown as RideConfig;
+}
+
+/** Exported for `lib/proxyBackupSync.ts`, which reads the proxy's copy the same way. */
+export function readPayload(profiles: unknown, data: unknown, rideValue?: unknown): BackupPayload {
   if (!Array.isArray(profiles) || !isRecord(data)) throw new BackupError('invalid');
   const out: Record<string, string> = {};
   let skipped = 0;
@@ -425,7 +448,8 @@ function readPayload(profiles: unknown, data: unknown): BackupPayload {
     const profile = readProfile(p);
     if (profile) kept.push(profile);
   }
-  return { profiles: kept, data: out, skipped };
+  const ride = readRide(rideValue);
+  return { profiles: kept, data: out, skipped, ...(ride ? { ride } : {}) };
 }
 
 function parseBackup(text: string): BackupFile {
@@ -473,6 +497,7 @@ function parseBackup(text: string): BackupFile {
           : 0,
     profiles: parsed.profiles,
     data: parsed.data,
+    ride: parsed.ride,
     encrypted,
   };
 }
@@ -500,7 +525,7 @@ export async function pickBackup(): Promise<PickedBackup | null> {
   };
   return {
     summary,
-    payload: file.encrypted ? null : readPayload(file.profiles, file.data),
+    payload: file.encrypted ? null : readPayload(file.profiles, file.data, file.ride),
     file,
   };
 }
@@ -525,7 +550,7 @@ export async function unlockBackup(picked: PickedBackup, passphrase: string): Pr
     throw new BackupError('invalid');
   }
   if (!isRecord(parsed)) throw new BackupError('invalid');
-  return readPayload(parsed.profiles, parsed.data);
+  return readPayload(parsed.profiles, parsed.data, parsed.ride);
 }
 
 /** The same test `store/auth` uses to tell two profiles apart. */
@@ -586,6 +611,7 @@ export async function restoreBackup(payload: BackupPayload): Promise<RestoreResu
     }
   }
   await setItem(PROFILES_KEY, JSON.stringify(profiles));
+  if (payload.ride) setRideConfig(payload.ride);
   // The list alone: the session, the offline flags and everything else in the
   // store are the phone's and were not in the file.
   useAuthStore.setState({ profiles });

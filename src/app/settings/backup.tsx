@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
+import { Dialog } from '@/components/Dialog';
 import { Field, SettingRow, SettingsPage, settingsStyles, SwitchList, TextRow } from '@/components/SettingsUI';
 import { useT, type TFunction } from '@/i18n';
 import {
@@ -24,6 +25,9 @@ import {
   type PickedBackup,
   type RestoreResult,
 } from '@/lib/backup';
+import { restoreFromProxy, useProxyBackup } from '@/lib/proxyBackupSync';
+import { useAuthStore } from '@/store/auth';
+import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
 import { useTheme } from '@/theme';
 
@@ -63,6 +67,12 @@ export default function BackupSettings() {
   const [picked, setPicked] = useState<PickedBackup | null>(null);
   const [unlockWith, setUnlockWith] = useState('');
   const [restored, setRestored] = useState<RestoreResult | null>(null);
+  const navifind = useSettings((s) => s.navifind);
+  const backupToProxy = useSettings((s) => s.backupToProxy);
+  const setBackupToProxy = useSettings((s) => s.setBackupToProxy);
+  const offline = useAuthStore((s) => s.offline);
+  const proxySavedAt = useProxyBackup((s) => s.savedAt);
+  const [askProxyRestore, setAskProxyRestore] = useState(false);
 
   const runExport = async () => {
     if (busy) return;
@@ -126,6 +136,20 @@ export default function BackupSettings() {
     }
   };
 
+  const runProxyRestore = async () => {
+    setAskProxyRestore(false);
+    if (busy) return;
+    setBusy(true);
+    try {
+      toast((await restoreFromProxy()) ? t('Backup restored') : t('Navifind has no copy of your settings yet'));
+    } catch (e) {
+      toast(e instanceof BackupError ? errorText(t, e) : t("Couldn't reach the server"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const savedAtDate = proxySavedAt ? new Date(proxySavedAt) : null;
   const createdAt = picked?.summary.createdAt ? new Date(picked.summary.createdAt) : null;
   const preview = picked?.payload ? previewProfiles(picked.payload) : null;
   const canUnlock = !busy && unlockWith.trim().length > 0;
@@ -138,6 +162,41 @@ export default function BackupSettings() {
             'Your profiles and every setting, pin and smart playlist kept under them, as one file. Downloads, play history and listening stats stay on this device.',
           )}
         </Text>
+
+        {navifind ? (
+          <>
+            <Text style={settingsStyles.sectionTitle}>{t('On the Navifind server')}</Text>
+            <SwitchList
+              options={[
+                {
+                  label: t('Keep my settings on the server'),
+                  description: t(
+                    'Saved on Navifind 30 seconds after each change, so a reinstall finds them again. Passwords, tokens and proxy headers are never sent.',
+                  ),
+                  value: backupToProxy,
+                  onChange: setBackupToProxy,
+                },
+              ]}
+            />
+            <Field
+              label={t('Last saved')}
+              value={savedAtDate && !Number.isNaN(savedAtDate.getTime()) ? savedAtDate.toLocaleString() : '—'}
+            />
+            <SettingRow
+              icon="cloud-download-outline"
+              label={busy ? t('Working…') : t('Restore from the server')}
+              onPress={busy || offline ? undefined : () => setAskProxyRestore(true)}
+            />
+            <Dialog
+              visible={askProxyRestore}
+              title={t('Restore your settings from the server?')}
+              message={t('Settings saved on Navifind replace the ones on this phone.')}
+              confirmLabel={t('Restore')}
+              onCancel={() => setAskProxyRestore(false)}
+              onConfirm={() => void runProxyRestore()}
+            />
+          </>
+        ) : null}
 
         <Text style={settingsStyles.sectionTitle}>{t('Export')}</Text>
         <SwitchList

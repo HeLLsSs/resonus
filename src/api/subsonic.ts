@@ -2072,6 +2072,39 @@ export async function saveYoutubeCookie(
   return readAccount(res.navifind?.youtubeAccount);
 }
 
+/** The settings document the proxy keeps for this account, and when it was saved. */
+export interface ProxySettings {
+  settings: unknown;
+  savedAt: string | null;
+}
+
+/**
+ * Hands the proxy this account's settings document (JSON text, at most
+ * 256 KB) and answers with the time it was saved. In the body, like the
+ * cookie: it is the account's credentials that go with it.
+ */
+export async function saveSettingsToProxy(auth: SubsonicAuth, json: string): Promise<string | null> {
+  const res = await postToProxy<{ navifind?: { savedAt?: unknown } }>(auth, 'navifind/settings.view', {
+    settings: json,
+  });
+  return typeof res.navifind?.savedAt === 'string' ? res.navifind.savedAt : null;
+}
+
+/** The settings the proxy keeps for this account, or null when it has none. */
+export async function loadSettingsFromProxy(auth: SubsonicAuth): Promise<ProxySettings | null> {
+  try {
+    const res = await request<{ navifind?: { settings?: unknown; savedAt?: unknown } }>(
+      auth,
+      'navifind/settings.view',
+    );
+    const savedAt = res.navifind?.savedAt;
+    return { settings: res.navifind?.settings ?? null, savedAt: typeof savedAt === 'string' ? savedAt : null };
+  } catch (e) {
+    if (e instanceof SubsonicRequestError && e.code === ERR_NOT_FOUND) return null;
+    throw e;
+  }
+}
+
 /** One of the accounts the stored cookie opens. */
 export interface YoutubeAccountChoice {
   /** The `X-Goog-AuthUser` index that reaches it. */

@@ -234,5 +234,7 @@ export function startApp(): void {
   startPlaybackLock();
   startRideSync();
   startSpeakerSuggest();
+  void import('@/lib/nightSleep').then((m) => m.startNightSleep());
   void import('@/lib/likedImport').then((m) => m.startLikedImport());
+  void import('@/lib/proxyBackupSync').then((m) => m.startProxyBackup());
 }
