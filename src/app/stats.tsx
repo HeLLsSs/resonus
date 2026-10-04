@@ -14,6 +14,7 @@
  * With navifind on, a YouTube section says how much of it came through the
  * proxy (`lib/youtubeStats`).
  */
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -32,6 +33,7 @@ import { queryPlaysBySong, queryStats, type ListeningStats } from '@/lib/statsDb
 import { filedSince, youtubeListening, type YoutubeListening } from '@/lib/youtubeStats';
 import { profileScopeId } from '@/store/auth';
 import { useSettings } from '@/store/settings';
+import { useToast } from '@/store/toast';
 import { colors, fontSize, radius, spacing, themed, useTheme } from '@/theme';
 
 type Period = 'week' | 'month' | 'year' | 'all';
@@ -108,6 +110,7 @@ export default function StatsScreen() {
   // Content stops growing at a reading measure and centres itself (#131).
   const listPad = useListPadding(spacing.lg);
   const [period, setPeriod] = useState<Period>('week');
+  const weeklyReport = useSettings((s) => s.weeklyReport);
 
   // Keyed by profile as well as period, so switching accounts does not show
   // the previous one's charts while the new ones are being counted.
@@ -132,6 +135,29 @@ export default function StatsScreen() {
       <View style={styles.bar}>
         <BackChevron size={28} />
         <Text style={styles.barTitle}>{t('Listening stats')}</Text>
+        {/* The Sunday evening report, switched where its numbers are. */}
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityState={{ checked: weeklyReport }}
+          accessibilityLabel={t('Weekly report')}
+          hitSlop={8}
+          onPress={() => {
+            useSettings.getState().setWeeklyReport(!weeklyReport);
+            useToast
+              .getState()
+              .show(
+                weeklyReport
+                  ? t('Weekly report off')
+                  : t('Weekly report on: every Sunday evening, your week in a notification and the "Your week" playlist'),
+              );
+          }}
+        >
+          <Ionicons
+            name={weeklyReport ? 'notifications' : 'notifications-off-outline'}
+            size={22}
+            color={weeklyReport ? colors.accent : colors.textSecondary}
+          />
+        </Pressable>
       </View>
 
       <ScrollView

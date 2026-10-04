@@ -6,23 +6,39 @@
  *
  * Reached from the output sheet and from Settings › Navifind, and by the
  * link `resonuls://jam/<code>`, which joins that session on arrival.
+ *
+ * Guest mode is a Jam made for a room: it plays on this phone only, and the
+ * QR code fills the screen for whoever comes in to scan, add songs from the
+ * browser page and go back to their evening.
  */
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Share, Text, useWindowDimensions, View } from 'react-native';
+import { useKeepAwake } from 'expo-keep-awake';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 
 import { SettingRow, SettingsPage, settingsStyles, SwitchList, TextRow } from '@/components/SettingsUI';
 import { useAccent } from '@/hooks/useAccent';
 import { useT } from '@/i18n';
-import { authHeaders } from '@/api/subsonic';
+import { authHeaders, type SubsonicAuth } from '@/api/subsonic';
 import { cleanCode, JamError, jamPageUrl, jamQrUrl, listJams } from '@/lib/jam';
 import { navifindActive } from '@/lib/navifind';
 import { useAuthStore } from '@/store/auth';
-import { endJam, isJamHost, jamReportVolume, joinJamByCode, leaveJam, setJamListenHere, startJam, useJam } from '@/store/jam';
+import {
+  endJam,
+  isJamHost,
+  jamReportVolume,
+  joinJamByCode,
+  leaveJam,
+  setJamGuestAdds,
+  setJamGuestMode,
+  setJamListenHere,
+  startJam,
+  useJam,
+} from '@/store/jam';
 import { useToast } from '@/store/toast';
 import { fontSize, spacing, useTheme } from '@/theme';
 
@@ -76,6 +92,13 @@ export default function JamScreen() {
   };
 
   const start = () => startJam().catch(said);
+  const [guestBoard, setGuestBoard] = useState(false);
+  // Played here and nowhere else (the opener plays, the others only add
+  // songs, see `store/jam.ts`), and the code up on the screen for the room.
+  const startForGuests = () =>
+    startJam({ guests: true })
+      .then(() => setGuestBoard(true))
+      .catch(said);
   const join = () => joinJamByCode(code).catch(said);
 
   // The sessions under way on the server: the one in the house is a tap away
@@ -149,7 +172,7 @@ export default function JamScreen() {
                 opened it follows this, and so do the volume keys of every
                 phone in it. In twentieths, so a drag is not a command per
                 pixel. */}
-            {sessionVolume !== undefined ? (
+            {sessionVolume !== undefined && (host || !session.guestMode) ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.sm }}>
                 <Ionicons name="volume-low-outline" size={20} color={colors.textSecondary} />
                 <Slider
@@ -171,6 +194,36 @@ export default function JamScreen() {
                 />
                 <Ionicons name="volume-high-outline" size={20} color={colors.textSecondary} />
               </View>
+            ) : null}
+
+            {host ? (
+              <SettingRow
+                icon="qr-code-outline"
+                label={t('Show the code to guests')}
+                description={t('The QR code full screen: guests scan it and add songs from their browser.')}
+                onPress={() => setGuestBoard(true)}
+              />
+            ) : null}
+            {host && session.guestMode !== undefined ? (
+              <SwitchList
+                options={[
+                  {
+                    label: t('Guest mode'),
+                    description: t('The others only search and add songs, five a minute each; you keep every control.'),
+                    value: session.guestMode,
+                    onChange: (on) => void setJamGuestMode(on),
+                  },
+                  ...(session.guestMode
+                    ? [
+                        {
+                          label: t('Guests can add songs'),
+                          value: session.guestAdds !== false,
+                          onChange: (on: boolean) => void setJamGuestAdds(on),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
             ) : null}
 
             <SwitchList
@@ -229,6 +282,12 @@ export default function JamScreen() {
               description={t('What is playing here becomes what everybody hears.')}
               onPress={busy ? undefined : () => void start()}
             />
+            <SettingRow
+              icon="qr-code-outline"
+              label={t('Guest mode')}
+              description={t('A Jam played on this phone only, its QR code full screen: guests scan it and add songs from their browser, no app or account needed.')}
+              onPress={busy ? undefined : () => void startForGuests()}
+            />
             {openJams.length > 0 ? (
               <>
                 <Text style={settingsStyles.sectionTitle}>{t('Jams under way')}</Text>
@@ -266,6 +325,59 @@ export default function JamScreen() {
           </>
         )}
       </ScrollView>
+      {guestBoard && session && auth ? (
+        <GuestBoard code={session.code} auth={auth} onClose={() => setGuestBoard(false)} />
+      ) : null}
     </SettingsPage>
+  );
+}
+
+/** Room around the QR code, so a phone held at an angle still reads it. */
+const BOARD_MARGIN = 48;
+
+/**
+ * The QR code as big as the screen allows, for a room to scan, with the code
+ * and the address under it for whoever would rather type. The screen stays
+ * on while it is up: a board that goes dark is no board.
+ */
+function GuestBoard({ code, auth, onClose }: { code: string; auth: SubsonicAuth; onClose: () => void }) {
+  useKeepAwake();
+  const colors = useTheme();
+  const accent = useAccent();
+  const t = useT();
+  const { width, height } = useWindowDimensions();
+  const size = Math.max(QR_SIZE, Math.min(width, height * 0.6) - BOARD_MARGIN * 2);
+  return (
+    <Modal visible animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing.lg,
+          padding: spacing.lg,
+        }}
+      >
+        <Text style={{ color: colors.text, fontSize: 28, fontWeight: '800', textAlign: 'center' }}>
+          {t('Scan to add songs')}
+        </Text>
+        <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: spacing.md }}>
+          <Image
+            source={{ uri: jamQrUrl(auth.serverUrl, code), headers: authHeaders(auth) }}
+            style={{ width: size, height: size }}
+            contentFit="contain"
+            accessibilityLabel={t('QR code to join from a browser')}
+          />
+        </View>
+        <Text style={{ color: accent, fontSize: 36, fontWeight: '800', letterSpacing: 8 }}>{code}</Text>
+        <Text selectable style={{ color: colors.textSecondary, fontSize: fontSize.md, textAlign: 'center' }}>
+          {jamPageUrl(auth.serverUrl, code)}
+        </Text>
+        <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button">
+          <Text style={{ color: accent, fontWeight: '600', fontSize: fontSize.md }}>{t('Close')}</Text>
+        </Pressable>
+      </View>
+    </Modal>
   );
 }

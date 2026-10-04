@@ -51,6 +51,11 @@ export interface JamSession {
   /** The session's volume, 0..1: what the device that plays applies, and
    *  what anyone in the session may set. Missing from a proxy before it. */
   volume?: number;
+  /** Guest mode: everyone but the host may only add songs, a few a minute.
+   *  Missing from a proxy before it. */
+  guestMode?: boolean;
+  /** Whether guests may add songs at all while in guest mode. */
+  guestAdds?: boolean;
 }
 
 /** What every answer carries: the session, who we are in it, and the time it was sent. */
@@ -70,6 +75,7 @@ export type JamCommand =
   | { type: 'move'; from: number; to: number }
   | { type: 'replace'; songs: Song[]; index: number; position?: number; playing?: boolean }
   | { type: 'volume'; level: number }
+  | { type: 'guests'; mode?: boolean; adds?: boolean }
   | { type: 'kick'; memberId: string };
 
 export class JamError extends Error {

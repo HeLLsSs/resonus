@@ -172,7 +172,9 @@ export function jamReportVolume(level: number, fromDevice = true): void {
   const held = jamVolume();
   // A proxy from before the session had a volume would refuse the command,
   // with a toast for every press of a key.
-  if (!token || held === undefined) return;
+  // In guest mode only the host sets it (the proxy refuses the others): their
+  // keys move their own phone and nothing more.
+  if (!token || held === undefined || (useJam.getState().session?.guestMode && !isJamHost())) return;
   if (fromDevice && nearKnown(level)) {
     // The device's grid answering the level it was set to: remembered as
     // where the device really is, so the next key press counts from there.
@@ -260,8 +262,11 @@ async function syncClock(): Promise<void> {
  * Opens a session, with the profile's name on it, around what this phone is
  * playing: the queue goes in as it stands, at the second it is at, so the
  * others hear it from there rather than from silence.
+ *
+ * With `guests`, in guest mode (see `setJamGuestMode`): played here, and
+ * the others only add songs.
  */
-export async function startJam(): Promise<void> {
+export async function startJam({ guests = false }: { guests?: boolean } = {}): Promise<void> {
   if (isJamActive()) return;
   useJam.setState({ busy: true });
   try {
@@ -292,9 +297,26 @@ export async function startJam(): Promise<void> {
       view = await jamCommand(auth(), view.token, { type: 'volume', level: toProxyLevel(level) });
     }
     enter(view, level);
+    // After entering, so a proxy from before guest mode refuses it with a
+    // toast rather than leaving a session opened and never joined.
+    if (guests) await setJamGuestMode(true);
   } finally {
     useJam.setState({ busy: false });
   }
+}
+
+/**
+ * Guest mode, for the host: the others in the session (the browsers that
+ * scanned the QR code, mostly) may only search and add songs, five a minute
+ * each, while the host keeps every control. The proxy enforces it.
+ */
+export function setJamGuestMode(on: boolean): Promise<void> {
+  return jamSend({ type: 'guests', mode: on });
+}
+
+/** In guest mode, whether the guests may add songs at all. */
+export function setJamGuestAdds(on: boolean): Promise<void> {
+  return jamSend({ type: 'guests', adds: on });
 }
 
 /** Joins the session at this code, with the profile's name. */
