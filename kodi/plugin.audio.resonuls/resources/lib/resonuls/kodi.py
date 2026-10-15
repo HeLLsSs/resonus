@@ -70,3 +70,18 @@ def device_id():
 
 def device_name():
     return "Kodi ({})".format(xbmc.getInfoLabel("System.FriendlyName") or "Kodi")
+
+
+def show_player(wait_sec=10):
+    """Kodi's full-screen music player, where OK brings pause, stop and next:
+    a TV remote has no other way to it from the add-on's lists. Waits for the
+    music to start and for Kodi's busy spinner to go, since the window opens
+    neither on silence nor over a dialog."""
+    monitor = xbmc.Monitor()
+    for _ in range(max(1, int(wait_sec * 10))):
+        if xbmc.Player().isPlayingAudio() and not xbmc.getCondVisibility("System.HasActiveModalDialog"):
+            xbmc.executebuiltin("ActivateWindow(visualisation)")
+            return True
+        if monitor.waitForAbort(0.1):
+            break
+    return False

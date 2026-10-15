@@ -230,6 +230,14 @@ msgctxt "#30073"
 msgid "Home"
 msgstr "Accueil"
 
+msgctxt "#30074"
+msgid "Now playing"
+msgstr "En cours de lecture"
+
+msgctxt "#30075"
+msgid "Nothing is playing"
+msgstr "Rien ne joue pour l'instant"
+
 msgctxt "#30115"
 msgid "Open the Resonuls home when Kodi starts"
 msgstr "Ouvrir l'accueil Resonuls au démarrage de Kodi"

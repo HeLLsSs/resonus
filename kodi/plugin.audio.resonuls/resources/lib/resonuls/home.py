@@ -160,6 +160,8 @@ class Home(xbmcgui.WindowXML):
         for song in songs:
             playlist.add(*song_item(self.client, song))
         xbmc.Player().play(playlist, startpos=start)
+        # Opened from the add-on rather than from here, where it was ignored.
+        xbmc.executebuiltin("RunPlugin({}?{})".format(kodi.PLUGIN_URL, shelves.query(action="now_playing", wait=1)))
 
 
 def main():
@@ -203,5 +205,7 @@ def main():
             # Kodi's home, which is where closing them lands otherwise.
             back = "library://music/" if kodi.addon().getSettingBool("music_menu") else kodi.PLUGIN_URL
             xbmc.executebuiltin("ActivateWindow(Music,{},return)".format(back))
-        home.clearProperty(OPEN)
+        # A last beat rather than none: closing the tiles has Kodi list the
+        # add-on's "Home" again, which would open new ones over the way out.
+        home.setProperty(OPEN, str(time.time()))
         del window

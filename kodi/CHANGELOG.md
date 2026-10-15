@@ -6,6 +6,16 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
 
 ## plugin.audio.resonuls
 
+### [0.1.2] - 2026-10-15
+
+- "Now playing", on the home of covers and at the top of the add-on's list
+  while music plays, opens Kodi's player, where OK brings pause, stop and
+  next: a TV remote had no way to it.
+- The player opens by itself when music is started from a tile, "Play
+  all", "Shuffle" or "Resume"; back returns to where it was started.
+- Back from the covers opened from Kodi's Music menu no longer opens new
+  covers in their place.
+
 ### [0.1.1] - 2026-10-15
 
 - The home of covers opened when Kodi starts opens search, playlists and

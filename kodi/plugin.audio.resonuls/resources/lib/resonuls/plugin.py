@@ -65,7 +65,7 @@ class Plugin:
         action = self.params.get("action", "root")
         try:
             getattr(self, "do_" + action)()
-            if action in ("queue", "resume") and self.handle >= 0:
+            if action in ("queue", "resume", "now_playing") and self.handle >= 0:
                 xbmcplugin.endOfDirectory(self.handle, succeeded=False)
         except SubsonicError as error:
             kodi.log("{} failed: {}".format(action, error), xbmc.LOGWARNING)
@@ -183,7 +183,16 @@ class Plugin:
     # ── screens ─────────────────────────────────────────────────────────────
 
     def do_root(self):
-        self.show([self.folder(text(label), icon, **params) for label, icon, params in sections(kodi.navifind())])
+        entries = [self.folder(text(label), icon, **params) for label, icon, params in sections(kodi.navifind())]
+        if xbmc.Player().isPlayingAudio():
+            entries.insert(0, self.command(text(30074), "DefaultMusicRecentlyPlayed.png", action="now_playing"))
+        self.show(entries)
+
+    def do_now_playing(self):
+        """Kodi's player, from a list or a tile; `wait` when the music was
+        only just asked for, and may take a moment to start."""
+        if not kodi.show_player(wait_sec=10 if self.params.get("wait") else 0) and not self.params.get("wait"):
+            xbmcgui.Dialog().notification("Resonuls", text(30075))
 
     def do_home(self):
         """The tiled home, over the add-on's first screen: back from it lands
@@ -353,6 +362,9 @@ class Plugin:
                     break
                 if monitor.waitForAbort(0.1):
                     break
+        # Opened once this call is over: from a list, Kodi's busy spinner
+        # stays up until it is, and the player does not open over it.
+        xbmc.executebuiltin("RunPlugin({})".format(self.link(action="now_playing", wait=1)))
 
     def do_queue(self):
         songs = self.songs(self.params["source"], self.params.get("id") or self.params.get("name"))

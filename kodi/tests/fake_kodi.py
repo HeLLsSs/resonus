@@ -27,6 +27,7 @@ resolved = []
 played = []
 notified = []
 ended = []
+builtins = []
 
 
 class ListItem:
@@ -81,8 +82,10 @@ class Player:
     def play(self, playlist, startpos=0):
         played.append((list(PlayList.items), startpos))
 
+    playing = False
+
     def isPlayingAudio(self):
-        return False
+        return Player.playing
 
 
 class Addon:
@@ -123,7 +126,7 @@ xbmc.log = lambda message, level=1: None
 xbmc.PlayList = PlayList
 xbmc.Player = Player
 xbmc.Monitor = Monitor
-xbmc.executebuiltin = lambda command: None
+xbmc.executebuiltin = lambda command: builtins.append(command)
 xbmc.getInfoLabel = lambda label: "Salon"
 xbmc.getCondVisibility = lambda condition: False
 
@@ -156,6 +159,7 @@ sys.modules.update(xbmc=xbmc, xbmcgui=xbmcgui, xbmcplugin=xbmcplugin, xbmcaddon=
 
 
 def reset():
-    for kept in (shown, resolved, played, notified, ended):
+    for kept in (shown, resolved, played, notified, ended, builtins):
         kept.clear()
     PlayList.items = []
+    Player.playing = False

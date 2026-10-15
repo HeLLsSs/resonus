@@ -126,6 +126,17 @@ class ScreensTest(unittest.TestCase):
         run("?action=queue&source=album&id=al1")
         self.assertEqual(fake_kodi.ended, [False])
 
+    def test_now_playing_opens_kodis_player(self):
+        fake_kodi.reset()
+        fake_kodi.Player.playing = True
+        with mock.patch.object(kodi, "client", lambda: Client("http://music.test", "me", "secret", opener=FakeServer(ANSWERS))):
+            plugin.Plugin(["plugin://plugin.audio.resonuls/", "1", "?action=now_playing"]).run()
+        self.assertEqual(fake_kodi.builtins, ["ActivateWindow(visualisation)"])
+
+    def test_now_playing_with_nothing_on_says_so(self):
+        run("?action=now_playing")
+        self.assertEqual(fake_kodi.notified[-1][1], "#30075 {}")
+
     def test_resume_starts_on_the_song_the_other_device_was_on(self):
         run("?action=resume")
         self.assertEqual(fake_kodi.played[0][1], 1)

@@ -52,6 +52,7 @@ def shortcuts(text, navifind, saved):
         # Its cover, like a record: it is a song to pick up, not a screen.
         tiles.append(tile(text(30010), label2, song.get("cover") or "DefaultMusicRecentlyPlayed.png", "run:" + query(action="resume"), "album"))
     entries = [
+        (30074, "DefaultMusicRecentlyPlayed.png", "run:" + query(action="now_playing")),
         (30009, "DefaultMusicSongs.png", "run:" + query(action="queue", source="random")),
         (30008, "DefaultMusicSearch.png", "folder:" + query(action="search")),
         (30004, "DefaultMusicArtists.png", "folder:" + query(action="artists")),
