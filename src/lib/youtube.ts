@@ -293,6 +293,9 @@ export function openableShelves(shelves: YoutubeShelf[]): YoutubeShelf[] {
     .filter((shelf) => shelf.items.length > 0 || shelf.songs.length > 0);
 }
 
+/** Past ten minutes, a YouTube "song" is a live session or a compilation. */
+export const LONGEST_SONG_SEC = 600;
+
 /**
  * What the account's YouTube would play it, as one list to deal: the tracks on
  * its own home page (the quick picks, what it listened to again) and the ones
@@ -303,6 +306,8 @@ export function tasteOf(shelves: YoutubeShelf[], liked: Song[]): Song[] {
   const seen = new Set<string>();
   const out: Song[] = [];
   for (const song of [...shelves.flatMap((shelf) => shelf.songs), ...liked]) {
+    // A live session or a compilation of an hour is not a song to deal.
+    if ((song.duration ?? 0) > LONGEST_SONG_SEC) continue;
     if (seen.has(song.id)) continue;
     seen.add(song.id);
     out.push(song);

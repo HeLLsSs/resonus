@@ -1872,6 +1872,20 @@ export async function youtubeMyPlaylists(
   return res.navifind?.playlists?.playlist ?? [];
 }
 
+/**
+ * The YouTube die, drawn by the proxy: new songs in the account's taste, from
+ * the YouTube Music radio of a few songs it liked, drawn anew each time
+ * (navifind's `YouTubeMix`). Throws on a proxy from before it.
+ */
+export async function youtubeMix(auth: SubsonicAuth, count: number): Promise<Song[]> {
+  const res = await request<{ navifind?: { mix?: { entry?: Song[] } } }>(
+    auth,
+    'navifind/youtube/mix.view',
+    { count },
+  );
+  return (res.navifind?.mix?.entry ?? []).map(withoutSourceSuffix);
+}
+
 /** The tracks it gave a thumb up to. */
 export async function youtubeLiked(auth: SubsonicAuth, count: number): Promise<Song[]> {
   const res = await request<{ navifind?: { liked?: { entry?: Song[] } } }>(

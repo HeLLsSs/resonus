@@ -1483,6 +1483,11 @@ export function youtubeLikedSongs(count: number): Promise<Song[]> {
   return YoutubeApi.youtubeLiked(auth(), count);
 }
 
+/** The YouTube die's songs, new ones in the account's taste. */
+export function youtubeMixSongs(count: number): Promise<Song[]> {
+  return YoutubeApi.youtubeMix(auth(), count);
+}
+
 /** The account's playlists, reduced to what a row needs. Cards with no
  *  playlist behind them (the "new playlist" button) are dropped. */
 export async function youtubePlaylistCards(): Promise<

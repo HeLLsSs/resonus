@@ -483,7 +483,7 @@ function youtubeDiceRow(): CarNode {
   return {
     id: YOUTUBE_DICE_ID,
     title: tg('YouTube shuffle'),
-    subtitle: tg('Your likes and picks, dealt'),
+    subtitle: tg('New songs in your taste'),
     artworkUrl: icon('ic_car_dice'),
     playable: true,
   };

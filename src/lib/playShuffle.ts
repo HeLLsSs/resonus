@@ -9,7 +9,7 @@
  * What it deals is the die's mode (`lib/diceModes.ts`): the one asked for, or
  * the default from Settings › Quality & playback.
  */
-import { getRandomSongs, youtubeHomeShelves, youtubeLikedSongs } from '@/api/data';
+import { getRandomSongs, youtubeHomeShelves, youtubeLikedSongs, youtubeMixSongs } from '@/api/data';
 import { tg } from '@/i18n';
 import { type DiceMode, DISCOVER_MIN, discoverPool } from '@/lib/diceModes';
 import { navifindActive } from '@/lib/navifind';
@@ -62,7 +62,7 @@ export function diceModeHint(mode: DiceMode): string {
     case 'library':
       return tg('Random songs from your library');
     case 'youtube':
-      return tg('Your likes and picks, dealt');
+      return tg('New songs in your taste');
     case 'discover':
       return tg('Songs you have never played');
   }
@@ -80,6 +80,20 @@ async function youtubeTaste() {
     youtubeLikedSongs(YOUTUBE_LIKED).catch(() => []),
   ]);
   return withoutUnplayable(tasteOf(shelves, liked));
+}
+
+/** How many songs the proxy's YouTube die is asked for. */
+const YOUTUBE_MIX = 50;
+
+/**
+ * New songs in the account's taste, which the proxy draws anew each time
+ * (navifind's `/youtube/mix`), so that the die does not deal the same liked
+ * songs over and over. What the account likes, from a proxy that has no mix
+ * yet or nothing to draw from.
+ */
+async function youtubeDiscoveries() {
+  const mix = await youtubeMixSongs(YOUTUBE_MIX).catch(() => []);
+  return mix.length > 0 ? withoutUnplayable(mix) : youtubeTaste();
 }
 
 /** The songs this phone has heard, by id. None when the stats cannot be read. */
@@ -109,7 +123,7 @@ export async function playShuffle(genre?: string, mode?: DiceMode): Promise<void
   const play = usePlayerStore.getState().playQueue;
 
   if (dice === 'youtube') {
-    const pool = await youtubeTaste();
+    const pool = await youtubeDiscoveries();
     if (pool.length === 0) {
       toast(tg('Nothing to shuffle yet'));
       return;
@@ -121,7 +135,7 @@ export async function playShuffle(genre?: string, mode?: DiceMode): Promise<void
   if (dice === 'discover') {
     const [library, online, played] = await Promise.all([
       getRandomSongs(DISCOVER_DRAW).catch(() => []),
-      youtubeJoinsShuffle() ? youtubeTaste() : [],
+      youtubeJoinsShuffle() ? youtubeDiscoveries() : [],
       playedIds(),
     ]);
     const pool = discoverPool(library, online, played);

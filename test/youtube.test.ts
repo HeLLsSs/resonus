@@ -265,6 +265,14 @@ describe('tasteOf', () => {
   it('is empty with nothing to deal from', () => {
     assert.deepEqual(tasteOf([], []), []);
   });
+
+  it('leaves out an hour-long session', () => {
+    const session: Song = { id: 'yt_s', title: 'Afro Live Session', duration: 4402 };
+    assert.deepEqual(
+      tasteOf([picks], [session]).map((s) => s.id),
+      ['yt_a', 'yt_b'],
+    );
+  });
 });
 
 describe('readCommonAccount', () => {

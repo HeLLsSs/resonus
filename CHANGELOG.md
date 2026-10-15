@@ -7,6 +7,15 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [Unreleased]
+
+### Changed
+
+- With Navifind, the YouTube die deals new songs in your taste, drawn anew
+  each roll from the YouTube Music radio of a few songs you liked, instead of
+  the same liked songs; so does the YouTube side of Discover. Live sessions
+  and compilations longer than ten minutes stay out of the deal.
+
 ## [1.13.1] - 2026-10-15
 
 ### Changed
