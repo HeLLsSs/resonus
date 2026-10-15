@@ -12,7 +12,7 @@ runs one of its commands.
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse
 
-from .subsonic import SubsonicError, as_list, clean_title
+from .subsonic import SubsonicError, as_list, card_target, clean_title
 
 TILES = 20
 
@@ -60,7 +60,7 @@ def shortcuts(text, navifind, saved):
         (30007, "DefaultMusicTop100.png", "folder:" + query(action="starred")),
     ]
     if navifind:
-        entries.append((30011, "DefaultMusicVideos.png", "folder:" + query(action="youtube")))
+        entries.append((30011, "DefaultMusicVideos.png", "youtube:"))
     for i, (label, icon, action) in enumerate(entries):
         tiles.append(tile(text(label), "", icon, action, "action", COLOURS[(i + 1) % len(COLOURS)]))
     return tiles
@@ -127,3 +127,54 @@ def load(client, text, navifind):
             rows.append((text(label), results[name]))
     return rows, songs
 
+
+# The YouTube screen's rows: its shortcuts, then this many of the home
+# page's shelves, as many as the window has rows for.
+YOUTUBE_SHELVES = 6
+DICE_ICON = "resonuls-dice.png"
+
+
+def youtube_rows(client, text):
+    """The YouTube screen, laid out like the app's YouTube tab: the die and
+    the account's own lists first, then each shelf of the YouTube home page
+    as a row. Returns the rows and the songs behind each row, which `song:`
+    actions play: a video card is a song like the others."""
+    try:
+        signed_in = client.youtube_account().get("state") == "ok"
+    except (SubsonicError, OSError):
+        signed_in = False
+    shortcuts_row = [tile(text(30077), text(30078), DICE_ICON, "run:" + query(action="queue", source="youtube_mix", shuffle=1), "action", GREEN)]
+    if signed_in:
+        shortcuts_row += [
+            tile(text(30021), "", "DefaultMusicPlaylists.png", "folder:" + query(action="youtube_playlists"), "action", COLOURS[1]),
+            tile(text(30022), "", "DefaultMusicTop100.png", "folder:" + query(action="songs", source="youtube_liked"), "action", COLOURS[2]),
+        ]
+    rows = [(text(30070), shortcuts_row)]
+    songs = {}
+    try:
+        shelves = client.youtube_home(signed_in)
+    except (SubsonicError, OSError):
+        shelves = []
+    for shelf in shelves:
+        if len(rows) > YOUTUBE_SHELVES:
+            break
+        key = "yt{}".format(len(rows))
+        shelf_songs, tiles = [], []
+        for song in as_list(shelf.get("entry"))[:TILES]:
+            tiles.append(tile(clean_title(song), song.get("artist") or "", client.cover_url(song.get("coverArt"), 400), "song:{}:{}".format(key, len(shelf_songs)), "song"))
+            shelf_songs.append(song)
+        for card in as_list(shelf.get("item"))[:TILES]:
+            target = card_target(card)
+            if target is None:
+                continue
+            kind, target_id = target
+            title, subtitle, thumb = card.get("title") or "", card.get("subtitle") or "", card.get("thumbnail") or ""
+            if kind == "song":
+                tiles.append(tile(title, subtitle, thumb, "song:{}:{}".format(key, len(shelf_songs)), "song"))
+                shelf_songs.append({"id": target_id, "title": title, "artist": subtitle, "coverArt": target_id})
+            else:
+                tiles.append(tile(title, subtitle, thumb, "folder:" + query(action="songs", source="youtube_playlist", id=target_id), "album"))
+        if tiles:
+            rows.append((shelf.get("title") or "YouTube", tiles))
+            songs[key] = shelf_songs
+    return rows, songs

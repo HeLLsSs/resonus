@@ -16,6 +16,11 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
   Kodi's player.
 - A "Close" button at the top right of every screen of the app closes it
   at once, for a remote whose back key does not.
+- YouTube opens as covers too, like the app's YouTube tab: the YouTube die,
+  the account's playlists and liked songs, then each shelf of the YouTube
+  home page (quick picks, listen again, mixes) as a row.
+- The YouTube die deals new songs in the account's taste with a navifind
+  that has the YouTube mix, and leaves out sessions longer than ten minutes.
 
 ### [0.1.4] - 2026-10-15
 

@@ -136,8 +136,14 @@ class Home(AppWindow):
         super().__init__(*args, **kwargs)
         self.songs = {}
 
+    title = "Resonuls"
+
+    def rows(self):
+        return shelves.load(self.app.client, text, kodi.navifind())
+
     def load(self):
-        rows, self.songs = shelves.load(self.app.client, text, kodi.navifind())
+        self.setProperty("title", self.title)
+        rows, self.songs = self.rows()
         for i in range(ROWS):
             listing = self.getControl(LIST + i)
             listing.reset()
@@ -200,8 +206,20 @@ class Home(AppWindow):
             run_plugin(shelves.query(action="now_playing", wait=1))
         elif word == "folder":
             self.app.open(rest, item.getLabel())
+        elif word == "youtube":
+            self.app.push(YouTube("resonuls-home.xml", self.app.path, "default", "1080i", app=self.app))
         elif word == "run":
             run_plugin(rest)
+
+
+class YouTube(Home):
+    """The YouTube screen, as the app's YouTube tab lays it out: its die and
+    the account's own lists, then the shelves of the YouTube home page."""
+
+    title = "YouTube"
+
+    def rows(self):
+        return shelves.youtube_rows(self.app.client, text)
 
 
 class ListWindow(AppWindow):

@@ -232,6 +232,10 @@ class Client:
     def youtube_playlist(self, playlist_id, count=200):
         return self._navifind("youtube/playlist", "playlist", id=playlist_id, count=count) or {}
 
+    def youtube_mix(self, count=50):
+        """The YouTube die: new songs in the account's taste, drawn anew each time."""
+        return as_list((self._navifind("youtube/mix", "mix", count=count) or {}).get("entry"))
+
     def youtube_account(self):
         return self._navifind("youtube/account", "youtubeAccount") or {}
 

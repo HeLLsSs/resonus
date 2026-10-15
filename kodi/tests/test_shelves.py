@@ -43,5 +43,29 @@ class ShelvesTest(unittest.TestCase):
         self.assertNotIn("#30013", titles(rows))
 
 
+class YouTubeTileTest(unittest.TestCase):
+    def test_the_youtube_tile_opens_the_youtube_screen(self):
+        rows, _ = load()
+        self.assertIn("youtube:", [t["action"] for t in rows[0][1]])
+
+
+class YouTubeRowsTest(unittest.TestCase):
+    def rows(self):
+        client = Client("http://music.test", "me", "secret", opener=FakeServer(ANSWERS))
+        return shelves.youtube_rows(client, lambda string_id: "#{}".format(string_id))
+
+    def test_the_die_comes_first(self):
+        rows, _ = self.rows()
+        self.assertEqual(rows[0][1][0]["action"], "run:action=queue&source=youtube_mix&shuffle=1")
+
+    def test_each_shelf_is_a_row(self):
+        rows, _ = self.rows()
+        self.assertEqual(titles(rows), ["#30070", "Quick picks", "Mixes"])
+
+    def test_a_song_of_a_shelf_plays_the_shelf(self):
+        rows, songs = self.rows()
+        self.assertEqual((rows[1][1][0]["action"], songs["yt1"][0]["id"]), ("song:yt1:0", "yt_a"))
+
+
 if __name__ == "__main__":
     unittest.main()

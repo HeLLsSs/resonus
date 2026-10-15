@@ -14,7 +14,7 @@
     <description lang="fr_FR">Resonuls sur Kodi : parcours et écoute un serveur Navidrome (Subsonic). Derrière un proxy navifind, il lit aussi YouTube, range ce que tu écoutes dans la bibliothèque et garde un compte, une musique : lance une musique sur ton téléphone et Kodi se met en pause.</description>
     <platform>all</platform>
     <license>GPL-3.0-only</license>
-    <news>0.2.0: the home of covers is an app, with its lists and search in windows of its own and what plays at the top (pause, stop, next). The Resonuls program add-on opens it from a skin's main menu.</news>
+    <news>0.2.0: the home of covers is an app, with its lists and search in windows of its own, what plays at the top (pause, stop, next) and a Close button. YouTube is a screen of covers with its die, which deals new songs in your taste. The Resonuls program add-on opens the app from a skin's main menu.</news>
     <source>https://github.com/HeLLsSs/resonus/tree/main/kodi</source>
     <assets>
       <icon>resources/icon.png</icon>

@@ -16,7 +16,7 @@
     <control type="label">
       <left>80</left><top>36</top><width>900</width><height>70</height>
       <font>font45_title</font><textcolor>FF1DB954</textcolor>
-      <label>Resonuls</label>
+      <label>$INFO[Window.Property(title)]</label>
     </control>
     <control type="label">
       <left>1120</left><top>36</top><width>500</width><height>70</height>

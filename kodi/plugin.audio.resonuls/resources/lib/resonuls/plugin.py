@@ -16,6 +16,8 @@ from .home import tiles_alive
 from .subsonic import SubsonicError, as_list, card_target, clean_title, is_online
 
 PAGE = 50
+# Past ten minutes, a YouTube "song" is a live session or a compilation.
+LONGEST_SONG = 600
 ALBUM_LISTS = (
     ("newest", 30001),
     ("recent", 30012),
@@ -348,7 +350,32 @@ class Plugin:
             return client.youtube_liked()
         if source == "youtube_playlist":
             return as_list(client.youtube_playlist(key).get("entry"))
+        if source == "youtube_mix":
+            try:
+                return client.youtube_mix() or self.youtube_taste()
+            except SubsonicError:
+                # A navifind from before the mix: what the account likes.
+                return self.youtube_taste()
         raise ValueError(source)
+
+    def youtube_taste(self):
+        """What YouTube knows the account likes, for the YouTube die, as the
+        app deals it (`youtubeTaste` in its `lib/playShuffle.ts`): the home
+        page's songs and the liked ones, each once."""
+        client = self.client
+        signed_in = client.youtube_account().get("state") == "ok"
+        pool = [song for shelf in client.youtube_home(signed_in) for song in as_list(shelf.get("entry"))]
+        if signed_in:
+            pool += client.youtube_liked()
+        seen, taste = set(), []
+        for song in pool:
+            # A session or a compilation is not a song to deal.
+            if int(song.get("duration") or 0) > LONGEST_SONG:
+                continue
+            if song.get("id") and song["id"] not in seen:
+                seen.add(song["id"])
+                taste.append(song)
+        return taste
 
     def play_queue(self, songs, start=0, position=0):
         playlist = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)

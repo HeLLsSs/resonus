@@ -241,3 +241,11 @@ msgstr ""
 msgctxt "#30076"
 msgid "Close"
 msgstr ""
+
+msgctxt "#30077"
+msgid "YouTube shuffle"
+msgstr ""
+
+msgctxt "#30078"
+msgid "New songs in your taste"
+msgstr ""

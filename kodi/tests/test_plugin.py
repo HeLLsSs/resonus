@@ -148,6 +148,19 @@ class ScreensTest(unittest.TestCase):
         run("?action=now_playing")
         self.assertEqual(fake_kodi.notified[-1][1], "#30075 {}")
 
+    def test_the_youtube_die_plays_navifinds_mix(self):
+        run("?action=queue&source=youtube_mix", dict(ANSWERS, **{"navifind/youtube/mix": {"navifind": {"mix": {"entry": [SONG, ONLINE, dict(ONLINE, id="yt_b")]}}}}))
+        self.assertEqual(len(fake_kodi.played[0][0]), 3)
+
+    def test_without_the_mix_the_die_deals_the_home_and_the_liked_songs_once(self):
+        run("?action=queue&source=youtube_mix", dict(ANSWERS, **{"navifind/youtube/me/liked": {"navifind": {"liked": {"entry": [ONLINE, SONG]}}}}))
+        self.assertEqual(len(fake_kodi.played[0][0]), 2)
+
+    def test_without_the_mix_an_hour_long_session_is_left_out(self):
+        session = dict(ONLINE, id="yt_s", duration=4402)
+        run("?action=queue&source=youtube_mix", dict(ANSWERS, **{"navifind/youtube/me/liked": {"navifind": {"liked": {"entry": [session]}}}}))
+        self.assertFalse(any("yt_s" in item.path for item in fake_kodi.played[0][0]))
+
     def test_resume_starts_on_the_song_the_other_device_was_on(self):
         run("?action=resume")
         self.assertEqual(fake_kodi.played[0][1], 1)

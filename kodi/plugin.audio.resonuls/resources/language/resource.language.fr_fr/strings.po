@@ -241,3 +241,11 @@ msgstr "Rien ne joue pour l'instant"
 msgctxt "#30076"
 msgid "Close"
 msgstr "Fermer"
+
+msgctxt "#30077"
+msgid "YouTube shuffle"
+msgstr "Aléatoire YouTube"
+
+msgctxt "#30078"
+msgid "New songs in your taste"
+msgstr "Des nouveautés dans ton style"
