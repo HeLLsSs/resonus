@@ -183,9 +183,10 @@ def main():
             if window.origin is None:
                 # Shown, yet out of sight under the music window: brought
                 # back, or "Home" could not open them, taking them for open.
-                visible = xbmc.getCondVisibility("Window.IsVisible({})".format(window.window_id))
+                # Never drawn (no onInit yet) counts as out of sight too.
+                visible = window.window_id and xbmc.getCondVisibility("Window.IsVisible({})".format(window.window_id))
                 idle = xbmc.getCondVisibility("Window.IsActive(music) + !System.HasVisibleModalDialog")
-                hidden = hidden + 1 if window.window_id and idle and not visible else 0
+                hidden = hidden + 1 if idle and not visible else 0
                 if hidden * BEAT_SEC >= HIDDEN_SEC:
                     hidden = 0
                     window.show()

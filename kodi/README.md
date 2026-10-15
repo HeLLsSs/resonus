@@ -7,7 +7,8 @@ in front of it.
 - **Home**: rows of covers to walk with a TV remote, YouTube Music style
   (shortcuts, YouTube quick picks, recently added and played, most played,
   playlists, random albums). Up and down change row, OK opens or plays,
-  the menu key plays an album straight away.
+  the menu key plays an album straight away. "Now playing" opens Kodi's
+  player, which also opens by itself when music starts from a tile.
 - **In Kodi's Music menu**: every section at the top of it, Home first
   (Settings › Display to turn it off).
 - Library: recently added, recently and most played, random albums, A-Z,

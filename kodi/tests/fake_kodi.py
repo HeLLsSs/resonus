@@ -20,7 +20,6 @@ settings = {
     "exclusive": True,
     "max_bitrate": 0,
     "music_menu": True,
-    "home_at_start": True,
 }
 shown = []
 resolved = []

@@ -14,7 +14,7 @@
     <description lang="fr_FR">Resonuls sur Kodi : parcours et écoute un serveur Navidrome (Subsonic). Derrière un proxy navifind, il lit aussi YouTube, range ce que tu écoutes dans la bibliothèque et garde un compte, une musique : lance une musique sur ton téléphone et Kodi se met en pause.</description>
     <platform>all</platform>
     <license>GPL-3.0-only</license>
-    <news>0.1.2: "Now playing", on the home of covers and atop the add-on's list, opens Kodi's player, where OK brings pause, stop and next; it also opens by itself when music is started from a tile, Play all, Shuffle or Resume. Back from the covers no longer opens them again.</news>
+    <news>0.1.2: "Now playing", on the home of covers and atop the add-on's list, opens Kodi's player, where OK brings pause, stop and next; it also opens by itself when music is started from a tile, Play all, Shuffle or Resume. Back from the covers no longer opens them again, and they open from Home only, no longer when Kodi starts.</news>
     <source>https://github.com/HeLLsSs/resonus/tree/main/kodi</source>
     <assets>
       <icon>resources/icon.png</icon>

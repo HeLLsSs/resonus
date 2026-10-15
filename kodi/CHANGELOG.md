@@ -15,6 +15,8 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
   all", "Shuffle" or "Resume"; back returns to where it was started.
 - Back from the covers opened from Kodi's Music menu no longer opens new
   covers in their place.
+- The covers no longer open by themselves when Kodi starts, nor with Kodi's
+  Music section: "Home" opens them.
 
 ### [0.1.1] - 2026-10-15
 

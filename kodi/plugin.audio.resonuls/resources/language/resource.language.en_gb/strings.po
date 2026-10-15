@@ -238,7 +238,3 @@ msgctxt "#30075"
 msgid "Nothing is playing"
 msgstr ""
 
-msgctxt "#30115"
-msgid "Open the Resonuls home when Kodi starts"
-msgstr ""
-

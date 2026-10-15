@@ -64,24 +64,8 @@ def update_menu():
         kodi.log("could not change the Music menu: {}".format(error), xbmc.LOGWARNING)
 
 
-def open_home_at_start(monitor):
-    """The tiles as the first thing on screen, for a Kodi kept for music:
-    once Kodi's own home is up, so that back from them has somewhere to go.
-    Opened from the music window, as from the add-on's list: the tiles show
-    what they open in it, and over Kodi's home a tile only closed them."""
-    if not kodi.addon().getSettingBool("home_at_start"):
-        return
-    for _ in range(60):
-        if xbmc.getCondVisibility("Window.IsActive(home) + !System.HasModalDialog"):
-            xbmc.executebuiltin("ActivateWindow(Music,{}?action=home,return)".format(kodi.PLUGIN_URL))
-            return
-        if monitor.waitForAbort(1):
-            return
-
-
 def main():
     monitor = Monitor()
-    open_home_at_start(monitor)
     player = xbmc.Player()
     session = None
     server_url = ""
