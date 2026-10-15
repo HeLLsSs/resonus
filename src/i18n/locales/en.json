@@ -1457,5 +1457,18 @@
   "SoundCloud links can only be filed into the library": "SoundCloud links can only be filed into the library",
   "Couldn't read that link": "Couldn't read that link",
   "The others only search and add songs, five a minute each; you keep every control.": "The others only search and add songs, five a minute each; you keep every control.",
-  "Guests can add songs": "Guests can add songs"
+  "Guests can add songs": "Guests can add songs",
+  "{name} answers, with the Resonuls add-on: the TV shows what is playing.": "{name} answers, with the Resonuls add-on: the TV shows what is playing.",
+  "{name} answers. Install the Resonuls add-on on it to see the title and cover on the TV.": "{name} answers. Install the Resonuls add-on on it to see the title and cover on the TV.",
+  "Kodi refused the user or password": "Kodi refused the user or password",
+  "Couldn't reach Kodi": "Couldn't reach Kodi",
+  "Play on the TV through Kodi. In Kodi, turn on Settings › Services › Control › Allow remote control via HTTP, and give it a user and a password.": "Play on the TV through Kodi. In Kodi, turn on Settings › Services › Control › Allow remote control via HTTP, and give it a user and a password.",
+  "Use Kodi": "Use Kodi",
+  "Lists it in the output sheet.": "Lists it in the output sheet.",
+  "Forget Kodi": "Forget Kodi",
+  "Kodi": "Kodi",
+  "Set up Kodi": "Set up Kodi",
+  "Lost contact with Kodi": "Lost contact with Kodi",
+  "Something else is playing on Kodi": "Something else is playing on Kodi",
+  "Kodi couldn't play this song": "Kodi couldn't play this song"
 }

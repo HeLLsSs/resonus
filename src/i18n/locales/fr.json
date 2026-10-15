@@ -1460,5 +1460,18 @@
   "Couldn't read that link": "Impossible de lire ce lien",
   "The others only search and add songs, five a minute each; you keep every control.": "Les autres peuvent seulement chercher et ajouter des titres, cinq par minute chacun ; tu gardes toutes les commandes.",
   "Guests can add songs": "Les invités peuvent ajouter des titres",
-  "The phone that opened the Jam plays it; the ones that join are silent and steer, volume keys included. On, this phone plays too.": "Le téléphone qui a ouvert le Jam le joue ; ceux qui le rejoignent sont muets et le pilotent, touches de volume comprises. Activé, ce téléphone joue aussi."
+  "The phone that opened the Jam plays it; the ones that join are silent and steer, volume keys included. On, this phone plays too.": "Le téléphone qui a ouvert le Jam le joue ; ceux qui le rejoignent sont muets et le pilotent, touches de volume comprises. Activé, ce téléphone joue aussi.",
+  "{name} answers, with the Resonuls add-on: the TV shows what is playing.": "{name} répond, avec l'extension Resonuls : la télé affiche ce qui joue.",
+  "{name} answers. Install the Resonuls add-on on it to see the title and cover on the TV.": "{name} répond. Installe l'extension Resonuls dessus pour voir le titre et la pochette sur la télé.",
+  "Kodi refused the user or password": "Kodi a refusé l'utilisateur ou le mot de passe",
+  "Couldn't reach Kodi": "Impossible de joindre Kodi",
+  "Play on the TV through Kodi. In Kodi, turn on Settings › Services › Control › Allow remote control via HTTP, and give it a user and a password.": "Joue sur la télé avec Kodi. Dans Kodi, active Paramètres › Services › Contrôle › Autoriser le contrôle à distance via HTTP, et donne-lui un utilisateur et un mot de passe.",
+  "Use Kodi": "Utiliser Kodi",
+  "Lists it in the output sheet.": "L'ajoute à la liste des sorties.",
+  "Forget Kodi": "Oublier Kodi",
+  "Kodi": "Kodi",
+  "Set up Kodi": "Configurer Kodi",
+  "Lost contact with Kodi": "Contact perdu avec Kodi",
+  "Something else is playing on Kodi": "Autre chose joue sur Kodi",
+  "Kodi couldn't play this song": "Kodi n'a pas pu lire ce titre"
 }

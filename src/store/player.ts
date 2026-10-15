@@ -162,6 +162,18 @@ import {
   linkPlaySetVolume,
   useLinkPlay,
 } from './linkplay';
+import {
+  initKodi,
+  isKodiConnected,
+  kodiDisconnect,
+  kodiPause,
+  kodiResume,
+  kodiSeekTo,
+  kodiVolume,
+  loadKodiQueue,
+  syncKodiQueue,
+  useKodi,
+} from './kodi';
 import { useLastPlayed } from './lastPlayed';
 import { useNetworkType } from './networkType';
 import { useOfflineQueue } from './offlineQueue';
@@ -969,7 +981,7 @@ function clearLockScreen() {
 // ── Remote output (UPnP/DLNA renderer, server jukebox, Google Cast, Home Assistant, Music Assistant) ──
 
 /** Active remote output, if any. */
-export type RemoteKind = 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay';
+export type RemoteKind = 'upnp' | 'jukebox' | 'cast' | 'ha' | 'ma' | 'linkplay' | 'kodi';
 
 export function remoteKind(): RemoteKind | null {
   if (isUpnpConnected()) return 'upnp';
@@ -978,6 +990,7 @@ export function remoteKind(): RemoteKind | null {
   if (isHaConnected()) return 'ha';
   if (isMaConnected()) return 'ma';
   if (isLinkPlayConnected()) return 'linkplay';
+  if (isKodiConnected()) return 'kodi';
   return null;
 }
 
@@ -1016,6 +1029,8 @@ export function currentOutput(): CurrentOutput {
       const { host, devices } = useLinkPlay.getState();
       return { id: 'linkplay', name: devices.find((d) => d.host === host)?.name ?? host ?? '' };
     }
+    case 'kodi':
+      return { id: 'kodi', name: useKodi.getState().name || 'Kodi' };
     case 'jukebox':
       return { id: 'jukebox', name: 'Jukebox' };
     default:
@@ -1036,6 +1051,7 @@ export async function leaveRemoteOutputs(silent = false, keep?: RemoteKind): Pro
   if (isHaConnected() && keep !== 'ha') await haDisconnect(silent);
   if (isMaConnected() && keep !== 'ma') await maDisconnect(silent);
   if (isLinkPlayConnected() && keep !== 'linkplay') await linkPlayDisconnect(silent);
+  if (isKodiConnected() && keep !== 'kodi') await kodiDisconnect(silent);
 }
 
 const outputListeners = new Set<() => void>();
@@ -1057,7 +1073,7 @@ export function onOutputChanged(listener: () => void): () => void {
  */
 function usesCastMedia(): boolean {
   const kind = remoteKind();
-  return kind === 'upnp' || kind === 'cast' || kind === 'ha' || kind === 'ma' || kind === 'linkplay';
+  return kind === 'upnp' || kind === 'cast' || kind === 'ha' || kind === 'ma' || kind === 'linkplay' || kind === 'kodi';
 }
 
 function remotePlay() {
@@ -1067,6 +1083,7 @@ function remotePlay() {
   else if (kind === 'ha') void haPlay();
   else if (kind === 'ma') void maPlay();
   else if (kind === 'linkplay') void linkPlayPlay();
+  else if (kind === 'kodi') void kodiResume();
   else void upnpPlay();
 }
 
@@ -1077,6 +1094,7 @@ function remotePause() {
   else if (kind === 'ha') void haPause();
   else if (kind === 'ma') void maPause();
   else if (kind === 'linkplay') void linkPlayPause();
+  else if (kind === 'kodi') void kodiPause();
   else void upnpPause();
 }
 
@@ -1087,6 +1105,7 @@ function remoteSeek(sec: number) {
   else if (kind === 'ha') void haSeek(sec);
   else if (kind === 'ma') void maSeek(sec);
   else if (kind === 'linkplay') void linkPlaySeek(sec);
+  else if (kind === 'kodi') void kodiSeekTo(sec);
   else void upnpSeek(sec);
 }
 
@@ -1100,6 +1119,7 @@ function remoteSetVolume(volume: number) {
   else if (kind === 'ha') haSetVolume(volume);
   else if (kind === 'ma') maSetVolume(volume);
   else if (kind === 'linkplay') linkPlaySetVolume(volume);
+  else if (kind === 'kodi') kodiVolume(volume);
   else upnpSetVolume(volume);
   // Reflect the exact value back in the system volume overlay (UPnP, Cast,
   // Home Assistant and Music Assistant go through the CastMedia session;
@@ -1214,6 +1234,8 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
           ? await loadMaQueue(castQueueState(index), autoplay, startSec)
           : kind === 'linkplay'
             ? await linkPlayLoad(song, autoplay, startSec)
+            : kind === 'kodi'
+            ? await loadKodiQueue(castQueueState(index), autoplay, startSec)
             : await loadUpnpRemoteTrack(
             {
               queue: state.queue,
@@ -1228,7 +1250,7 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
   if (!ok) {
     // Cast, Home Assistant and Music Assistant say why themselves, when the
     // device gave a reason.
-    if (kind !== 'cast' && kind !== 'ha' && kind !== 'ma' && kind !== 'linkplay') {
+    if (kind !== 'cast' && kind !== 'ha' && kind !== 'ma' && kind !== 'linkplay' && kind !== 'kodi') {
       useToast.getState().show(tg("This song can't be cast"));
     }
     usePlayerStore.setState({ index, isPlaying: false, isBuffering: false });
@@ -3434,6 +3456,8 @@ function syncQueueNow(force = false, syncRemote = true) {
     void syncHaQueue(castQueueState());
   } else if (syncRemote && remoteKind() === 'ma') {
     void syncMaQueue(castQueueState());
+  } else if (syncRemote && remoteKind() === 'kodi') {
+    void syncKodiQueue(castQueueState());
   }
 }
 
@@ -3586,7 +3610,7 @@ async function jamFollow(
   // is caught by the next word from the session. Until then the index stays
   // the player's own: moved ahead of it, every advance would count from the
   // wrong song and skip one.
-  const holdsTail = remote === 'cast' || remote === 'ha' || remote === 'ma';
+  const holdsTail = remote === 'cast' || remote === 'ha' || remote === 'ma' || remote === 'kodi';
   const aboutToArrive =
     (!remote || holdsTail) && st.index + 1 === index && st.queue[index]?.id === target?.id && positionAt() < 2.5;
   if (!sameQueue(st.queue, songs) || (st.index !== index && !arriving && !aboutToArrive)) {
@@ -3769,6 +3793,7 @@ export function initRemoteIntegration() {
       if (remoteKind() === 'cast') void syncCastQueue(castQueueState(index));
       else if (remoteKind() === 'ha') void syncHaQueue(castQueueState(index));
       else if (remoteKind() === 'ma') void syncMaQueue(castQueueState(index));
+      else if (remoteKind() === 'kodi') void syncKodiQueue(castQueueState(index));
     },
     onVolume: (volume) => {
       // Moved on the device's side: the slider follows, and nothing is sent
@@ -3865,6 +3890,7 @@ export function initRemoteIntegration() {
   initGoogleCast(events, queueOf);
   initHomeAssistant(events, queueOf);
   initMusicAssistant(events, queueOf);
+  initKodi(events, queueOf);
   initJam({
     follow: jamFollow,
     align: jamAlign,
@@ -4745,7 +4771,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     const { shuffle, queue, index, originalQueue, source, sourceHref } = get();
     const current = queue[index];
-    const remoteHoldsQueue = remoteKind() === 'upnp' || remoteKind() === 'ha' || remoteKind() === 'ma';
+    const remoteHoldsQueue =
+      remoteKind() === 'upnp' || remoteKind() === 'ha' || remoteKind() === 'ma' || remoteKind() === 'kodi';
     // Same reasoning as starting a list again (see `PlayHistoryStack.forget`):
     // the order changes under the list being played, so where the back history
     // had you in it no longer means anything. Left in, ⏮️ restored one of those
@@ -4982,6 +5009,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     else if (remoteKind() === 'cast') void castDisconnect(true);
     else if (remoteKind() === 'ha') void haDisconnect(true);
     else if (remoteKind() === 'ma') void maDisconnect(true);
+    else if (remoteKind() === 'kodi') void kodiDisconnect(true);
     cutCrossfade();
     try {
       activePlayer()?.pause();

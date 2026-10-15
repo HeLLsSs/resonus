@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1452 of them.
+Every string the app can show, under the screen it shows up on. 1465 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -649,6 +649,7 @@ you are actually typing into, which is easier than reading it here.
 | `Jam needs a server account` |  |
 | `Join {name}'s Jam` |  |
 | `Keep pitch` |  |
+| `Kodi` |  |
 | `LinkPlay` |  |
 | `Listen together` |  |
 | `Media volume` |  |
@@ -673,6 +674,7 @@ you are actually typing into, which is easier than reading it here.
 | `Searching for devices…` | In the output sheet: looking for speakers and TVs to cast to |
 | `Server speakers (Jukebox)` | Playing out of the speakers attached to the server itself, rather than the phone. Subsonic calls this jukebox mode |
 | `Set up Home Assistant` | In the output sheet, under the `Home Assistant` heading, when no address or token has been given yet: the row opens the settings screen that takes them |
+| `Set up Kodi` |  |
 | `Set up Music Assistant` |  |
 | `Show cover` | Lyrics screen: the button that goes back to the cover art |
 | `Show less` | Folds it back |
@@ -1142,7 +1144,6 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
-| `Address` | The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box |
 | `Card in Home Assistant` |  |
 | `Couldn't reach Home Assistant` | The check got no answer; the reason may follow in brackets |
 | `Forget Home Assistant` | Clears the address and token |
@@ -1186,6 +1187,24 @@ you are actually typing into, which is easier than reading it here.
 | `Most played albums` | A section of Home: the records played most |
 | `New releases` | Home shelf and album sort: albums by the year they came out, newest first. Not "Recently added", which is when the server got hold of them |
 | `Random albums` | A section of Home: albums picked at random, to happen upon something |
+
+## Settings › Kodi
+
+| String | What it is |
+| --- | --- |
+| `{name} answers, with the Resonuls add-on: the TV shows what is playing.` |  |
+| `{name} answers. Install the Resonuls add-on on it to see the title and cover on the TV.` |  |
+| `Couldn't reach Kodi` |  |
+| `Forget Kodi` |  |
+| `Kodi couldn't play this song` |  |
+| `Kodi refused the user or password` |  |
+| `Lists it in the output sheet.` | The line under “Use Kodi”, explaining it |
+| `Lost contact with Kodi` |  |
+| `Play on the TV through Kodi. In Kodi, turn on Settings › Services › Control › Allow remote control via HTTP, and give it a user and a password.` |  |
+| `Save and test` | Keeps the address and token and checks them against Home Assistant at once |
+| `Something else is playing on Kodi` |  |
+| `Testing…` | While the check above runs |
+| `Use Kodi` |  |
 
 ## Settings › Language
 
@@ -1241,7 +1260,6 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `{n} players can be reached.` |  |
 | `1 player can be reached.` |  |
-| `Address` | The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box |
 | `Couldn't reach Music Assistant` |  |
 | `Forget Music Assistant` |  |
 | `Lists its players in the output sheet.` | The line under “Use Music Assistant”, explaining it |
@@ -1707,7 +1725,6 @@ you are actually typing into, which is easier than reading it here.
 | `A WebDAV share — Nextcloud, ownCloud, a NAS — browsed as folders. Nothing is scanned and nothing is copied: what you open plays straight from it, so a share works the moment it is added.` |  |
 | `Add a share` |  |
 | `Add this share` |  |
-| `Address` | The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box |
 | `An app password rather than your account one, where the server offers them.` | The line under “Password”, explaining it |
 | `Another address` | One of the values of “Service” |
 | `Box asks for an external app password where two-factor sign-in is on.` |  |
@@ -1937,6 +1954,7 @@ you are actually typing into, which is easier than reading it here.
 | `Added to “{name}”` | Toast. `{name}` is the playlist's name |
 | `Added to favorites` | Toast |
 | `Added to queue` | The toast that says it worked |
+| `Address` | The URL of the user's Home Assistant, such as `http://homeassistant.local:8123`. A label over a text box |
 | `Album` | In search results, the little word under a result saying what kind of thing it is |
 | `All {songs} are already in “{name}”.` | The same warning when every one of the several being added is already there. `{songs}` already reads as a count ("12 songs") |
 | `Alphabetical` | Sort option: the order of a list |

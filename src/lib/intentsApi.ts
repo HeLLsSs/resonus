@@ -261,8 +261,20 @@ async function run(command: IntentCommand): Promise<void> {
         await leaveRemoteOutputs();
         return;
       }
+      if (id === 'kodi') {
+        // The one Kodi set up in the settings, which is known by address.
+        const { kodiConfigured, kodiConnect, isKodiConnected } = await import('@/store/kodi');
+        if (isKodiConnected()) return;
+        if (!kodiConfigured()) {
+          console.warn('[intents] output: Kodi is not set up here');
+          return;
+        }
+        await leaveRemoteOutputs(true, 'kodi');
+        await kodiConnect();
+        return;
+      }
       if (!id.startsWith('media_player.')) {
-        console.warn(`[intents] output: "${id}" is neither phone nor a Home Assistant media player`);
+        console.warn(`[intents] output: "${id}" is neither phone, kodi nor a Home Assistant media player`);
         return;
       }
       const { connected, entityId } = useHomeAssistant.getState();

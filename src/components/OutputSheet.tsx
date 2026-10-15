@@ -19,7 +19,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Dialog } from '@/components/Dialog';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,6 +60,7 @@ import {
 } from '@/store/linkplay';
 import { listJams, type OpenJam } from '@/lib/jam';
 import { useJam } from '@/store/jam';
+import { kodiConnect, kodiDisconnect, useKodi } from '@/store/kodi';
 import { maConnect, maDisconnect, maSearch, useMusicAssistant } from '@/store/musicAssistant';
 import {
   jukeboxConnect,
@@ -125,6 +126,11 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   const maOn = useMusicAssistant((s) => s.enabled);
   const maReady = useMusicAssistant((s) => s.enabled && !!s.url && !!s.username);
   const lpHost = useLinkPlay((s) => (s.connected ? s.host : null));
+  const kodiActive = useKodi((s) => s.connected);
+  const kodiName = useKodi((s) => s.name);
+  // Not in a browser: the page is HTTPS and Kodi only speaks HTTP.
+  const kodiOn = useKodi((s) => s.enabled) && Platform.OS !== 'web';
+  const kodiReady = useKodi((s) => !!s.url);
   const lpDevices = useLinkPlay((s) => s.devices);
   const lpSlaves = useLinkPlay((s) => s.slaves);
   const lpSearching = useLinkPlay((s) => s.searching);
@@ -344,6 +350,7 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
 
   async function pickDevice(device: UpnpDevice) {
     if (lpHost) await linkPlayDisconnect(true);
+    await kodiDisconnect(true);
     if (device.id === upnpId) return;
     // Silent handoff between remote outputs (does not resume on local in between).
     if (castId) await castDisconnect(true);
@@ -355,6 +362,7 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
 
   async function pickJukebox() {
     if (lpHost) await linkPlayDisconnect(true);
+    await kodiDisconnect(true);
     if (jukeboxActive) return;
     // Silent handoff between remote outputs (does not resume on local in between).
     if (upnpId) await upnpDisconnect(true);
@@ -367,6 +375,7 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
 
   async function pickCastDevice(device: CastDevice) {
     if (lpHost) await linkPlayDisconnect(true);
+    await kodiDisconnect(true);
     if (device.id === castId) return;
     // Silent handoff between remote outputs (does not resume on local in between).
     if (upnpId) await upnpDisconnect(true);
@@ -383,6 +392,14 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
     await leaveOtherRemotes('ha');
     const ok = await haConnect(player);
     if (!ok) toast(t("Couldn't complete the action"));
+  }
+
+  async function pickKodi() {
+    if (kodiActive) return;
+    // Silent handoff between remote outputs (does not resume on local in between).
+    await leaveOtherRemotes('kodi');
+    // A Kodi that does not answer says why itself.
+    await kodiConnect();
   }
 
   async function pickMaPlayer(player: MaPlayer) {
@@ -422,6 +439,12 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
   function openHaSettings() {
     close();
     router.push('/settings/home-assistant');
+  }
+
+  /** The same for Kodi, which needs an address. */
+  function openKodiSettings() {
+    close();
+    router.push('/settings/kodi');
   }
 
   /** The same for Music Assistant, which needs an address and an account. */
@@ -891,6 +914,21 @@ export function OutputSheet({ visible, onClose }: { visible: boolean; onClose: (
                   ) : maSearching ? null : (
                     <Text style={styles.scanText}>{t('No players in Music Assistant')}</Text>
                   )}
+                </>
+              ) : null}
+
+              {/* Kodi on the TV, over its remote control: one, set up by address,
+                  since it does not announce itself the way speakers do. */}
+              {kodiOn ? (
+                <>
+                  <Text style={styles.sectionTitle}>{t('Kodi')}</Text>
+                  <Row
+                    icon={outputIcon('tv', kodiActive)}
+                    label={kodiReady ? kodiName || 'Kodi' : t('Set up Kodi')}
+                    active={kodiActive}
+                    onPress={kodiReady ? () => void pickKodi() : openKodiSettings}
+                    action={kodiReady ? undefined : <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
+                  />
                 </>
               ) : null}
 
