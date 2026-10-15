@@ -40,6 +40,7 @@ import { useGridColumns } from '@/hooks/useGridColumns';
 import { useScreenBottomPadding } from '@/hooks/useScreenBottomPadding';
 import { useListPadding } from '@/hooks/useScreenSize';
 import { songsLabel, useT } from '@/i18n';
+import { playLonePlaylist } from '@/lib/playLone';
 import { haptic } from '@/lib/haptics';
 import { SORT_LABELS, byCodepoint, matches, normQ, sortItems } from '@/lib/librarySort';
 import { listPerf } from '@/lib/listPerf';
@@ -148,7 +149,7 @@ export function PlaylistsBrowser({ embedded, actionRef, searchOpen }: BrowserPro
         grid ? (
           <PlaylistCard playlist={item} width={card} />
         ) : (
-          <Link href={`/playlist/${item.id}`} asChild>
+          <Link href={`/playlist/${item.id}`} asChild onPress={(e) => playLonePlaylist(e, item)}>
             <Pressable
               style={styles.row}
               onLongPress={() => {

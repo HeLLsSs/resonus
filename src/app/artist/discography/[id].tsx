@@ -23,6 +23,7 @@ import { AlbumCard } from '@/components/AlbumCard';
 import { Cover } from '@/components/Cover';
 import { Message } from '@/components/Message';
 import { useT } from '@/i18n';
+import { playLoneAlbum } from '@/lib/playLone';
 import { splitArtistAlbums } from '@/lib/artistAlbums';
 import {
   RELEASE_GROUP_TITLE,
@@ -213,7 +214,7 @@ export default function DiscographyScreen() {
             grid ? (
               <AlbumCard album={item} width={card} />
             ) : (
-              <Link href={`/album/${item.id}`} asChild>
+              <Link href={`/album/${item.id}`} asChild onPress={(e) => playLoneAlbum(e, item)}>
                 <Pressable style={styles.row}>
                   <Cover uri={coverArtUrl(item.coverArt ?? item.id, COVER.thumb)} size={56} />
                   <View style={{ flex: 1 }}>

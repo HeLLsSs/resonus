@@ -50,6 +50,7 @@ import { useMediaMenu, type MediaMenuItem } from '@/store/mediaMenu';
 import { usePins } from '@/store/pins';
 import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { SmartPlaylistArt } from '../smart-playlists';
+import { playLoneAlbum, playLonePlaylist, type Press } from '@/lib/playLone';
 import { SORT_LABELS, byCodepoint, matches, normQ, sortItems } from '@/lib/librarySort';
 import { useM3uImport } from '@/components/M3uImport';
 import { getPlaylists as getLocalPlaylists } from '@/lib/localQueries';
@@ -428,6 +429,7 @@ const PlaylistItem = memo(function PlaylistItem({
   return grid ? (
     <GridCard
       href={`/playlist/${item.id}`}
+      onPress={(e) => playLonePlaylist(e, item)}
       uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
       title={item.name}
       subtitle={songsLabel(item.songCount ?? 0, lang)}
@@ -435,7 +437,7 @@ const PlaylistItem = memo(function PlaylistItem({
       onLongPress={onLongPress}
     />
   ) : (
-    <Link href={`/playlist/${item.id}`} asChild>
+    <Link href={`/playlist/${item.id}`} asChild onPress={(e) => playLonePlaylist(e, item)}>
       <Pressable style={styles.row} onLongPress={onLongPress}>
         <Cover uri={coverArtUrl(item.coverArt ?? item.id, COVER.thumb)} size={56} />
         <View style={styles.rowInfo}>
@@ -492,6 +494,7 @@ const AlbumItem = memo(function AlbumItem({
   return grid ? (
     <GridCard
       href={`/album/${item.id}`}
+      onPress={(e) => playLoneAlbum(e, item)}
       uri={coverArtUrl(item.coverArt ?? item.id, COVER.card)}
       title={item.name}
       subtitle={item.artist}
@@ -1051,6 +1054,7 @@ function GridCard({
   subtitle,
   pinned,
   onLongPress,
+  onPress,
 }: {
   href: string;
   uri?: string;
@@ -1061,10 +1065,12 @@ function GridCard({
   subtitle?: string;
   pinned?: boolean;
   onLongPress?: () => void;
+  /** Plays a record or playlist of one song in place of opening it. */
+  onPress?: (event: Press) => void;
 }) {
   const { card } = useGridMetrics();
   return (
-    <Link href={href} asChild>
+    <Link href={href} asChild onPress={onPress}>
       <Pressable
         style={StyleSheet.flatten([styles.card, { width: card }, rounded && styles.cardCentered])}
         onLongPress={onLongPress}

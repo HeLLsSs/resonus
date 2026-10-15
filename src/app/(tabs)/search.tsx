@@ -26,6 +26,7 @@ import { GenreGridSkeleton } from '@/components/GenreGridSkeleton';
 import { Message } from '@/components/Message';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { TrackRow } from '@/components/TrackRow';
+import { playLonePlaylist } from '@/lib/playLone';
 import { authForKey, parseForeign, serverLabel } from '@/lib/servers';
 import { useDebounce } from '@/hooks/useDebounce';
 import { songsLabel, useT } from '@/i18n';
@@ -510,7 +511,7 @@ export default function SearchScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{t('Playlists')}</Text>
             {playlistMatches.map((p) => (
-              <Link key={p.id} href={`/playlist/${p.id}`} asChild>
+              <Link key={p.id} href={`/playlist/${p.id}`} asChild onPress={(e) => playLonePlaylist(e, p)}>
                 <Pressable
                   style={styles.recentRow}
                   onLongPress={() => { haptic('light'); openMediaMenu({ kind: 'playlist', playlist: p }); }}

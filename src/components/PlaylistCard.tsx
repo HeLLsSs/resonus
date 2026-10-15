@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { COVER, coverArtUrl, type Playlist } from '@/api/data';
 import { songsLabel } from '@/i18n';
 import { haptic } from '@/lib/haptics';
+import { playLonePlaylist } from '@/lib/playLone';
 import { useMediaMenu } from '@/store/mediaMenu';
 import { useSettings } from '@/store/settings';
 import { fontSize, spacing, themed } from '@/theme';
@@ -21,7 +22,7 @@ export function PlaylistCard({ playlist, width = 150 }: Props) {
   const cover = coverArtUrl(playlist.coverArt ?? playlist.id, COVER.card);
 
   return (
-    <Link href={`/playlist/${playlist.id}`} asChild>
+    <Link href={`/playlist/${playlist.id}`} asChild onPress={(e) => playLonePlaylist(e, playlist)}>
       {/* expo-router merges the Link style into this child; it must be a
           single object, not an array, so we flatten it. */}
       <Pressable

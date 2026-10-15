@@ -46,6 +46,7 @@ import { useAuthStore } from '@/store/auth';
 import { checkAutoUrlNow } from '@/store/autoUrl';
 import { useLastPlayed } from '@/store/lastPlayed';
 import { usePlayerStore } from '@/store/player';
+import { playLoneAlbum, playLonePlaylist, type Press } from '@/lib/playLone';
 import { requestSearchFocus } from '@/lib/tabOrigin';
 import { useScanProgress } from '@/store/scanProgress';
 import {
@@ -98,15 +99,18 @@ function QuickTile({
   cover,
   favorites,
   width,
+  onPress,
 }: {
   href: string;
   name: string;
   cover?: string;
   favorites?: boolean;
   width: number;
+  /** Plays a record or playlist of one song in place of opening it. */
+  onPress?: (event: Press) => void;
 }) {
   return (
-    <Link href={href} asChild>
+    <Link href={href} asChild onPress={onPress}>
       {/* Flattened, not an array: expo-router hands the style straight to the
           child it clones and refuses a list. */}
       <Pressable style={StyleSheet.flatten([styles.tile, { width }])}>
@@ -162,7 +166,7 @@ function QuickGrid() {
   // distributed among active sources sorted by last play.
   const dynamicCount = Math.max(0, size - (withFavorites ? 1 : 0));
   const tiles = useMemo(() => {
-    type Item = { key: string; href: string; name: string; cover?: string; ts: number };
+    type Item = { key: string; href: string; name: string; cover?: string; ts: number; play?: (event: Press) => void };
     // A YouTube playlist only rises here once it has been played: the rest
     // wait on their own shelf, below the server's playlists.
     const pl: Item[] = withPlaylists
@@ -176,6 +180,7 @@ function QuickGrid() {
             name: p.name,
             cover: coverArtUrl(p.coverArt ?? p.id, COVER.thumb),
             ts: times[href] ?? (Date.parse(p.changed ?? p.created ?? '') || 0),
+            play: (event: Press) => playLonePlaylist(event, p),
           };
         })
       : [];
@@ -188,6 +193,7 @@ function QuickGrid() {
             name: a.name,
             cover: coverArtUrl(a.coverArt ?? a.id, COVER.thumb),
             ts: times[href] ?? 0,
+            play: (event: Press) => playLoneAlbum(event, a),
           };
         })
       : [];
@@ -225,7 +231,7 @@ function QuickGrid() {
         <QuickTile href="/favorites" name={t('Favorites')} favorites width={tile} />
       ) : null}
       {tiles.map((it) => (
-        <QuickTile key={it.key} href={it.href} name={it.name} cover={it.cover} width={tile} />
+        <QuickTile key={it.key} href={it.href} name={it.name} cover={it.cover} width={tile} onPress={it.play} />
       ))}
     </View>
   );

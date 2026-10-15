@@ -15,6 +15,9 @@ Releases before 0.2.1 are only listed on the
   each roll from the YouTube Music radio of a few songs you liked, instead of
   the same liked songs; so does the YouTube side of Discover. Live sessions
   and compilations longer than ten minutes stay out of the deal.
+- A record or a playlist of a single song plays it straight away when its
+  cover is tapped, on Home, in the Library, in search and in an artist's
+  discography, instead of opening a screen with one song to tap again.
 
 ## [1.13.1] - 2026-10-15
 

@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { COVER, coverArtUrl, type Album } from '@/api/data';
 import { useMediaMenu } from '@/store/mediaMenu';
 import { haptic } from '@/lib/haptics';
+import { playLoneAlbum } from '@/lib/playLone';
 import { fontSize, spacing, themed } from '@/theme';
 import { Cover } from './Cover';
 import { ExplicitBadge, useExplicitBadge } from './ExplicitBadge';
@@ -22,7 +23,7 @@ export function AlbumCard({ album, width = 150, onPress }: Props) {
   const explicit = useExplicitBadge(album.explicitStatus);
 
   return (
-    <Link href={`/album/${album.id}`} asChild>
+    <Link href={`/album/${album.id}`} asChild onPress={(e) => playLoneAlbum(e, album)}>
       {/* expo-router merges the Link style into this child; it must be a
           single object, not an array, so we flatten it. */}
       <Pressable

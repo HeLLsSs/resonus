@@ -13,6 +13,7 @@ import Animated from 'react-native-reanimated';
 import { COVER, coverArtUrl, type Album } from '@/api/data';
 import { usePressFeedback } from '@/hooks/usePressFeedback';
 import { haptic } from '@/lib/haptics';
+import { playLoneAlbum } from '@/lib/playLone';
 import { useMediaMenu } from '@/store/mediaMenu';
 import { fontSize, spacing, themed, useTheme } from '@/theme';
 import { Cover } from './Cover';
@@ -37,7 +38,7 @@ export function AlbumRow({ album, pinned }: Props) {
   // the single object it wants.
   return (
     <Animated.View style={press.style}>
-      <Link href={`/album/${album.id}`} asChild>
+      <Link href={`/album/${album.id}`} asChild onPress={(e) => playLoneAlbum(e, album)}>
         <Pressable
           style={styles.row}
           onPressIn={press.onPressIn}
