@@ -1,7 +1,7 @@
 import unittest
 
 import fake_kodi  # noqa: F401 - puts the add-on on the path
-from resources.lib.resonuls.screens import art_of, kind_of, with_query
+from resources.lib.resonuls.screens import art_of, kind_of, lone_song, with_query
 
 PLUGIN = "plugin://plugin.audio.resonuls/"
 
@@ -31,6 +31,18 @@ class ArtTest(unittest.TestCase):
     def test_a_cover_is_left_as_it_is(self):
         cover = "image://http%3a%2f%2fmusic.test%2frest%2fgetCoverArt.view/"
         self.assertEqual(art_of({"thumbnail": cover}), cover)
+
+
+class LoneSongTest(unittest.TestCase):
+    def test_an_album_of_one_song_plays_it(self):
+        song = entry("action=play&id=s1", "file")
+        self.assertIs(lone_song([entry("action=queue&source=album&id=al1"), song], PLUGIN), song)
+
+    def test_two_songs_make_a_list(self):
+        self.assertIsNone(lone_song([entry("action=play&id=s1", "file"), entry("action=play&id=s2", "file")], PLUGIN))
+
+    def test_a_song_beside_an_album_makes_a_list(self):
+        self.assertIsNone(lone_song([entry("action=album&id=al1"), entry("action=play&id=s1", "file")], PLUGIN))
 
 
 class SearchTest(unittest.TestCase):

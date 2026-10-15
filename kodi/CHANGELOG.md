@@ -21,6 +21,8 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
   home page (quick picks, listen again, mixes) as a row.
 - The YouTube die deals new songs in the account's taste with a navifind
   that has the YouTube mix, and leaves out sessions longer than ten minutes.
+- An album or a playlist of a single song plays it straight away, with
+  Kodi's player, instead of opening a list of one.
 
 ### [0.1.4] - 2026-10-15
 

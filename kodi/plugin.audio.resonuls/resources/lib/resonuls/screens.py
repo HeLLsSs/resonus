@@ -48,3 +48,12 @@ def art_of(entry):
         if "/" not in inner and ":" not in inner:
             return inner
     return thumb
+
+
+def lone_song(entries, plugin_url):
+    """The one song of a list that holds nothing else to open, to play
+    straight away rather than show a list of one; None otherwise. Its "Play
+    all" and "Shuffle" do not count: they would play that same song."""
+    kinds = [kind_of(entry, plugin_url) for entry in entries]
+    songs = [entry for entry, kind in zip(entries, kinds) if kind == "song"]
+    return songs[0] if len(songs) == 1 and "open" not in kinds else None

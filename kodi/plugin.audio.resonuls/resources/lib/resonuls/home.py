@@ -78,6 +78,17 @@ def song_item(path, title, artist, duration, cover):
     return path, item
 
 
+def song_of(entry):
+    """A song of one of the add-on's lists, as JSON-RPC lists it, for Kodi's playlist."""
+    return song_item(
+        entry["file"],
+        entry.get("title") or entry.get("label") or "",
+        ", ".join(entry.get("artist") or []),
+        entry.get("duration"),
+        entry.get("thumbnail") or "",
+    )
+
+
 def play(songs, start):
     """`songs` as (path, item): played from `start` on."""
     playlist = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)
@@ -231,11 +242,11 @@ class ListWindow(AppWindow):
         super().__init__(*args, **kwargs)
         self.path = kwargs["path"]
         self.title = kwargs["title"]
-        self.entries = []
+        # Listed already by the app, which had to see whether it held one song.
+        self.entries = kwargs["entries"]
 
     def load(self):
         self.setProperty("title", self.title)
-        self.entries = [e for e in browse(self.path) if screens.kind_of(e, kodi.PLUGIN_URL)]
         listing = self.getControl(ENTRIES)
         listing.reset()
         items = []
@@ -266,19 +277,7 @@ class ListWindow(AppWindow):
         elif kind == "song":
             # The list's songs from this one on, as Kodi does with a list.
             songs = [e for e in self.entries if screens.kind_of(e, kodi.PLUGIN_URL) == "song"]
-            play(
-                [
-                    song_item(
-                        e["file"],
-                        e.get("title") or e.get("label") or "",
-                        ", ".join(e.get("artist") or []),
-                        e.get("duration"),
-                        e.get("thumbnail") or "",
-                    )
-                    for e in songs
-                ],
-                songs.index(entry),
-            )
+            play([song_of(e) for e in songs], songs.index(entry))
 
 
 class App:
@@ -300,7 +299,13 @@ class App:
                 return
             path = screens.with_query(path, query)
             title = "{} : {}".format(title, query)
-        self.push(ListWindow("resonuls-list.xml", self.path, "default", "1080i", app=self, path=path, title=title))
+        entries = [e for e in browse(path) if screens.kind_of(e, kodi.PLUGIN_URL)]
+        lone = screens.lone_song(entries, kodi.PLUGIN_URL)
+        if lone is not None:
+            play([song_of(lone)], 0)
+            run_plugin(shelves.query(action="now_playing", wait=1))
+            return
+        self.push(ListWindow("resonuls-list.xml", self.path, "default", "1080i", app=self, path=path, title=title, entries=entries))
 
     def run(self):
         home = xbmcgui.Window(10000)
