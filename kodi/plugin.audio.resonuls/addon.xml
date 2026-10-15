@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.resonuls" name="Resonuls" version="0.1.4" provider-name="HeLLsSs">
+<addon id="plugin.audio.resonuls" name="Resonuls" version="0.2.0" provider-name="HeLLsSs">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
   </requires>
@@ -14,7 +14,7 @@
     <description lang="fr_FR">Resonuls sur Kodi : parcours et écoute un serveur Navidrome (Subsonic). Derrière un proxy navifind, il lit aussi YouTube, range ce que tu écoutes dans la bibliothèque et garde un compte, une musique : lance une musique sur ton téléphone et Kodi se met en pause.</description>
     <platform>all</platform>
     <license>GPL-3.0-only</license>
-    <news>0.1.4: a skin's Music entry pointed at the Resonuls home opens the covers on slower boxes too, instead of the list.</news>
+    <news>0.2.0: the home of covers is an app, with its lists and search in windows of its own and what plays at the top (pause, stop, next). The Resonuls program add-on opens it from a skin's main menu.</news>
     <source>https://github.com/HeLLsSs/resonus/tree/main/kodi</source>
     <assets>
       <icon>resources/icon.png</icon>

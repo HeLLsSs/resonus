@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="script.resonuls" name="Resonuls" version="1.0.0" provider-name="HeLLsSs">
+  <requires>
+    <import addon="xbmc.python" version="3.0.1"/>
+    <import addon="plugin.audio.resonuls" version="0.2.0"/>
+  </requires>
+  <extension point="xbmc.python.script" library="default.py">
+    <provides>executable</provides>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">Opens the Resonuls app, on its own</summary>
+    <summary lang="fr_FR">Ouvre l'app Resonuls, à part</summary>
+    <description lang="en_GB">The Resonuls app full screen, apart from Kodi's music: its home of covers, its lists and its search, with what plays at the top. Pick it for an entry of your skin's main menu.</description>
+    <description lang="fr_FR">L'app Resonuls en plein écran, à part de la musique de Kodi : son accueil de pochettes, ses listes et sa recherche, avec ce qui joue en haut. Choisis-la pour une entrée du menu principal de ton habillage.</description>
+    <platform>all</platform>
+    <license>GPL-3.0-only</license>
+    <news>1.0.0: the Resonuls app, to open from your skin's main menu.</news>
+    <source>https://github.com/HeLLsSs/resonus/tree/main/kodi</source>
+    <assets>
+      <icon>resources/icon.png</icon>
+    </assets>
+  </extension>
+</addon>

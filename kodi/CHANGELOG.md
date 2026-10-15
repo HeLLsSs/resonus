@@ -6,6 +6,15 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
 
 ## plugin.audio.resonuls
 
+### [0.2.0] - 2026-10-15
+
+- The home of covers is an app: albums, playlists, artists, YouTube and
+  search open in windows of its own instead of Kodi's music window, which
+  could take the remote back to Kodi's menus. Back goes up through the app,
+  then closes it.
+- A bar at the top of the app shows what plays, with pause, stop, next and
+  Kodi's player.
+
 ### [0.1.4] - 2026-10-15
 
 - A skin's Music entry pointed at the Resonuls home opens the covers on
@@ -56,6 +65,13 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
 - Scrobbles and "now playing", resume from another device, and one
   account, one music: Kodi pauses when another device plays.
 - Plays what the Resonuls app sends to Kodi, with the title and cover.
+
+## script.resonuls
+
+### [1.0.0] - 2026-10-15
+
+- The Resonuls app's launcher: a program add-on, which skins offer for an
+  entry of their main menu, so that the app opens straight from there.
 
 ## repository.resonuls
 

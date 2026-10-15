@@ -4,11 +4,15 @@
 Navidrome (Subsonic) server from the TV, with the extras of a navifind proxy
 in front of it.
 
-- **Home**: rows of covers to walk with a TV remote, YouTube Music style
+- **The app**: rows of covers to walk with a TV remote, YouTube Music style
   (shortcuts, YouTube quick picks, recently added and played, most played,
-  playlists, random albums). Up and down change row, OK opens or plays,
-  the menu key plays an album straight away. "Now playing" opens Kodi's
-  player, which also opens by itself when music starts from a tile.
+  playlists, random albums), and every list and search in windows of its
+  own, apart from Kodi's music. Up and down change row, OK opens or plays,
+  the menu key plays an album straight away. A bar at the top shows what
+  plays, with pause, stop, next and Kodi's player.
+- **Its own menu entry**: the **Resonuls** program add-on opens the app
+  straight away. In a skin's main menu editor (Arctic: Zephyr for one),
+  set an entry to Add-on › Program add-ons › Resonuls.
 - **In Kodi's Music menu**: every section at the top of it, Home first
   (Settings › Display to turn it off).
 - Library: recently added, recently and most played, random albums, A-Z,
@@ -53,6 +57,8 @@ On the Kodi box, once:
    read the repository yet: restart Kodi and try again.
 5. Fill in the server address, username and password in the add-on's
    settings (Configure).
+6. Optional: Install from repository › Resonuls repository › Program
+   add-ons › **Resonuls**, the app's own launcher for a skin's menu.
 
 Install Resonuls from the repository (step 4) rather than from its zip: Kodi
 only updates an add-on from the repository it came from, and one installed
@@ -61,7 +67,8 @@ repository's version on its information page.
 
 ## Release a version
 
-1. Raise `version` in `plugin.audio.resonuls/addon.xml`, add the version to
+1. Raise `version` in `plugin.audio.resonuls/addon.xml` (and in
+   `script.resonuls/addon.xml` when the launcher changes), add the version to
    `CHANGELOG.md` and put its summary in the `<news>` of `addon.xml`, which
    Kodi shows when it updates.
 2. `./build.sh publish`: builds the repository and pushes it to the

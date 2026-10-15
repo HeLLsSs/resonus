@@ -1,28 +1,46 @@
-"""The tiled home: rows of covers to walk with a TV remote, the way YouTube
-Music lays out its home. Up and down go from row to row, left and right
-along one, OK opens or plays what is on the tile and the menu key plays an
-album straight away. Drawn by `resources/skins/default/1080i/resonuls-home.xml`."""
+"""The Resonuls app: rows of covers to walk with a TV remote, the way YouTube
+Music lays out its home, and the add-on's lists, all in windows of its own.
+Up and down go from row to row, left and right along one, OK opens or plays
+what is on the tile and the menu key plays an album straight away. A bar at
+the top pauses, stops or skips what plays. Drawn by
+`resources/skins/default/1080i/resonuls-home.xml` and `resonuls-list.xml`.
 
+It never goes through Kodi's music window: a list opened there could take
+the remote to Kodi's own menus whenever Kodi changed window."""
+
+import json
 import time
 
 import xbmc
 import xbmcgui
 
-from . import kodi, shelves
+from . import kodi, screens, shelves
 from .kodi import text
 
 ROWS = 7
-# The window's control ids: one list per row, inside a group with its title.
+# The windows' control ids: one list per row of tiles, inside a group with
+# its title; the list of a list window.
 LIST, GROUP, TITLE = 1000, 2000, 3000
+ENTRIES = 100
+# The now-playing bar's buttons: play or pause, stop, next, Kodi's player.
+BAR = (501, 502, 503, 504)
 ACTION_BACK = (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
 ACTION_MENU = (xbmcgui.ACTION_CONTEXT_MENU,)
-# A beat on Kodi's home window while the tiles are alive: Kodi lists the
-# "Home" folder again on the way back from a list, which must not open a
-# second set of tiles over the first. A time rather than a flag, so that
-# tiles that died without saying so do not keep the next ones from opening.
+# Kodi's windows the app may be under while it runs: its music player and
+# its video player.
+PLAYERS = (12006, 12005)
+MUSIC_WINDOW = 10502
+# A beat on Kodi's home window while the app is open: Kodi lists the
+# add-on's "Home" folder again on the way back from it, which must not open
+# a second app over the first. A time rather than a flag, so that an app
+# that died without saying so does not keep the next one from opening.
 OPEN = "resonuls.home"
 BEAT_SEC = 0.3
 STALE_SEC = 3
+# A window Kodi has not drawn by then is not going to be (a dialog in the way).
+NEVER_SHOWN_SEC = 6
+# Out of the app for that long (Kodi's home key): it closes.
+AWAY_SEC = 2
 
 
 def tiles_alive():
@@ -31,55 +49,89 @@ def tiles_alive():
         return time.time() - float(beat) < STALE_SEC
     except ValueError:
         return False
-# A list that has not opened by then is not going to: a search given up on.
-NEVER_OPENED_SEC = 8
-# Tiles out of sight for that long were lost behind the music window.
-HIDDEN_SEC = 1.5
-# Tiles Kodi has not drawn by then are not going to be.
-NEVER_SHOWN_SEC = 6
 
 
-def song_item(client, song):
+def browse(path):
+    """One of the add-on's lists, as Kodi's JSON-RPC lists it."""
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "Files.GetDirectory",
+        "params": {"directory": path, "media": "music", "properties": ["title", "artist", "duration", "thumbnail", "art"]},
+    }
+    answer = json.loads(xbmc.executeJSONRPC(json.dumps(request)))
+    return answer.get("result", {}).get("files") or []
+
+
+def song_item(path, title, artist, duration, cover):
     """A song for Kodi's music playlist, played through the add-on."""
-    title = shelves.clean_title(song)
     item = xbmcgui.ListItem(title, offscreen=True)
     tag = item.getMusicInfoTag()
     tag.setMediaType("song")
     tag.setTitle(title)
-    tag.setArtist(song.get("artist") or "")
-    tag.setAlbum(song.get("album") or "")
-    tag.setDuration(int(song.get("duration") or 0))
-    cover = client.cover_url(song.get("coverArt"))
+    tag.setArtist(artist)
+    tag.setDuration(int(duration or 0))
     item.setArt({"thumb": cover, "icon": cover})
     item.setProperty("IsPlayable", "true")
-    return "{}?{}".format(kodi.PLUGIN_URL, shelves.query(action="play", id=song["id"])), item
+    return path, item
 
 
-class Home(xbmcgui.WindowXML):
+def play(songs, start):
+    """`songs` as (path, item): played from `start` on."""
+    playlist = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)
+    playlist.clear()
+    for path, item in songs:
+        playlist.add(path, item)
+    xbmc.Player().play(playlist, startpos=start)
+
+
+def run_plugin(query):
+    xbmc.executebuiltin("RunPlugin({}?{})".format(kodi.PLUGIN_URL, query))
+
+
+class AppWindow(xbmcgui.WindowXML):
+    """One window of the app: back closes it, and the app shows the one under."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
-        self.client = kwargs["client"]
-        self.songs = {}
+        self.app = kwargs["app"]
         self.loaded = False
         self.closed = False
-        self.focus = LIST
-        # Away showing one of the add-on's lists: where the music window was
-        # when it went, and whether it has left it yet.
-        self.origin = None
-        self.left = False
-        self.away_since = 0.0
         self.window_id = 0
+        self.focus = 0
+        self.opened = time.monotonic()
 
     def onInit(self):
         self.window_id = xbmcgui.getCurrentWindowId()
-        # Called again each time a list opened from here is left: the rows
-        # are still there, and so is the tile the remote was on.
+        # Called again each time the window comes back: the list is still
+        # there, and so is where the remote was.
         if self.loaded:
-            self.setFocusId(self.focus)
+            if self.focus:
+                self.setFocusId(self.focus)
             return
         self.loaded = True
         self.setProperty("loading", "true")
-        rows, self.songs = shelves.load(self.client, text, kodi.navifind())
+        self.load()
+        self.clearProperty("loading")
+
+    def onAction(self, action):
+        if action.getId() in ACTION_BACK:
+            self.closed = True
+            self.close()
+
+    def load(self):
+        raise NotImplementedError
+
+
+class Home(AppWindow):
+    content = LIST
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.songs = {}
+
+    def load(self):
+        rows, self.songs = shelves.load(self.app.client, text, kodi.navifind())
         for i in range(ROWS):
             listing = self.getControl(LIST + i)
             listing.reset()
@@ -95,75 +147,176 @@ class Home(xbmcgui.WindowXML):
                     item.setProperty(key, t[key])
                 items.append(item)
             listing.addItems(items)
-        self.clearProperty("loading")
         self.setFocusId(LIST)
 
     def selected(self):
         control = self.getFocusId()
         if not LIST <= control < LIST + ROWS:
-            return ""
-        item = self.getControl(control).getSelectedItem()
-        return item.getProperty("action") if item else ""
+            return None
+        return self.getControl(control).getSelectedItem()
 
     def onClick(self, controlId):
-        self.focus = controlId
-        self.run(self.selected(), play=False)
+        if LIST <= controlId < LIST + ROWS:
+            self.focus = controlId
+            self.run(self.selected(), play_now=False)
 
     def onAction(self, action):
-        if action.getId() in ACTION_BACK:
-            self.closed = True
-            self.close()
-        elif action.getId() in ACTION_MENU:
-            self.run(self.selected(), play=True)
+        if action.getId() in ACTION_MENU:
+            self.run(self.selected(), play_now=True)
+        else:
+            super().onAction(action)
 
-    def run(self, action, play):
-        word, _, rest = action.partition(":")
+    def run(self, item, play_now):
+        if item is None:
+            return
+        word, _, rest = item.getProperty("action").partition(":")
         if word in ("album", "playlist"):
-            if play:
-                xbmc.executebuiltin("RunPlugin({}?{})".format(kodi.PLUGIN_URL, shelves.query(action="queue", source=word, id=rest)))
+            if play_now:
+                run_plugin(shelves.query(action="queue", source=word, id=rest))
             else:
-                self.open(shelves.query(action=word, id=rest))
+                self.app.open(shelves.query(action=word, id=rest), item.getLabel())
         elif word == "song":
             shelf, _, index = rest.partition(":")
-            self.play(self.songs.get(shelf, []), int(index))
+            client = self.app.client
+            songs = [
+                song_item(
+                    "{}?{}".format(kodi.PLUGIN_URL, shelves.query(action="play", id=song["id"])),
+                    shelves.clean_title(song),
+                    song.get("artist") or "",
+                    song.get("duration"),
+                    client.cover_url(song.get("coverArt")),
+                )
+                for song in self.songs.get(shelf, [])
+            ]
+            play(songs, int(index))
+            run_plugin(shelves.query(action="now_playing", wait=1))
         elif word == "folder":
-            self.open(rest)
+            self.app.open(rest, item.getLabel())
         elif word == "run":
-            xbmc.executebuiltin("RunPlugin({}?{})".format(kodi.PLUGIN_URL, rest))
+            run_plugin(rest)
 
-    def open(self, params):
-        """One of the add-on's lists, in the music window under this one,
-        which goes into it the way it goes into a folder: back comes out of
-        it to where it was, and `main` shows the tiles again from there.
-        Opening it as a window of its own would leave the music window, and
-        back would then go to Kodi's home rather than here."""
-        self.close()
-        xbmc.sleep(100)
-        self.origin = xbmc.getInfoLabel("Container.FolderPath")
-        self.left = False
-        self.away_since = time.monotonic()
-        xbmc.executebuiltin("Container.Update({}?{})".format(kodi.PLUGIN_URL, params))
 
-    def back_from_list(self):
-        """Whether the list opened from here was left for where it started.
-        A list that never opened (a search given up on) counts after a while,
-        once the keyboard is gone: shown under it, the tiles were lost."""
-        if not xbmc.getCondVisibility("Window.IsActive(music) + !System.HasVisibleModalDialog"):
-            return False
-        here = xbmc.getInfoLabel("Container.FolderPath")
-        if here != self.origin:
-            self.left = True
-            return False
-        return self.left or time.monotonic() - self.away_since > NEVER_OPENED_SEC
+class ListWindow(AppWindow):
+    """One of the add-on's lists: an album, a playlist, a search…"""
 
-    def play(self, songs, start):
-        playlist = xbmc.PlayList(xbmc.PLAYLIST_MUSIC)
-        playlist.clear()
-        for song in songs:
-            playlist.add(*song_item(self.client, song))
-        xbmc.Player().play(playlist, startpos=start)
-        # Opened from the add-on rather than from here, where it was ignored.
-        xbmc.executebuiltin("RunPlugin({}?{})".format(kodi.PLUGIN_URL, shelves.query(action="now_playing", wait=1)))
+    content = ENTRIES
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.path = kwargs["path"]
+        self.title = kwargs["title"]
+        self.entries = []
+
+    def load(self):
+        self.setProperty("title", self.title)
+        self.entries = [e for e in browse(self.path) if screens.kind_of(e, kodi.PLUGIN_URL)]
+        listing = self.getControl(ENTRIES)
+        listing.reset()
+        items = []
+        for entry in self.entries:
+            item = xbmcgui.ListItem(entry.get("label") or "", ", ".join(entry.get("artist") or []), offscreen=True)
+            # A command has an icon of Kodi's rather than a cover.
+            thumb = entry.get("thumbnail") or (entry.get("art") or {}).get("icon") or ""
+            item.setArt({"thumb": thumb, "icon": thumb})
+            item.setProperty("kind", screens.kind_of(entry, kodi.PLUGIN_URL))
+            items.append(item)
+        listing.addItems(items)
+        if not items:
+            self.setProperty("empty", "true")
+        self.setFocusId(ENTRIES)
+
+    def onClick(self, controlId):
+        if controlId != ENTRIES or not self.entries:
+            return
+        self.focus = ENTRIES
+        entry = self.entries[self.getControl(ENTRIES).getSelectedPosition()]
+        kind = screens.kind_of(entry, kodi.PLUGIN_URL)
+        if kind == "open":
+            self.app.open(entry["file"], entry.get("label") or "")
+        elif kind == "run":
+            xbmc.executebuiltin("RunPlugin({})".format(entry["file"]))
+        elif kind == "song":
+            # The list's songs from this one on, as Kodi does with a list.
+            songs = [e for e in self.entries if screens.kind_of(e, kodi.PLUGIN_URL) == "song"]
+            play(
+                [
+                    song_item(
+                        e["file"],
+                        e.get("title") or e.get("label") or "",
+                        ", ".join(e.get("artist") or []),
+                        e.get("duration"),
+                        e.get("thumbnail") or "",
+                    )
+                    for e in songs
+                ],
+                songs.index(entry),
+            )
+
+
+class App:
+    def __init__(self, client):
+        self.client = client
+        self.path = kodi.addon().getAddonInfo("path")
+        self.stack = []
+
+    def push(self, window):
+        self.stack.append(window)
+        window.show()
+
+    def open(self, query_or_path, title):
+        path = query_or_path if query_or_path.startswith("plugin://") else "{}?{}".format(kodi.PLUGIN_URL, query_or_path)
+        if screens.action_of(path) == "search" and "query=" not in path:
+            query = xbmcgui.Dialog().input(text(30057))
+            if not query:
+                return
+            path = screens.with_query(path, query)
+            title = "{} : {}".format(title, query)
+        self.push(ListWindow("resonuls-list.xml", self.path, "default", "1080i", app=self, path=path, title=title))
+
+    def run(self):
+        home = xbmcgui.Window(10000)
+        origin = xbmcgui.getCurrentWindowId()
+        origin_path = xbmc.getInfoLabel("Container.FolderPath")
+        self.push(Home("resonuls-home.xml", self.path, "default", "1080i", app=self))
+        monitor = xbmc.Monitor()
+        away = 0
+        try:
+            while self.stack and not monitor.waitForAbort(BEAT_SEC):
+                home.setProperty(OPEN, str(time.time()))
+                top = self.stack[-1]
+                if top.closed:
+                    self.stack.pop()
+                    if self.stack:
+                        self.stack[-1].show()
+                    continue
+                if not top.window_id and time.monotonic() - top.opened > NEVER_SHOWN_SEC:
+                    # Kodi would not show it: given up rather than asked
+                    # again and again, which would hold what is in the way.
+                    break
+                current = xbmcgui.getCurrentWindowId()
+                if current == top.window_id and top.getFocusId() in BAR and not xbmc.getCondVisibility("Player.HasAudio"):
+                    # The bar went with the music, and the remote with it.
+                    top.setFocusId(top.content)
+                if current == top.window_id or current in PLAYERS or xbmc.getCondVisibility("System.HasModalDialog"):
+                    away = 0
+                    continue
+                if current == origin and top.window_id:
+                    # Kodi went back under the app on its own: brought back.
+                    top.show()
+                    continue
+                away += 1
+                if away * BEAT_SEC >= AWAY_SEC:
+                    break
+        finally:
+            for window in reversed(self.stack):
+                window.close()
+            if origin == MUSIC_WINDOW and xbmcgui.getCurrentWindowId() != MUSIC_WINDOW:
+                # Back to the list it was opened from, rather than to Kodi's
+                # home, where closing it lands otherwise.
+                xbmc.executebuiltin("ActivateWindow(Music,{},return)".format(origin_path))
+            # A last beat rather than none: closing the app has Kodi list the
+            # add-on's "Home" again, which would open a new one.
+            home.setProperty(OPEN, str(time.time()))
 
 
 def main():
@@ -171,49 +324,5 @@ def main():
     if client is None:
         xbmcgui.Dialog().ok("Resonuls", text(30050))
         return
-    window = Home("resonuls-home.xml", kodi.addon().getAddonInfo("path"), "default", "1080i", client=client)
-    # Shown rather than modal: Kodi closes a modal window as soon as another
-    # one opens, so back from an album would not come back here. The script
-    # keeps it alive until it is left.
-    home = xbmcgui.Window(10000)
-    window.show()
-    monitor = xbmc.Monitor()
-    hidden = 0
-    started = time.monotonic()
-    try:
-        while not window.closed and not monitor.waitForAbort(BEAT_SEC):
-            home.setProperty(OPEN, str(time.time()))
-            if not window.window_id and time.monotonic() - started > NEVER_SHOWN_SEC:
-                # Kodi would not show them (a dialog in the way): given up
-                # rather than asked again and again, which holds that dialog.
-                break
-            if window.origin is None:
-                # Shown, yet out of sight under the music window: brought
-                # back, or "Home" could not open them, taking them for open.
-                # Never drawn (no onInit yet) counts as out of sight too.
-                visible = window.window_id and xbmc.getCondVisibility("Window.IsVisible({})".format(window.window_id))
-                idle = xbmc.getCondVisibility("Window.IsActive(music) + !System.HasVisibleModalDialog")
-                hidden = hidden + 1 if idle and not visible else 0
-                if hidden * BEAT_SEC >= HIDDEN_SEC:
-                    hidden = 0
-                    window.show()
-                continue
-            if window.back_from_list():
-                window.origin = None
-                window.show()
-            elif not xbmc.getCondVisibility("Window.IsActive(music)") and not xbmc.getCondVisibility("System.HasModalDialog"):
-                # Left for somewhere else altogether: the tiles are not waiting.
-                break
-    finally:
-        left = window.closed
-        window.close()
-        if left:
-            # Back from the tiles goes to where they were opened from, Kodi's
-            # Music menu or the add-on's own first screen, rather than to
-            # Kodi's home, which is where closing them lands otherwise.
-            back = "library://music/" if kodi.addon().getSettingBool("music_menu") else kodi.PLUGIN_URL
-            xbmc.executebuiltin("ActivateWindow(Music,{},return)".format(back))
-        # A last beat rather than none: closing the tiles has Kodi list the
-        # add-on's "Home" again, which would open new ones over the way out.
-        home.setProperty(OPEN, str(time.time()))
-        del window
+    if not tiles_alive():
+        App(client).run()

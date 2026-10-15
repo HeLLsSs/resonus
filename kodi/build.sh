@@ -26,7 +26,7 @@ if [ "${1:-}" = publish ]; then
   fi
 fi
 
-python3 -I - "$out" "${REPO_URL:-}" plugin.audio.resonuls repository.resonuls <<'PY'
+python3 -I - "$out" "${REPO_URL:-}" plugin.audio.resonuls script.resonuls repository.resonuls <<'PY'
 import hashlib, os, re, shutil, sys, zipfile
 
 out, repo_url, ids = sys.argv[1], sys.argv[2], sys.argv[3:]
