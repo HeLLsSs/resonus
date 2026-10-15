@@ -22,7 +22,7 @@ import { assertCanRequest } from './netGate';
 import { navifindActive } from '@/lib/navifind';
 // Only the reading of what the proxy says about its YouTube account: that
 // module holds the app's plain logic and takes nothing from here but types.
-import { readAccount, type YoutubeAccount } from '@/lib/youtube';
+import { readAccount, readCommonAccount, type CommonAccount, type YoutubeAccount } from '@/lib/youtube';
 
 export const CLIENT_NAME = 'Resonuls';
 const API_VERSION = '1.16.1';
@@ -2065,6 +2065,26 @@ interface AccountAnswer {
 export async function youtubeAccount(auth: SubsonicAuth): Promise<YoutubeAccount> {
   const res = await request<AccountAnswer>(auth, 'navifind/youtube/account.view');
   return readAccount(res.navifind?.youtubeAccount);
+}
+
+/**
+ * The account Navifind shares with everyone who has not signed in with their
+ * own, and its two links: the token that reads and writes its likes and
+ * playlists, and the cookie that gives its home page. See
+ * `lib/commonAccountAlert.ts`.
+ */
+export async function youtubeCommonAccount(auth: SubsonicAuth): Promise<CommonAccount> {
+  const res = await request<{ navifind?: { commonAccount?: unknown } }>(auth, 'navifind/youtube/common.view');
+  return readCommonAccount(res.navifind?.commonAccount);
+}
+
+/**
+ * Whether this user administers the server, from the `adminRole` of `getUser`.
+ * Anything short of a clear yes is no.
+ */
+export async function isServerAdmin(auth: SubsonicAuth): Promise<boolean> {
+  const res = await request<{ user?: { adminRole?: boolean } }>(auth, 'getUser.view', { username: auth.username });
+  return res.user?.adminRole === true;
 }
 
 /**

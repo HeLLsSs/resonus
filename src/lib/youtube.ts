@@ -95,6 +95,31 @@ export function readAccount(raw: unknown): YoutubeAccount {
 }
 
 /**
+ * The two links of the account Navifind shares with everyone. `token` is the
+ * OAuth authorization that reads and writes its likes and playlists, and does
+ * not expire; `refused` means Google stopped renewing it and it has to be given
+ * again on the server. `cookie` is the browser session that gives its home page
+ * its own tiles. `off` is a link the server is not set up to have.
+ */
+export interface CommonAccount {
+  /** The Navidrome account whose YouTube session is the shared one. */
+  user?: string;
+  token: 'ok' | 'refused' | 'none' | 'off';
+  cookie: YoutubeAccountState | 'off';
+}
+
+const TOKEN_STATES: CommonAccount['token'][] = ['ok', 'refused', 'none', 'off'];
+
+/** The proxy's answer, at arm's length: what neither side knows is `off`. */
+export function readCommonAccount(raw: unknown): CommonAccount {
+  const node = (raw ?? {}) as { user?: unknown; token?: unknown; cookie?: unknown };
+  const token = TOKEN_STATES.find((s) => s === node.token) ?? 'off';
+  const cookie = node.cookie === 'off' ? 'off' : (STATES.find((s) => s === node.cookie) ?? 'off');
+  const user = typeof node.user === 'string' && node.user ? node.user : undefined;
+  return { user, token, cookie };
+}
+
+/**
  * Why a pasted cookie was not kept, as the three answers a person can do
  * something different about: YouTube looked at it and said no, YouTube could
  * not be reached at all and nothing was changed, or the proxy itself never got

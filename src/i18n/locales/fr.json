@@ -1475,5 +1475,22 @@
   "Something else is playing on Kodi": "Autre chose joue sur Kodi",
   "Kodi couldn't play this song": "Kodi n'a pas pu lire ce titre",
   "Forgotten. Navifind went back to the shared account.": "Oublié. Navifind est revenu au compte partagé.",
-  "Using the account shared by everyone on this server, until you sign in with yours.": "Avec le compte partagé par tout le monde sur ce serveur, en attendant que tu te connectes avec le tien."
+  "Using the account shared by everyone on this server, until you sign in with yours.": "Avec le compte partagé par tout le monde sur ce serveur, en attendant que tu te connectes avec le tien.",
+  "The shared YouTube account's authorization was withdrawn": "L'autorisation du compte YouTube commun a été retirée",
+  "Run bin/youtube-oauth.php on the server again to give its likes and playlists back.": "Relance bin/youtube-oauth.php sur le serveur pour lui rendre ses « J'aime » et ses playlists.",
+  "The shared YouTube account's session has expired": "La session du compte YouTube commun a expiré",
+  "Its home page is a stranger’s until you sign in to YouTube again with the {user} profile.": "Son accueil est celui d'un inconnu tant que tu ne te reconnectes pas à YouTube avec le profil {user}.",
+  "Shared account": "Compte commun",
+  "The YouTube account everyone on this server reads until they sign in with their own: YT-C among the playlists.": "Le compte YouTube que tout le monde sur ce serveur utilise tant qu'il n'a pas connecté le sien : YT-C dans les playlists.",
+  "Likes and playlists": "« J'aime » et playlists",
+  "Connected": "Connecté",
+  "Withdrawn": "Retirée",
+  "Not connected": "Pas connecté",
+  "Expired": "Expirée",
+  "No answer": "Pas de réponse",
+  "Through an authorization that renews itself.": "Par une autorisation qui se renouvelle toute seule.",
+  "Run bin/youtube-oauth.php on the server to connect it.": "Lance bin/youtube-oauth.php sur le serveur pour le connecter.",
+  "Home page": "Accueil",
+  "Its own tiles, through a session signed in from the app.": "Ses propres tuiles, par une session connectée depuis l'app.",
+  "Sign in to YouTube on this screen with the {user} profile to give it its own tiles.": "Connecte-toi à YouTube sur cet écran avec le profil {user} pour lui donner ses propres tuiles."
 }

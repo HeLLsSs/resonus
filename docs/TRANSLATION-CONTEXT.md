@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1467 of them.
+Every string the app can show, under the screen it shows up on. 1484 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -418,6 +418,15 @@ you are actually typing into, which is easier than reading it here.
 | `Shuffle everything` |  |
 | `Sign in on your phone` |  |
 | `Unknown title` | Fallback when the file and the server have no title |
+
+## in commonAccountAlert
+
+| String | What it is |
+| --- | --- |
+| `Its home page is a stranger’s until you sign in to YouTube again with the {user} profile.` |  |
+| `Run bin/youtube-oauth.php on the server again to give its likes and playlists back.` |  |
+| `The shared YouTube account's authorization was withdrawn` |  |
+| `The shared YouTube account's session has expired` |  |
 
 ## in likedImport
 
@@ -1758,7 +1767,9 @@ you are actually typing into, which is easier than reading it here.
 | `Asking Navifind…` |  |
 | `Checking with YouTube…` |  |
 | `Clear the paste` | Throws the pasted cookie away, before anything has been sent |
+| `Connected` |  |
 | `Cookie` | The `Cookie` header a browser sends to YouTube, pasted here so the proxy can read the account with it. The web technology, not something to eat |
+| `Expired` |  |
 | `Forget this cookie` |  |
 | `Forgetting…` |  |
 | `Forgotten. Navifind has no YouTube account left.` |  |
@@ -1766,7 +1777,10 @@ you are actually typing into, which is easier than reading it here.
 | `Forgotten. Navifind went back to the shared account.` |  |
 | `Forgotten. What the server was started with is all that is left, and its session has expired too.` |  |
 | `Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself. A second account can be signed in beside the first before you finish, and you can then switch between them here.` |  |
+| `Home page` |  |
 | `If that request also carries an X-Goog-AuthUser header, write its number below: it says which of the accounts signed in to that browser the cookie belongs to.` |  |
+| `Its own tiles, through a session signed in from the app.` |  |
+| `Likes and playlists` |  |
 | `Navifind can be signed in to YouTube Music as you, and then the YouTube tab shows what that account has: its home page, its playlists, the songs it liked.` |  |
 | `Navifind could not be asked about its YouTube account. Either it is older than this screen and has not got the routes for it, or the address under Navifind is wrong.` |  |
 | `Navifind could not reach YouTube, so nothing was changed. Nothing is wrong with the cookie; try again in a moment.` |  |
@@ -1779,12 +1793,17 @@ you are actually typing into, which is easier than reading it here.
 | `Navifind now reads {name}.` |  |
 | `Navifind tries it against YouTube and only keeps it if it works.` | The line under “Account number”, explaining it |
 | `No account yet` |  |
+| `No answer` |  |
+| `Not connected` |  |
 | `Open music.youtube.com in a browser signed in to the account Navifind should use, open the developer tools and reload the page. In the network list pick any request named youtubei, look at the headers it sent, and copy the whole Cookie line — all of it, about seventeen hundred characters.` |  |
 | `Paste a cookie instead` |  |
+| `Run bin/youtube-oauth.php on the server to connect it.` |  |
 | `Send to Navifind` | Hands the pasted cookie to the proxy, which tries it against YouTube before keeping it |
+| `Shared account` |  |
 | `Sign in` | The button that signs in. A verb |
 | `Sign in as somebody else` |  |
 | `Sign in to YouTube Music` |  |
+| `Sign in to YouTube on this screen with the {user} profile to give it its own tiles.` |  |
 | `Signed in as {name}.` |  |
 | `Signed in to YouTube` |  |
 | `Signed in. Navifind can read the account again.` |  |
@@ -1795,9 +1814,12 @@ you are actually typing into, which is easier than reading it here.
 | `The way round when the sign-in page will not finish, or when the account is already signed in to a browser somewhere else.` |  |
 | `The whole header, as the browser sent it.` |  |
 | `The X-Goog-AuthUser value. Leave it empty for the first account.` | The line under “Account number”, explaining it |
+| `The YouTube account everyone on this server reads until they sign in with their own: YT-C among the playlists.` |  |
+| `Through an authorization that renews itself.` |  |
 | `Using the account shared by everyone on this server, until you sign in with yours.` |  |
 | `Using the cookie pasted from a phone.` |  |
 | `Using the cookie the server was started with.` |  |
+| `Withdrawn` |  |
 | `YouTube has ended the session Navifind was signed in with. Nothing of yours can be read until a fresh cookie takes its place.` |  |
 | `YouTube would not accept that cookie, so nothing was changed. It is usually an old one: copy it again from a page you have just loaded.` |  |
 

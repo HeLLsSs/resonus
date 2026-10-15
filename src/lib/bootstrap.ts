@@ -238,5 +238,6 @@ export function startApp(): void {
   void import('@/lib/likedImport').then((m) => m.startLikedImport());
   void import('@/lib/proxyBackupSync').then((m) => m.startProxyBackup());
   void import('@/lib/outageAlert').then((m) => m.startOutageAlert());
+  void import('@/lib/commonAccountAlert').then((m) => m.startCommonAccountAlert());
   void import('@/lib/weeklyReportSync').then((m) => m.startWeeklyReport());
 }

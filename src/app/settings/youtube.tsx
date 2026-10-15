@@ -42,6 +42,7 @@ import {
   switchYoutubeAccount,
   youtubeAccount,
   youtubeAccounts,
+  youtubeCommonAccount,
 } from '@/api/subsonic';
 import { SettingRow, SettingsPage, settingsStyles, TextRow } from '@/components/SettingsUI';
 import { YoutubeSignIn } from '@/components/YoutubeSignIn';
@@ -110,6 +111,15 @@ export default function YoutubeSettings() {
   // or one whose session has died, this would be several signed requests for a
   // list that cannot exist. It costs one request per account index tried, so
   // it is not something to ask on every render either.
+  // The account shared with everyone, for whoever looks after it: what each
+  // of its two links is doing. Hidden on a proxy that has neither.
+  const common = useQuery({
+    queryKey: ['youtube', 'common'],
+    queryFn: () => youtubeCommonAccount(auth!),
+    enabled: navifind && !!auth && !offline,
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
   const accounts = useQuery({
     queryKey: ['youtube', 'accounts'],
     queryFn: () => youtubeAccounts(auth!),
@@ -315,6 +325,57 @@ export default function YoutubeSettings() {
             />
           </>
         )}
+
+        {common.data && (common.data.token !== 'off' || common.data.cookie !== 'off') ? (
+          <>
+            <Text style={settingsStyles.sectionTitle}>{t('Shared account')}</Text>
+            <Text style={settingsStyles.sectionDescription}>
+              {t(
+                'The YouTube account everyone on this server reads until they sign in with their own: YT-C among the playlists.',
+              )}
+            </Text>
+            {common.data.token !== 'off' ? (
+              <SettingRow
+                icon={common.data.token === 'ok' ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+                label={t('Likes and playlists')}
+                right={
+                  common.data.token === 'ok'
+                    ? t('Connected')
+                    : common.data.token === 'refused'
+                      ? t('Withdrawn')
+                      : t('Not connected')
+                }
+                description={
+                  common.data.token === 'ok'
+                    ? t('Through an authorization that renews itself.')
+                    : t('Run bin/youtube-oauth.php on the server to connect it.')
+                }
+              />
+            ) : null}
+            {common.data.cookie !== 'off' ? (
+              <SettingRow
+                icon={common.data.cookie === 'ok' ? 'checkmark-circle-outline' : 'alert-circle-outline'}
+                label={t('Home page')}
+                right={
+                  common.data.cookie === 'ok'
+                    ? t('Connected')
+                    : common.data.cookie === 'expired'
+                      ? t('Expired')
+                      : common.data.cookie === 'unreachable'
+                        ? t('No answer')
+                        : t('Not connected')
+                }
+                description={
+                  common.data.cookie === 'ok'
+                    ? t('Its own tiles, through a session signed in from the app.')
+                    : t('Sign in to YouTube on this screen with the {user} profile to give it its own tiles.', {
+                        user: common.data.user ?? 'proxy',
+                      })
+                }
+              />
+            ) : null}
+          </>
+        ) : null}
 
         {/* The road, where the phone can take it: Google's own page, and a
             session read out of the jar it leaves behind. */}

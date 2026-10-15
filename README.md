@@ -80,7 +80,10 @@ appear when it is switched off.
   reads whichever is active, so switching here changes what it builds from.
 - **A shared YouTube account**: the server can lend one YouTube account,
   created to be shared, to everyone who has not signed in with their own; the
-  YouTube settings say when that is the one being read.
+  YouTube settings say when that is the one being read. Its likes and
+  playlists go through an authorization that renews itself, its home page
+  through a signed-in session, and the server's administrator is notified
+  when either drops.
 - **YouTube among the playlists, in any Subsonic app**: with Navifind, the
   YouTube home shelves, liked songs and playlists of each account sit among
   the playlists, here on Home and in the Library as in Navibeat on iPhone and

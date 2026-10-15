@@ -1472,5 +1472,22 @@
   "Something else is playing on Kodi": "Something else is playing on Kodi",
   "Kodi couldn't play this song": "Kodi couldn't play this song",
   "Forgotten. Navifind went back to the shared account.": "Forgotten. Navifind went back to the shared account.",
-  "Using the account shared by everyone on this server, until you sign in with yours.": "Using the account shared by everyone on this server, until you sign in with yours."
+  "Using the account shared by everyone on this server, until you sign in with yours.": "Using the account shared by everyone on this server, until you sign in with yours.",
+  "The shared YouTube account's authorization was withdrawn": "The shared YouTube account's authorization was withdrawn",
+  "Run bin/youtube-oauth.php on the server again to give its likes and playlists back.": "Run bin/youtube-oauth.php on the server again to give its likes and playlists back.",
+  "The shared YouTube account's session has expired": "The shared YouTube account's session has expired",
+  "Its home page is a stranger’s until you sign in to YouTube again with the {user} profile.": "Its home page is a stranger’s until you sign in to YouTube again with the {user} profile.",
+  "Shared account": "Shared account",
+  "The YouTube account everyone on this server reads until they sign in with their own: YT-C among the playlists.": "The YouTube account everyone on this server reads until they sign in with their own: YT-C among the playlists.",
+  "Likes and playlists": "Likes and playlists",
+  "Connected": "Connected",
+  "Withdrawn": "Withdrawn",
+  "Not connected": "Not connected",
+  "Expired": "Expired",
+  "No answer": "No answer",
+  "Through an authorization that renews itself.": "Through an authorization that renews itself.",
+  "Run bin/youtube-oauth.php on the server to connect it.": "Run bin/youtube-oauth.php on the server to connect it.",
+  "Home page": "Home page",
+  "Its own tiles, through a session signed in from the app.": "Its own tiles, through a session signed in from the app.",
+  "Sign in to YouTube on this screen with the {user} profile to give it its own tiles.": "Sign in to YouTube on this screen with the {user} profile to give it its own tiles."
 }

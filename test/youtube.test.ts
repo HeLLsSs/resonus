@@ -14,6 +14,7 @@ import {
   MUSIC_ORIGIN,
   openableShelves,
   readAccount,
+  readCommonAccount,
   saveFailure,
   SIGN_IN_URL,
   signedIn,
@@ -263,5 +264,20 @@ describe('tasteOf', () => {
 
   it('is empty with nothing to deal from', () => {
     assert.deepEqual(tasteOf([], []), []);
+  });
+});
+
+describe('readCommonAccount', () => {
+  it('takes the two links and whose account it is', () => {
+    assert.deepEqual(readCommonAccount({ user: 'proxy', token: 'ok', cookie: 'expired' }), {
+      user: 'proxy',
+      token: 'ok',
+      cookie: 'expired',
+    });
+  });
+
+  it('treats what it does not know as a link the server does not have', () => {
+    assert.deepEqual(readCommonAccount({ token: 'maybe' }), { user: undefined, token: 'off', cookie: 'off' });
+    assert.deepEqual(readCommonAccount(undefined), { user: undefined, token: 'off', cookie: 'off' });
   });
 });

@@ -16,6 +16,9 @@ Releases before 0.2.1 are only listed on the
 - The YouTube playlists of the shared account ("YT-C · …") and of your own
   accounts ("YT-1 · …") appear with the others on Home and in the Library,
   as Navifind now lists them for every Subsonic app.
+- Settings › Navifind › YouTube shows the shared account's two links, the
+  authorization for its likes and playlists and the session for its home
+  page, and whoever looks after the server is notified when one drops.
 
 ## [1.12.0] - 2026-10-15
 
