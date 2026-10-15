@@ -174,6 +174,9 @@ appear when it is switched off.
   its id in the library Music Assistant already keeps, and it fetches the song
   itself. So a server behind custom headers casts like any other, and the phone
   does not have to stay awake for the music to go on.
+- **Kodi**, over its own remote control API: the queue, play/pause, seeking
+  and the volume, with the title and cover on the TV through the Resonuls
+  add-on for Kodi ([kodi/](kodi/README.md)).
 
 ### Ride mode
 

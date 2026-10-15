@@ -7,6 +7,20 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.12.0] - 2026-10-15
+
+### Added
+
+- Kodi as an output: the output sheet lists the Kodi set up in Settings ›
+  Kodi (its address, and the login of its web server) and moves the music
+  there, queue, play/pause, seek and volume included. It plays through the
+  Resonuls add-on for Kodi, so that the TV shows the title and cover; the
+  `output` intent takes `kodi`.
+- The Resonuls add-on for Kodi (`kodi/`): the library and Navifind's
+  YouTube on the TV, a home of covers for the remote, scrobbles, resume
+  and one account, one music. It installs from its own Kodi repository,
+  https://hellsss.github.io/resonus/kodi/, and updates itself.
+
 ## [1.11.0] - 2026-10-04
 
 ### Added
