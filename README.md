@@ -78,6 +78,16 @@ appear when it is switched off.
 - **More than one YouTube account**: sign in to each of them and the tab
   carries the one it is reading, with a tap to move to the next. The mix below
   reads whichever is active, so switching here changes what it builds from.
+- **A shared YouTube account**: the server can lend one YouTube account,
+  created to be shared, to everyone who has not signed in with their own; the
+  YouTube settings say when that is the one being read.
+- **YouTube among the playlists, in any Subsonic app**: with Navifind, the
+  YouTube home shelves, liked songs and playlists of each account sit among
+  the playlists, here on Home and in the Library as in Navibeat on iPhone and
+  Mac, Feishin or Symfonium: "YT-C · …" for the shared account, "YT-1 · …",
+  "YT-2 · …" for your own. Starring a YouTube song likes it, a YT playlist
+  takes songs added and removed on the account it belongs to, and a playlist
+  named "YT-C · …" is created on the shared account, for everyone to see.
 
 ### A mix built from what you listen to
 

@@ -116,6 +116,10 @@ describe('readAccount', () => {
     assert.equal(readAccount({ source: 'none', state: 'none' }).state, 'none');
   });
 
+  it("tells the house's shared account from one's own", () => {
+    assert.equal(readAccount({ source: 'shared', state: 'ok' }).source, 'shared');
+  });
+
   it('has no name when the proxy could not read one', () => {
     assert.equal(readAccount({ source: 'env', state: 'ok', name: '  ' }).name, undefined);
     assert.equal(readAccount({ source: 'env', state: 'ok' }).name, undefined);

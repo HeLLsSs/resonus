@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1465 of them.
+Every string the app can show, under the screen it shows up on. 1467 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -1763,6 +1763,7 @@ you are actually typing into, which is easier than reading it here.
 | `Forgetting…` |  |
 | `Forgotten. Navifind has no YouTube account left.` |  |
 | `Forgotten. Navifind went back to the account the server was started with.` |  |
+| `Forgotten. Navifind went back to the shared account.` |  |
 | `Forgotten. What the server was started with is all that is left, and its session has expired too.` |  |
 | `Google's own page opens here, signed in to nobody. Whoever signs in on it is who Navifind reads, and the session it leaves behind goes to Navifind by itself. A second account can be signed in beside the first before you finish, and you can then switch between them here.` |  |
 | `If that request also carries an X-Goog-AuthUser header, write its number below: it says which of the accounts signed in to that browser the cookie belongs to.` |  |
@@ -1794,6 +1795,7 @@ you are actually typing into, which is easier than reading it here.
 | `The way round when the sign-in page will not finish, or when the account is already signed in to a browser somewhere else.` |  |
 | `The whole header, as the browser sent it.` |  |
 | `The X-Goog-AuthUser value. Leave it empty for the first account.` | The line under “Account number”, explaining it |
+| `Using the account shared by everyone on this server, until you sign in with yours.` |  |
 | `Using the cookie pasted from a phone.` |  |
 | `Using the cookie the server was started with.` |  |
 | `YouTube has ended the session Navifind was signed in with. Nothing of yours can be read until a fresh cookie takes its place.` |  |

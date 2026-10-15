@@ -235,7 +235,9 @@ export default function YoutubeSettings() {
       // been started with a cookie of its own, and that one comes back.
       said(
         'paste',
-        left.state === 'ok'
+        left.state === 'ok' && left.source === 'shared'
+          ? t('Forgotten. Navifind went back to the shared account.')
+          : left.state === 'ok'
           ? t('Forgotten. Navifind went back to the account the server was started with.')
           : left.source === 'none'
             ? t('Forgotten. Navifind has no YouTube account left.')
@@ -276,7 +278,9 @@ export default function YoutubeSettings() {
             description={
               account.data?.source === 'stored'
                 ? t('Using the cookie pasted from a phone.')
-                : t('Using the cookie the server was started with.')
+                : account.data?.source === 'shared'
+                  ? t('Using the account shared by everyone on this server, until you sign in with yours.')
+                  : t('Using the cookie the server was started with.')
             }
           />
         ) : state === 'expired' ? (

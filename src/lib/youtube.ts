@@ -61,9 +61,10 @@ export function accountRefusal(error: unknown): YoutubeRefusal {
  */
 export type YoutubeAccountState = 'ok' | 'expired' | 'none' | 'unreachable';
 
-/** Where the cookie it is using came from: pasted from a phone, the value the
- *  server was started with, or nothing at all. */
-export type YoutubeAccountSource = 'stored' | 'env' | 'none';
+/** Where the cookie it is using came from: pasted from a phone, the house's
+ *  shared account (this one has pasted none of its own), the value the server
+ *  was started with, or nothing at all. */
+export type YoutubeAccountSource = 'stored' | 'shared' | 'env' | 'none';
 
 export interface YoutubeAccount {
   source: YoutubeAccountSource;
@@ -73,7 +74,7 @@ export interface YoutubeAccount {
 }
 
 const STATES: YoutubeAccountState[] = ['ok', 'expired', 'none', 'unreachable'];
-const SOURCES: YoutubeAccountSource[] = ['stored', 'env', 'none'];
+const SOURCES: YoutubeAccountSource[] = ['stored', 'shared', 'env', 'none'];
 
 /**
  * What the proxy answered about its account, taken at arm's length.

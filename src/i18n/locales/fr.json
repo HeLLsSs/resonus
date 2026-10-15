@@ -1473,5 +1473,7 @@
   "Set up Kodi": "Configurer Kodi",
   "Lost contact with Kodi": "Contact perdu avec Kodi",
   "Something else is playing on Kodi": "Autre chose joue sur Kodi",
-  "Kodi couldn't play this song": "Kodi n'a pas pu lire ce titre"
+  "Kodi couldn't play this song": "Kodi n'a pas pu lire ce titre",
+  "Forgotten. Navifind went back to the shared account.": "Oublié. Navifind est revenu au compte partagé.",
+  "Using the account shared by everyone on this server, until you sign in with yours.": "Avec le compte partagé par tout le monde sur ce serveur, en attendant que tu te connectes avec le tien."
 }

@@ -7,6 +7,16 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [Unreleased]
+
+### Added
+
+- Settings › Navifind › YouTube says when Navifind is reading the account
+  the server shares with everyone who has not signed in with their own.
+- The YouTube playlists of the shared account ("YT-C · …") and of your own
+  accounts ("YT-1 · …") appear with the others on Home and in the Library,
+  as Navifind now lists them for every Subsonic app.
+
 ## [1.12.0] - 2026-10-15
 
 ### Added
