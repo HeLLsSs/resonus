@@ -133,6 +133,7 @@ xbmc.getCondVisibility = lambda condition: condition in conditions
 
 xbmcgui = types.ModuleType("xbmcgui")
 xbmcgui.ListItem = ListItem
+xbmcgui.getCurrentWindowId = lambda: 10502
 xbmcgui.NOTIFICATION_ERROR = "error"
 dialog = mock.MagicMock()
 dialog.notification.side_effect = lambda *args, **kwargs: notified.append(args)

@@ -6,6 +6,12 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
 
 ## plugin.audio.resonuls
 
+### [0.1.4] - 2026-10-15
+
+- A skin's Music entry pointed at the Resonuls home opens the covers on
+  slower boxes too: Kodi was still switching to the music window when the
+  add-on asked, and only the list showed.
+
 ### [0.1.3] - 2026-10-15
 
 - A skin's menu entry can open the Resonuls home straight away: picking

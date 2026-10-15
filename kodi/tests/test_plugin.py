@@ -128,7 +128,7 @@ class ScreensTest(unittest.TestCase):
 
     def test_home_opens_the_tiles_in_the_music_window(self):
         fake_kodi.reset()
-        fake_kodi.conditions.add("Window.IsActive(music)")
+        fake_kodi.conditions.add("Window.IsActive(music) | Window.Next(music)")
         with mock.patch.object(kodi, "client", lambda: Client("http://music.test", "me", "secret", opener=FakeServer(ANSWERS))):
             plugin.Plugin(["plugin://plugin.audio.resonuls/", "1", "?action=home"]).run()
         self.assertTrue(any(b.startswith("RunScript(") for b in fake_kodi.builtins))

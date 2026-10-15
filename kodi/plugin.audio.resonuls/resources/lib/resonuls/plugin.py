@@ -198,8 +198,12 @@ class Plugin:
         """The tiled home, over the add-on's first screen: back from it lands
         there. Run as a script of its own, since a list that Kodi is waiting
         on cannot hold a window open. Only when browsed in the music window:
-        a skin's shortcut picker or a widget lists it too, to see inside."""
-        if xbmc.getCondVisibility("Window.IsActive(music)") and not tiles_alive():
+        a skin's shortcut picker or a widget lists it too, to see inside.
+        On its way there counts: a skin's menu opening the music window on
+        this entry asks before a slow box has finished switching to it."""
+        in_music = xbmc.getCondVisibility("Window.IsActive(music) | Window.Next(music)")
+        kodi.log("home: music window {}, current window {}".format(in_music, xbmcgui.getCurrentWindowId()))
+        if in_music and not tiles_alive():
             script = os.path.join(kodi.addon().getAddonInfo("path"), "home.py")
             xbmc.executebuiltin("RunScript({})".format(script))
         self.do_root()
