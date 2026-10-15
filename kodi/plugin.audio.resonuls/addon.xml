@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.resonuls" name="Resonuls" version="0.1.2" provider-name="HeLLsSs">
+<addon id="plugin.audio.resonuls" name="Resonuls" version="0.1.3" provider-name="HeLLsSs">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
   </requires>
@@ -14,7 +14,7 @@
     <description lang="fr_FR">Resonuls sur Kodi : parcours et écoute un serveur Navidrome (Subsonic). Derrière un proxy navifind, il lit aussi YouTube, range ce que tu écoutes dans la bibliothèque et garde un compte, une musique : lance une musique sur ton téléphone et Kodi se met en pause.</description>
     <platform>all</platform>
     <license>GPL-3.0-only</license>
-    <news>0.1.2: "Now playing", on the home of covers and atop the add-on's list, opens Kodi's player, where OK brings pause, stop and next; it also opens by itself when music is started from a tile, Play all, Shuffle or Resume. Back from the covers no longer opens them again, and they open from Home only, no longer when Kodi starts.</news>
+    <news>0.1.3: a skin's menu can open the Resonuls home straight away: choosing "Home" in its shortcut picker no longer freezes it, and the covers only open in the music window.</news>
     <source>https://github.com/HeLLsSs/resonus/tree/main/kodi</source>
     <assets>
       <icon>resources/icon.png</icon>

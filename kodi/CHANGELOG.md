@@ -6,6 +6,15 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
 
 ## plugin.audio.resonuls
 
+### [0.1.3] - 2026-10-15
+
+- A skin's menu entry can open the Resonuls home straight away: picking
+  "Home" in the skin's shortcut picker (Arctic: Zephyr and others) no
+  longer froze it, as the covers tried to open over the picker.
+- The covers only open from the music window, never from a widget or a
+  picker that lists "Home" to see inside, and give up if Kodi will not
+  show them.
+
 ### [0.1.2] - 2026-10-15
 
 - "Now playing", on the home of covers and at the top of the add-on's list

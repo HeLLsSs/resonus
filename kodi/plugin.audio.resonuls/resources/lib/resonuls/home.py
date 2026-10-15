@@ -35,6 +35,8 @@ def tiles_alive():
 NEVER_OPENED_SEC = 8
 # Tiles out of sight for that long were lost behind the music window.
 HIDDEN_SEC = 1.5
+# Tiles Kodi has not drawn by then are not going to be.
+NEVER_SHOWN_SEC = 6
 
 
 def song_item(client, song):
@@ -177,9 +179,14 @@ def main():
     window.show()
     monitor = xbmc.Monitor()
     hidden = 0
+    started = time.monotonic()
     try:
         while not window.closed and not monitor.waitForAbort(BEAT_SEC):
             home.setProperty(OPEN, str(time.time()))
+            if not window.window_id and time.monotonic() - started > NEVER_SHOWN_SEC:
+                # Kodi would not show them (a dialog in the way): given up
+                # rather than asked again and again, which holds that dialog.
+                break
             if window.origin is None:
                 # Shown, yet out of sight under the music window: brought
                 # back, or "Home" could not open them, taking them for open.

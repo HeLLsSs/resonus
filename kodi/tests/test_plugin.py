@@ -126,6 +126,17 @@ class ScreensTest(unittest.TestCase):
         run("?action=queue&source=album&id=al1")
         self.assertEqual(fake_kodi.ended, [False])
 
+    def test_home_opens_the_tiles_in_the_music_window(self):
+        fake_kodi.reset()
+        fake_kodi.conditions.add("Window.IsActive(music)")
+        with mock.patch.object(kodi, "client", lambda: Client("http://music.test", "me", "secret", opener=FakeServer(ANSWERS))):
+            plugin.Plugin(["plugin://plugin.audio.resonuls/", "1", "?action=home"]).run()
+        self.assertTrue(any(b.startswith("RunScript(") for b in fake_kodi.builtins))
+
+    def test_home_browsed_by_a_shortcut_picker_only_lists(self):
+        run("?action=home")
+        self.assertEqual(fake_kodi.builtins, [])
+
     def test_now_playing_opens_kodis_player(self):
         fake_kodi.reset()
         fake_kodi.Player.playing = True

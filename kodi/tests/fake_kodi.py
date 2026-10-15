@@ -27,6 +27,8 @@ played = []
 notified = []
 ended = []
 builtins = []
+# The Kodi conditions that hold, for xbmc.getCondVisibility.
+conditions = set()
 
 
 class ListItem:
@@ -127,7 +129,7 @@ xbmc.Player = Player
 xbmc.Monitor = Monitor
 xbmc.executebuiltin = lambda command: builtins.append(command)
 xbmc.getInfoLabel = lambda label: "Salon"
-xbmc.getCondVisibility = lambda condition: False
+xbmc.getCondVisibility = lambda condition: condition in conditions
 
 xbmcgui = types.ModuleType("xbmcgui")
 xbmcgui.ListItem = ListItem
@@ -158,7 +160,7 @@ sys.modules.update(xbmc=xbmc, xbmcgui=xbmcgui, xbmcplugin=xbmcplugin, xbmcaddon=
 
 
 def reset():
-    for kept in (shown, resolved, played, notified, ended, builtins):
+    for kept in (shown, resolved, played, notified, ended, builtins, conditions):
         kept.clear()
     PlayList.items = []
     Player.playing = False

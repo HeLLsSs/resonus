@@ -197,8 +197,9 @@ class Plugin:
     def do_home(self):
         """The tiled home, over the add-on's first screen: back from it lands
         there. Run as a script of its own, since a list that Kodi is waiting
-        on cannot hold a window open."""
-        if not tiles_alive():
+        on cannot hold a window open. Only when browsed in the music window:
+        a skin's shortcut picker or a widget lists it too, to see inside."""
+        if xbmc.getCondVisibility("Window.IsActive(music)") and not tiles_alive():
             script = os.path.join(kodi.addon().getAddonInfo("path"), "home.py")
             xbmc.executebuiltin("RunScript({})".format(script))
         self.do_root()
