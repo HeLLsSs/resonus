@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings version="1">
+  <section id="plugin.audio.resonuls">
+    <category id="server" label="30100">
+      <group id="account">
+        <setting id="server_url" type="string" label="30101">
+          <level>0</level>
+          <default/>
+          <constraints><allowempty>true</allowempty></constraints>
+          <control type="edit" format="string"><heading>30101</heading></control>
+        </setting>
+        <setting id="username" type="string" label="30102">
+          <level>0</level>
+          <default/>
+          <constraints><allowempty>true</allowempty></constraints>
+          <control type="edit" format="string"><heading>30102</heading></control>
+        </setting>
+        <setting id="password" type="string" label="30103">
+          <level>0</level>
+          <default/>
+          <constraints><allowempty>true</allowempty></constraints>
+          <control type="edit" format="string">
+            <heading>30103</heading>
+            <hidden>true</hidden>
+          </control>
+        </setting>
+      </group>
+      <group id="navifind" label="30104">
+        <setting id="navifind" type="boolean" label="30105">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+        <setting id="exclusive" type="boolean" label="30106" parent="navifind">
+          <level>0</level>
+          <default>true</default>
+          <dependencies>
+            <dependency type="enable" setting="navifind">true</dependency>
+          </dependencies>
+          <control type="toggle"/>
+        </setting>
+      </group>
+    </category>
+    <category id="display" label="30113">
+      <group id="menu">
+        <setting id="music_menu" type="boolean" label="30114">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+        <setting id="home_at_start" type="boolean" label="30115">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+      </group>
+    </category>
+    <category id="playback" label="30107">
+      <group id="quality">
+        <setting id="max_bitrate" type="integer" label="30108">
+          <level>0</level>
+          <default>0</default>
+          <constraints>
+            <options>
+              <option label="30109">0</option>
+              <option label="30110">320</option>
+              <option label="30111">192</option>
+              <option label="30112">128</option>
+            </options>
+          </constraints>
+          <control type="list" format="string"/>
+        </setting>
+      </group>
+    </category>
+  </section>
+</settings>

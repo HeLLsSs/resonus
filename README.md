@@ -359,6 +359,9 @@ can download and install it; the switch is under Settings › About.
 **On a television**, the APK has to be sideloaded: the simplest way is the
 Downloader app from your TV's own store, pointed at the releases page above.
 
+**On Kodi**, there is an add-on rather than the app, installed from its own
+Kodi repository so that it updates itself: see [kodi/](kodi/README.md).
+
 ## Features
 
 Everything the upstream project does:

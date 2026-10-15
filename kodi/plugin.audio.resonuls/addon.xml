@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.audio.resonuls" name="Resonuls" version="0.1.0" provider-name="HeLLsSs">
+  <requires>
+    <import addon="xbmc.python" version="3.0.1"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="main.py">
+    <provides>audio</provides>
+  </extension>
+  <extension point="xbmc.service" library="service.py"/>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">Your Navidrome library, and navifind's extras</summary>
+    <summary lang="fr_FR">Ta bibliothèque Navidrome, et les extras de navifind</summary>
+    <description lang="en_GB">Resonuls on Kodi: browse and play a Navidrome (Subsonic) server. Behind a navifind proxy it also plays YouTube, files what you listen to in the library, and keeps one account playing in one place: start music on your phone and Kodi pauses.</description>
+    <description lang="fr_FR">Resonuls sur Kodi : parcours et écoute un serveur Navidrome (Subsonic). Derrière un proxy navifind, il lit aussi YouTube, range ce que tu écoutes dans la bibliothèque et garde un compte, une musique : lance une musique sur ton téléphone et Kodi se met en pause.</description>
+    <platform>all</platform>
+    <license>GPL-3.0-only</license>
+    <source>https://github.com/HeLLsSs/resonus/tree/main/kodi</source>
+    <assets>
+      <icon>resources/icon.png</icon>
+    </assets>
+  </extension>
+</addon>

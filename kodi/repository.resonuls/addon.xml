@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="repository.resonuls" name="Resonuls repository" version="1.0.0" provider-name="HeLLsSs">
+  <extension point="xbmc.addon.repository" name="Resonuls repository">
+    <dir>
+      <info compressed="false">https://hellsss.github.io/resonus/kodi/addons.xml</info>
+      <checksum>https://hellsss.github.io/resonus/kodi/addons.xml.md5</checksum>
+      <datadir zip="true">https://hellsss.github.io/resonus/kodi/</datadir>
+      <hashes>sha256</hashes>
+    </dir>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">Resonuls for Kodi, kept up to date</summary>
+    <summary lang="fr_FR">Resonuls pour Kodi, toujours à jour</summary>
+    <description lang="en_GB">Installs the Resonuls add-on and brings its new versions as they come out.</description>
+    <description lang="fr_FR">Installe l'add-on Resonuls et apporte ses nouvelles versions dès qu'elles sortent.</description>
+    <platform>all</platform>
+    <assets>
+      <icon>icon.png</icon>
+    </assets>
+  </extension>
+</addon>

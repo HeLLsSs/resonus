@@ -1,0 +1,236 @@
+# Kodi Media Center language file
+# Addon Name: Resonuls
+# Addon id: plugin.audio.resonuls
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: fr_FR\n"
+
+msgctxt "#30001"
+msgid "Recently added"
+msgstr "Ajoutés récemment"
+
+msgctxt "#30002"
+msgid "Most played"
+msgstr "Les plus écoutés"
+
+msgctxt "#30003"
+msgid "Random albums"
+msgstr "Albums au hasard"
+
+msgctxt "#30004"
+msgid "Artists"
+msgstr "Artistes"
+
+msgctxt "#30005"
+msgid "Albums A-Z"
+msgstr "Albums de A à Z"
+
+msgctxt "#30007"
+msgid "Starred"
+msgstr "Favoris"
+
+msgctxt "#30008"
+msgid "Search"
+msgstr "Rechercher"
+
+msgctxt "#30009"
+msgid "Random mix"
+msgstr "Mix aléatoire"
+
+msgctxt "#30010"
+msgid "Resume where you stopped"
+msgstr "Reprendre là où tu t'es arrêté"
+
+msgctxt "#30011"
+msgid "YouTube"
+msgstr "YouTube"
+
+msgctxt "#30012"
+msgid "Recently played"
+msgstr "Écoutés récemment"
+
+msgctxt "#30020"
+msgid "YouTube home"
+msgstr "Accueil YouTube"
+
+msgctxt "#30021"
+msgid "My YouTube playlists"
+msgstr "Mes playlists YouTube"
+
+msgctxt "#30022"
+msgid "Liked on YouTube"
+msgstr "Titres aimés sur YouTube"
+
+msgctxt "#30030"
+msgid "Play all"
+msgstr "Tout lire"
+
+msgctxt "#30031"
+msgid "Shuffle"
+msgstr "Lecture aléatoire"
+
+msgctxt "#30032"
+msgid "Star"
+msgstr "Ajouter aux favoris"
+
+msgctxt "#30033"
+msgid "Remove star"
+msgstr "Retirer des favoris"
+
+msgctxt "#30034"
+msgid "Add to my library"
+msgstr "Ajouter à ma bibliothèque"
+
+msgctxt "#30035"
+msgid "Song radio"
+msgstr "Radio du titre"
+
+msgctxt "#30036"
+msgid "Go to album"
+msgstr "Aller à l'album"
+
+msgctxt "#30037"
+msgid "Go to artist"
+msgstr "Aller à l'artiste"
+
+msgctxt "#30038"
+msgid "Top songs"
+msgstr "Titres populaires"
+
+msgctxt "#30039"
+msgid "Next page"
+msgstr "Page suivante"
+
+msgctxt "#30050"
+msgid "Set up your server in the add-on settings first."
+msgstr "Configure d'abord ton serveur dans les réglages de l'extension."
+
+msgctxt "#30052"
+msgid "Nothing to resume."
+msgstr "Rien à reprendre."
+
+msgctxt "#30053"
+msgid "Your account is now playing on {}"
+msgstr "Ton compte joue maintenant sur {}"
+
+msgctxt "#30054"
+msgid "Added to your library in a few seconds"
+msgstr "Ajouté à ta bibliothèque dans quelques secondes"
+
+msgctxt "#30055"
+msgid "Starred"
+msgstr "Ajouté aux favoris"
+
+msgctxt "#30056"
+msgid "Star removed"
+msgstr "Retiré des favoris"
+
+msgctxt "#30057"
+msgid "Search Resonuls"
+msgstr "Rechercher dans Resonuls"
+
+msgctxt "#30058"
+msgid "Nothing found"
+msgstr "Aucun résultat"
+
+msgctxt "#30059"
+msgid "Resuming what {} was playing"
+msgstr "Reprise de ce que jouait {}"
+
+msgctxt "#30100"
+msgid "Server"
+msgstr "Serveur"
+
+msgctxt "#30101"
+msgid "Server address"
+msgstr "Adresse du serveur"
+
+msgctxt "#30102"
+msgid "Username"
+msgstr "Nom d'utilisateur"
+
+msgctxt "#30103"
+msgid "Password"
+msgstr "Mot de passe"
+
+msgctxt "#30104"
+msgid "navifind"
+msgstr "navifind"
+
+msgctxt "#30105"
+msgid "Use navifind's extras (YouTube, library)"
+msgstr "Utiliser les extras de navifind (YouTube, bibliothèque)"
+
+msgctxt "#30106"
+msgid "One account, one music: pause here when another device plays"
+msgstr "Un compte, une musique : pause ici quand un autre appareil joue"
+
+msgctxt "#30107"
+msgid "Playback"
+msgstr "Lecture"
+
+msgctxt "#30108"
+msgid "Maximum bitrate"
+msgstr "Débit maximal"
+
+msgctxt "#30109"
+msgid "Original"
+msgstr "Original"
+
+msgctxt "#30110"
+msgid "320 kbit/s"
+msgstr "320 kbit/s"
+
+msgctxt "#30111"
+msgid "192 kbit/s"
+msgstr "192 kbit/s"
+
+msgctxt "#30112"
+msgid "128 kbit/s"
+msgstr "128 kbit/s"
+
+msgctxt "#30013"
+msgid "My playlists"
+msgstr "Mes playlists"
+
+msgctxt "#30113"
+msgid "Display"
+msgstr "Affichage"
+
+msgctxt "#30114"
+msgid "Show Resonuls at the top of Kodi's Music menu"
+msgstr "Afficher Resonuls en haut du menu Musique de Kodi"
+
+msgctxt "#30060"
+msgid "Resume “{}” ({})"
+msgstr "Reprendre « {} » ({})"
+
+msgctxt "#30061"
+msgid "Sign in to YouTube for “{}” in the Resonuls app"
+msgstr "Connecte YouTube pour le compte « {} » dans l'app Resonuls"
+
+msgctxt "#30062"
+msgid "The YouTube session of “{}” expired: sign in again in the Resonuls app"
+msgstr "La session YouTube du compte « {} » a expiré : reconnecte-la dans l'app Resonuls"
+
+msgctxt "#30070"
+msgid "Shortcuts"
+msgstr "Raccourcis"
+
+msgctxt "#30071"
+msgid "Loading…"
+msgstr "Chargement…"
+
+msgctxt "#30072"
+msgid "OK: open · Menu: play now"
+msgstr "OK : ouvrir · Menu : lire tout de suite"
+
+msgctxt "#30073"
+msgid "Home"
+msgstr "Accueil"
+
+msgctxt "#30115"
+msgid "Open the Resonuls home when Kodi starts"
+msgstr "Ouvrir l'accueil Resonuls au démarrage de Kodi"
+
