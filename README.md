@@ -68,8 +68,8 @@ appear when it is switched off.
 - **A YouTube tab**: the shelves of the YouTube Music home page your account is
   shown, your playlists, the tracks you liked and the records you keep. It
   starts off and is offered only where Navifind is on. A die at the top deals
-  everything YouTube knows the account likes, the home page's own tracks and
-  the liked songs, and plays it.
+  new songs in the account's taste, drawn anew each roll from the YouTube Music
+  radio of a few songs it liked, without hour-long sessions or compilations.
 - **Signing in from the phone**: one button opens Google's own sign-in page
   inside the app, and the session it leaves behind goes to the proxy by itself.
   Two-factor, passkeys and account recovery all behave as they do anywhere
@@ -232,8 +232,8 @@ appear when it is switched off.
   of what it opens. Nothing is fetched to draw it — the tracks arrive with the
   page — which is what lets twenty shelves and a hundred and thirty tiles cost
   the one request that drew them.
-- **A die at the top of the YouTube tab**, which deals everything the account
-  likes and plays it, and Home's "Shuffle everything" deals YouTube in with
+- **A die at the top of the YouTube tab**, which deals new songs in the
+  account's taste and plays them, and Home's "Shuffle everything" deals YouTube in with
   the library once the proxy has an account to read; the Shuffle chip on the
   phone's Home does the same.
 - **"For the road"** on the car's Home: the downloaded songs of the queue,
