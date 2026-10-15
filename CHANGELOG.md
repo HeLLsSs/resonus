@@ -7,7 +7,7 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
-## [Unreleased]
+## [1.13.0] - 2026-10-15
 
 ### Added
 
@@ -19,6 +19,11 @@ Releases before 0.2.1 are only listed on the
 - Settings › Navifind › YouTube shows the shared account's two links, the
   authorization for its likes and playlists and the session for its home
   page, and whoever looks after the server is notified when one drops.
+
+### Changed
+
+- With Navifind, starring a YouTube song also likes it on YouTube: on your
+  own account if you signed in with one, on the shared account otherwise.
 
 ## [1.12.0] - 2026-10-15
 
