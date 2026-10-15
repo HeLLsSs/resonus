@@ -16,14 +16,21 @@ cd "$(dirname "$0")"
 pages=dist/pages
 out=$pages/kodi
 url=https://hellsss.github.io/resonus/kodi/
-version=$(sed -n 's/.*<addon id="plugin.audio.resonuls" name="[^"]*" version="\([^"]*\)".*/\1/p' plugin.audio.resonuls/addon.xml)
 
 if [ "${1:-}" = publish ]; then
-  # Kodi only installs a version higher than the one it has.
-  if curl -fsS "${url}addons.xml" 2>/dev/null | grep -q "id=\"plugin.audio.resonuls\" name=\"[^\"]*\" version=\"$version\""; then
-    echo "Version $version is already published: raise it in plugin.audio.resonuls/addon.xml first." >&2
+  # Kodi only installs a version higher than the one it has: one add-on at
+  # least has to have been raised.
+  online=$(curl -fsS "${url}addons.xml" 2>/dev/null || true)
+  raised=
+  for addon in plugin.audio.resonuls script.resonuls repository.resonuls; do
+    line=$(grep -o "<addon id=\"$addon\" name=\"[^\"]*\" version=\"[^\"]*\"" "$addon/addon.xml")
+    printf '%s' "$online" | grep -qF "$line" || raised="$raised $addon"
+  done
+  if [ -z "$raised" ]; then
+    echo "Every add-on is already published at its version: raise one in its addon.xml first." >&2
     exit 1
   fi
+  echo "Raised:$raised"
 fi
 
 python3 -I - "$out" "${REPO_URL:-}" plugin.audio.resonuls script.resonuls repository.resonuls <<'PY'
@@ -86,7 +93,7 @@ if [ "${1:-}" = publish ]; then
   remote=$(git remote get-url origin)
   git -C "$pages" init -q -b gh-pages
   git -C "$pages" add -A
-  git -C "$pages" commit -q -m "Resonuls for Kodi $version"
+  git -C "$pages" commit -q -m "Resonuls for Kodi:$raised"
   git -C "$pages" push -qf "$remote" gh-pages
-  echo "Published $version: Kodi installs it at its next check (when it starts, or daily)."
+  echo "Published$raised: Kodi installs them at its next check (when it starts, or daily)."
 fi

@@ -73,8 +73,8 @@ repository's version on its information page.
    `CHANGELOG.md` and put its summary in the `<news>` of `addon.xml`, which
    Kodi shows when it updates.
 2. `./build.sh publish`: builds the repository and pushes it to the
-   `gh-pages` branch, which GitHub Pages serves. It stops if that version is
-   already out.
+   `gh-pages` branch, which GitHub Pages serves. It stops if no add-on has
+   a version that is not out yet.
 
 Kodi checks its repositories when it starts and once a day, and installs
 the new version by itself. `./build.sh` alone builds the repository in
