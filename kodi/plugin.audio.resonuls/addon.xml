@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.resonuls" name="Resonuls" version="0.1.0" provider-name="HeLLsSs">
+<addon id="plugin.audio.resonuls" name="Resonuls" version="0.1.1" provider-name="HeLLsSs">
   <requires>
     <import addon="xbmc.python" version="3.0.1"/>
   </requires>
@@ -14,7 +14,7 @@
     <description lang="fr_FR">Resonuls sur Kodi : parcours et écoute un serveur Navidrome (Subsonic). Derrière un proxy navifind, il lit aussi YouTube, range ce que tu écoutes dans la bibliothèque et garde un compte, une musique : lance une musique sur ton téléphone et Kodi se met en pause.</description>
     <platform>all</platform>
     <license>GPL-3.0-only</license>
-    <news>0.1.0: first version. The library and Navifind's YouTube on Kodi, a home of covers for the remote, scrobbles, resume from another device, and Kodi pauses when another device plays.</news>
+    <news>0.1.1: the home of covers opened when Kodi starts now opens search, playlists and every other tile, instead of closing; a search given up on brings it back; Play all and Shuffle stay out of the queue; and a server out of reach is said on screen.</news>
     <source>https://github.com/HeLLsSs/resonus/tree/main/kodi</source>
     <assets>
       <icon>resources/icon.png</icon>

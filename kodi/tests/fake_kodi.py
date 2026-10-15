@@ -26,6 +26,7 @@ shown = []
 resolved = []
 played = []
 notified = []
+ended = []
 
 
 class ListItem:
@@ -142,7 +143,7 @@ xbmcplugin.addDirectoryItems = lambda handle, items, total: shown.extend(items)
 xbmcplugin.setContent = lambda handle, content: None
 xbmcplugin.setPluginCategory = lambda handle, category: None
 xbmcplugin.addSortMethod = lambda handle, method: None
-xbmcplugin.endOfDirectory = lambda handle, succeeded=True: None
+xbmcplugin.endOfDirectory = lambda handle, succeeded=True: ended.append(succeeded)
 xbmcplugin.setResolvedUrl = lambda handle, succeeded, item: resolved.append((succeeded, item))
 
 xbmcaddon = types.ModuleType("xbmcaddon")
@@ -155,6 +156,6 @@ sys.modules.update(xbmc=xbmc, xbmcgui=xbmcgui, xbmcplugin=xbmcplugin, xbmcaddon=
 
 
 def reset():
-    for kept in (shown, resolved, played, notified):
+    for kept in (shown, resolved, played, notified, ended):
         kept.clear()
     PlayList.items = []

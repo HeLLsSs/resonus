@@ -6,6 +6,19 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
 
 ## plugin.audio.resonuls
 
+### [0.1.1] - 2026-10-15
+
+- The home of covers opened when Kodi starts opens search, playlists and
+  the other tiles, instead of closing on Kodi's home screen.
+- Giving up on a search brings the covers back, rather than leaving them
+  hidden behind the list.
+- Covers lost behind a list come back by themselves, so "Home" always
+  opens them again.
+- "Play all", "Shuffle" and "Resume" no longer land in Kodi's queue among
+  the songs when a song of the list is clicked.
+- A server out of reach is said on screen, instead of a script error that
+  closed the list.
+
 ### [0.1.0] - 2026-10-15
 
 - First version: the Navidrome library on Kodi (albums, artists,

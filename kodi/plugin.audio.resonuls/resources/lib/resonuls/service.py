@@ -1,7 +1,6 @@
 """The background side: watches Kodi's player once a second and lets the
 session decide what the server hears about it."""
 
-import os
 import time
 
 import xbmc
@@ -67,12 +66,14 @@ def update_menu():
 
 def open_home_at_start(monitor):
     """The tiles as the first thing on screen, for a Kodi kept for music:
-    once Kodi's own home is up, so that back from them has somewhere to go."""
+    once Kodi's own home is up, so that back from them has somewhere to go.
+    Opened from the music window, as from the add-on's list: the tiles show
+    what they open in it, and over Kodi's home a tile only closed them."""
     if not kodi.addon().getSettingBool("home_at_start"):
         return
     for _ in range(60):
         if xbmc.getCondVisibility("Window.IsActive(home) + !System.HasModalDialog"):
-            xbmc.executebuiltin("RunScript({})".format(os.path.join(kodi.addon().getAddonInfo("path"), "home.py")))
+            xbmc.executebuiltin("ActivateWindow(Music,{}?action=home,return)".format(kodi.PLUGIN_URL))
             return
         if monitor.waitForAbort(1):
             return

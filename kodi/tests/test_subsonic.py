@@ -1,5 +1,6 @@
 import hashlib
 import unittest
+import urllib.error
 import urllib.parse
 
 import fake_kodi  # noqa: F401 - puts the add-on on the path
@@ -37,6 +38,13 @@ class ClientTest(unittest.TestCase):
         api, _ = client({"ping": {"status": "failed", "error": {"code": 40, "message": "Wrong password"}}})
         with self.assertRaisesRegex(SubsonicError, "Wrong password"):
             api.ping()
+
+    def test_says_when_the_server_cannot_be_reached(self):
+        def refused(request, timeout):
+            raise urllib.error.URLError(ConnectionRefusedError(61, "Connection refused"))
+
+        with self.assertRaisesRegex(SubsonicError, "Server unreachable"):
+            Client("http://music.test/", "me", "secret", opener=refused).ping()
 
     def test_reads_navifind_answers_one_level_below_the_envelope(self):
         api, _ = client({"navifind/playback/beat": {"navifind": {"playback": {"name": "phone", "mine": False}}}})

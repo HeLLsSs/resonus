@@ -118,6 +118,14 @@ class ScreensTest(unittest.TestCase):
         run("?action=queue&source=album&id=al1")
         self.assertEqual(len(fake_kodi.played[0][0]), 1)
 
+    def test_play_all_is_a_folder_kodi_does_not_queue(self):
+        run("?action=album&id=al1")
+        self.assertTrue(fake_kodi.shown[0][2])
+
+    def test_play_all_opened_from_a_list_stays_on_the_list(self):
+        run("?action=queue&source=album&id=al1")
+        self.assertEqual(fake_kodi.ended, [False])
+
     def test_resume_starts_on_the_song_the_other_device_was_on(self):
         run("?action=resume")
         self.assertEqual(fake_kodi.played[0][1], 1)

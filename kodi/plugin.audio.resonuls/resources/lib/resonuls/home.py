@@ -33,6 +33,8 @@ def tiles_alive():
         return False
 # A list that has not opened by then is not going to: a search given up on.
 NEVER_OPENED_SEC = 8
+# Tiles out of sight for that long were lost behind the music window.
+HIDDEN_SEC = 1.5
 
 
 def song_item(client, song):
@@ -64,8 +66,10 @@ class Home(xbmcgui.WindowXML):
         self.origin = None
         self.left = False
         self.away_since = 0.0
+        self.window_id = 0
 
     def onInit(self):
+        self.window_id = xbmcgui.getCurrentWindowId()
         # Called again each time a list opened from here is left: the rows
         # are still there, and so is the tile the remote was on.
         if self.loaded:
@@ -140,8 +144,9 @@ class Home(xbmcgui.WindowXML):
 
     def back_from_list(self):
         """Whether the list opened from here was left for where it started.
-        A list that never opened (a search given up on) counts after a while."""
-        if not xbmc.getCondVisibility("Window.IsActive(music)"):
+        A list that never opened (a search given up on) counts after a while,
+        once the keyboard is gone: shown under it, the tiles were lost."""
+        if not xbmc.getCondVisibility("Window.IsActive(music) + !System.HasVisibleModalDialog"):
             return False
         here = xbmc.getInfoLabel("Container.FolderPath")
         if here != self.origin:
@@ -169,10 +174,19 @@ def main():
     home = xbmcgui.Window(10000)
     window.show()
     monitor = xbmc.Monitor()
+    hidden = 0
     try:
         while not window.closed and not monitor.waitForAbort(BEAT_SEC):
             home.setProperty(OPEN, str(time.time()))
             if window.origin is None:
+                # Shown, yet out of sight under the music window: brought
+                # back, or "Home" could not open them, taking them for open.
+                visible = xbmc.getCondVisibility("Window.IsVisible({})".format(window.window_id))
+                idle = xbmc.getCondVisibility("Window.IsActive(music) + !System.HasVisibleModalDialog")
+                hidden = hidden + 1 if window.window_id and idle and not visible else 0
+                if hidden * BEAT_SEC >= HIDDEN_SEC:
+                    hidden = 0
+                    window.show()
                 continue
             if window.back_from_list():
                 window.origin = None

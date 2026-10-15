@@ -65,6 +65,8 @@ class Plugin:
         action = self.params.get("action", "root")
         try:
             getattr(self, "do_" + action)()
+            if action in ("queue", "resume") and self.handle >= 0:
+                xbmcplugin.endOfDirectory(self.handle, succeeded=False)
         except SubsonicError as error:
             kodi.log("{} failed: {}".format(action, error), xbmc.LOGWARNING)
             xbmcgui.Dialog().notification("Resonuls", str(error), xbmcgui.NOTIFICATION_ERROR)
@@ -82,11 +84,13 @@ class Plugin:
         return (self.link(**params), item, True)
 
     def command(self, label, icon, **params):
-        """An entry that does something (plays a queue) rather than open."""
+        """An entry that does something (plays a queue) rather than open. A
+        folder, which `run` declines to open once it has played: Kodi queues
+        every other entry of a list with the song clicked in it, and would
+        play this one as a song after or before it."""
         item = xbmcgui.ListItem(label, offscreen=True)
         item.setArt({"icon": icon, "thumb": icon})
-        item.setProperty("IsPlayable", "false")
-        return (self.link(**params), item, False)
+        return (self.link(**params), item, True)
 
     def cover(self, cover_id):
         url = self.client.cover_url(cover_id)

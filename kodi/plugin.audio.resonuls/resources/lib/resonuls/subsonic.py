@@ -115,6 +115,10 @@ class Client:
             # navifind answers a refusal with a Subsonic error in the body and
             # a 4xx status; the body is what says why.
             body = error.read()
+        except OSError as error:
+            # Unreachable, refused, timed out: said on screen like a refusal,
+            # rather than a script error that closes the list.
+            raise SubsonicError("Server unreachable: {}".format(getattr(error, "reason", error))) from error
         try:
             answer = json.loads(body.decode("utf-8"), strict=False)["subsonic-response"]
         except (ValueError, KeyError) as error:
