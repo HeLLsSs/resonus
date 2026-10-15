@@ -77,6 +77,11 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
 
 ## script.resonuls
 
+### [1.0.1] - 2026-10-15
+
+- A background of its own (`resources/fanart.jpg`): Kodi shows it behind the
+  add-on's page, and a skin can take it for the menu entry's background.
+
 ### [1.0.0] - 2026-10-15
 
 - The Resonuls app's launcher: a program add-on, which skins offer for an

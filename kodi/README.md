@@ -12,7 +12,8 @@ in front of it.
   plays, with pause, stop, next and Kodi's player.
 - **Its own menu entry**: the **Resonuls** program add-on opens the app
   straight away. In a skin's main menu editor (Arctic: Zephyr for one),
-  set an entry to Add-on › Program add-ons › Resonuls.
+  set an entry to Add-on › Program add-ons › Resonuls; its background can be
+  `addons/script.resonuls/resources/fanart.jpg`.
 - **In Kodi's Music menu**: every section at the top of it, Home first
   (Settings › Display to turn it off).
 - Library: recently added, recently and most played, random albums, A-Z,
