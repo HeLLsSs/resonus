@@ -13,10 +13,20 @@
       <label>$INFO[Window.Property(title)]</label>
     </control>
     <control type="label">
-      <left>1340</left><top>36</top><width>500</width><height>70</height>
+      <left>1120</left><top>36</top><width>500</width><height>70</height>
       <font>font45_title</font><textcolor>FFFFFFFF</textcolor><align>right</align>
       <label>$INFO[System.Time]</label>
       <visible>!Player.HasAudio</visible>
+    </control>
+    <!-- Closes the app, for a remote whose back key does not. -->
+    <control type="button" id="510">
+      <left>1650</left><top>28</top><width>190</width><height>64</height>
+      <texturefocus colordiffuse="FF1DB954">resonuls-tile.png</texturefocus>
+      <texturenofocus colordiffuse="FF2A2F36">resonuls-tile.png</texturenofocus>
+      <label>$ADDON[plugin.audio.resonuls 30076]</label>
+      <font>font13</font><textcolor>FFFFFFFF</textcolor><focusedcolor>FFFFFFFF</focusedcolor>
+      <align>center</align><aligny>center</aligny><textoffsetx>0</textoffsetx>
+      <onleft>504</onleft><ondown>100</ondown>
     </control>
     <!-- What plays, with pause, stop, next and Kodi's player: up from the
          first row or the list. -->
@@ -28,17 +38,17 @@
         <aspectratio>scale</aspectratio>
       </control>
       <control type="label">
-        <left>600</left><top>26</top><width>930</width><height>36</height>
+        <left>600</left><top>26</top><width>720</width><height>36</height>
         <font>font13</font><textcolor>FFFFFFFF</textcolor>
         <label>$INFO[MusicPlayer.Title]</label>
       </control>
       <control type="label">
-        <left>600</left><top>62</top><width>930</width><height>30</height>
+        <left>600</left><top>62</top><width>720</width><height>30</height>
         <font>font12</font><textcolor>FF9AA0A6</textcolor>
         <label>$INFO[MusicPlayer.Artist,, · ]$INFO[MusicPlayer.Time]$INFO[MusicPlayer.Duration, / ]</label>
       </control>
       <control type="button" id="501">
-        <left>1560</left><top>28</top><width>64</width><height>64</height>
+        <left>1350</left><top>28</top><width>64</width><height>64</height>
         <texturefocus colordiffuse="FF1DB954">resonuls-tile.png</texturefocus>
         <texturenofocus colordiffuse="FF2A2F36">resonuls-tile.png</texturenofocus>
         <label></label>
@@ -46,17 +56,17 @@
         <onclick>PlayerControl(Play)</onclick>
       </control>
       <control type="image">
-        <left>1560</left><top>28</top><width>64</width><height>64</height>
+        <left>1350</left><top>28</top><width>64</width><height>64</height>
         <texture>resonuls-play.png</texture>
         <visible>Player.Paused</visible>
       </control>
       <control type="image">
-        <left>1560</left><top>28</top><width>64</width><height>64</height>
+        <left>1350</left><top>28</top><width>64</width><height>64</height>
         <texture>resonuls-pause.png</texture>
         <visible>!Player.Paused</visible>
       </control>
       <control type="button" id="502">
-        <left>1632</left><top>28</top><width>64</width><height>64</height>
+        <left>1422</left><top>28</top><width>64</width><height>64</height>
         <texturefocus colordiffuse="FF1DB954">resonuls-tile.png</texturefocus>
         <texturenofocus colordiffuse="FF2A2F36">resonuls-tile.png</texturenofocus>
         <label></label>
@@ -64,11 +74,11 @@
         <onclick>PlayerControl(Stop)</onclick>
       </control>
       <control type="image">
-        <left>1632</left><top>28</top><width>64</width><height>64</height>
+        <left>1422</left><top>28</top><width>64</width><height>64</height>
         <texture>resonuls-stop.png</texture>
       </control>
       <control type="button" id="503">
-        <left>1704</left><top>28</top><width>64</width><height>64</height>
+        <left>1494</left><top>28</top><width>64</width><height>64</height>
         <texturefocus colordiffuse="FF1DB954">resonuls-tile.png</texturefocus>
         <texturenofocus colordiffuse="FF2A2F36">resonuls-tile.png</texturenofocus>
         <label></label>
@@ -76,19 +86,19 @@
         <onclick>PlayerControl(Next)</onclick>
       </control>
       <control type="image">
-        <left>1704</left><top>28</top><width>64</width><height>64</height>
+        <left>1494</left><top>28</top><width>64</width><height>64</height>
         <texture>resonuls-next.png</texture>
       </control>
       <control type="button" id="504">
-        <left>1776</left><top>28</top><width>64</width><height>64</height>
+        <left>1566</left><top>28</top><width>64</width><height>64</height>
         <texturefocus colordiffuse="FF1DB954">resonuls-tile.png</texturefocus>
         <texturenofocus colordiffuse="FF2A2F36">resonuls-tile.png</texturenofocus>
         <label></label>
-        <onleft>503</onleft><onright>504</onright><ondown>100</ondown>
+        <onleft>503</onleft><onright>510</onright><ondown>100</ondown>
         <onclick>ActivateWindow(visualisation)</onclick>
       </control>
       <control type="image">
-        <left>1776</left><top>28</top><width>64</width><height>64</height>
+        <left>1566</left><top>28</top><width>64</width><height>64</height>
         <texture>resonuls-expand.png</texture>
       </control>
     </control>
@@ -106,7 +116,8 @@
     </control>
     <control type="list" id="100">
       <left>66</left><top>130</top><width>1788</width><height>900</height>
-      <onup>501</onup>
+      <onup condition="Player.HasAudio">501</onup>
+          <onup condition="!Player.HasAudio">510</onup>
       <orientation>vertical</orientation>
       <scrolltime tween="cubic" easing="out">200</scrolltime>
       <itemlayout height="100" width="1788">

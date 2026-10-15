@@ -238,3 +238,6 @@ msgctxt "#30075"
 msgid "Nothing is playing"
 msgstr "Rien ne joue pour l'instant"
 
+msgctxt "#30076"
+msgid "Close"
+msgstr "Fermer"

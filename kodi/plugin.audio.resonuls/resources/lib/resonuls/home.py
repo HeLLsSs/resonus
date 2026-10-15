@@ -24,6 +24,8 @@ LIST, GROUP, TITLE = 1000, 2000, 3000
 ENTRIES = 100
 # The now-playing bar's buttons: play or pause, stop, next, Kodi's player.
 BAR = (501, 502, 503, 504)
+# Closes the app, for a remote whose back key does not.
+CLOSE = 510
 ACTION_BACK = (xbmcgui.ACTION_PREVIOUS_MENU, xbmcgui.ACTION_NAV_BACK)
 ACTION_MENU = (xbmcgui.ACTION_CONTEXT_MENU,)
 # Kodi's windows the app may be under while it runs: its music player and
@@ -119,6 +121,10 @@ class AppWindow(xbmcgui.WindowXML):
             self.closed = True
             self.close()
 
+    def onClick(self, controlId):
+        if controlId == CLOSE:
+            self.app.leaving = True
+
     def load(self):
         raise NotImplementedError
 
@@ -159,6 +165,8 @@ class Home(AppWindow):
         if LIST <= controlId < LIST + ROWS:
             self.focus = controlId
             self.run(self.selected(), play_now=False)
+        else:
+            super().onClick(controlId)
 
     def onAction(self, action):
         if action.getId() in ACTION_MENU:
@@ -215,8 +223,7 @@ class ListWindow(AppWindow):
         items = []
         for entry in self.entries:
             item = xbmcgui.ListItem(entry.get("label") or "", ", ".join(entry.get("artist") or []), offscreen=True)
-            # A command has an icon of Kodi's rather than a cover.
-            thumb = entry.get("thumbnail") or (entry.get("art") or {}).get("icon") or ""
+            thumb = screens.art_of(entry)
             item.setArt({"thumb": thumb, "icon": thumb})
             item.setProperty("kind", screens.kind_of(entry, kodi.PLUGIN_URL))
             items.append(item)
@@ -226,7 +233,10 @@ class ListWindow(AppWindow):
         self.setFocusId(ENTRIES)
 
     def onClick(self, controlId):
-        if controlId != ENTRIES or not self.entries:
+        if controlId != ENTRIES:
+            super().onClick(controlId)
+            return
+        if not self.entries:
             return
         self.focus = ENTRIES
         entry = self.entries[self.getControl(ENTRIES).getSelectedPosition()]
@@ -258,6 +268,7 @@ class App:
         self.client = client
         self.path = kodi.addon().getAddonInfo("path")
         self.stack = []
+        self.leaving = False
 
     def push(self, window):
         self.stack.append(window)
@@ -281,7 +292,7 @@ class App:
         monitor = xbmc.Monitor()
         away = 0
         try:
-            while self.stack and not monitor.waitForAbort(BEAT_SEC):
+            while self.stack and not self.leaving and not monitor.waitForAbort(BEAT_SEC):
                 home.setProperty(OPEN, str(time.time()))
                 top = self.stack[-1]
                 if top.closed:

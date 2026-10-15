@@ -36,3 +36,15 @@ def with_query(path, query):
     params = dict(urllib.parse.parse_qsl(parts.query))
     params["query"] = query
     return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(params)))
+
+
+def art_of(entry):
+    """The entry's picture for a window: Kodi's JSON-RPC wraps an icon of
+    the skin's (DefaultMusicSongs.png) in an address that only its own lists
+    read, and a window shows nothing for it."""
+    thumb = entry.get("thumbnail") or (entry.get("art") or {}).get("icon") or ""
+    if thumb.startswith("image://"):
+        inner = urllib.parse.unquote(thumb[len("image://"):].rstrip("/"))
+        if "/" not in inner and ":" not in inner:
+            return inner
+    return thumb

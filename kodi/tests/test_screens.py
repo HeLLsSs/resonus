@@ -1,7 +1,7 @@
 import unittest
 
 import fake_kodi  # noqa: F401 - puts the add-on on the path
-from resources.lib.resonuls.screens import kind_of, with_query
+from resources.lib.resonuls.screens import art_of, kind_of, with_query
 
 PLUGIN = "plugin://plugin.audio.resonuls/"
 
@@ -22,6 +22,15 @@ class KindTest(unittest.TestCase):
 
     def test_the_way_up_is_left_out(self):
         self.assertEqual(kind_of({"file": "..", "filetype": "directory"}, PLUGIN), "")
+
+
+class ArtTest(unittest.TestCase):
+    def test_a_skin_icon_is_unwrapped(self):
+        self.assertEqual(art_of({"thumbnail": "image://DefaultMusicTop100.png/"}), "DefaultMusicTop100.png")
+
+    def test_a_cover_is_left_as_it_is(self):
+        cover = "image://http%3a%2f%2fmusic.test%2frest%2fgetCoverArt.view/"
+        self.assertEqual(art_of({"thumbnail": cover}), cover)
 
 
 class SearchTest(unittest.TestCase):

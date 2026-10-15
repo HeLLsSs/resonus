@@ -14,6 +14,8 @@ the `<news>` of its `addon.xml`, when it installs or updates it.
   then closes it.
 - A bar at the top of the app shows what plays, with pause, stop, next and
   Kodi's player.
+- A "Close" button at the top right of every screen of the app closes it
+  at once, for a remote whose back key does not.
 
 ### [0.1.4] - 2026-10-15
 
