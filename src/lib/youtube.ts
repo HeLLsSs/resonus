@@ -55,6 +55,15 @@ export function accountRefusal(error: unknown): YoutubeRefusal {
 }
 
 /**
+ * Whether a playlist is one of the YouTube ones Navifind lists among the
+ * server's (`ytv_…`: the shared account's "YT-C · …", one's own "YT-1 · …").
+ * Home keeps them on a shelf of their own, below the server's playlists.
+ */
+export function isYoutubePlaylist(id: string): boolean {
+  return id.startsWith('ytv_');
+}
+
+/**
  * How the proxy is doing with the account, in the four ways that must not read
  * alike: it can read it, the session it had has died, it never had one, and it
  * could not be asked at all.

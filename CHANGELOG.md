@@ -7,6 +7,17 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [Unreleased]
+
+### Changed
+
+- Home keeps the YouTube playlists on a shelf of their own, "YouTube",
+  below the server's playlists; one only joins the quick grid at the top
+  once it has been played.
+- With Navifind, the mixes the YouTube home page offers ("Couleurs
+  d'automne", the account's own mixes…) are playlists as well, here and in
+  every Subsonic app.
+
 ## [1.13.0] - 2026-10-15
 
 ### Added

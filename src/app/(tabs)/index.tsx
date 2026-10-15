@@ -65,6 +65,7 @@ import { haptic } from '@/lib/haptics';
 import { bump } from '@/lib/perfLog';
 import { playForYou } from '@/lib/forYouMix';
 import { playShuffle } from '@/lib/playShuffle';
+import { isYoutubePlaylist } from '@/lib/youtube';
 
 /**
  * How wide a quick tile wants to be, in dp.
@@ -162,8 +163,12 @@ function QuickGrid() {
   const dynamicCount = Math.max(0, size - (withFavorites ? 1 : 0));
   const tiles = useMemo(() => {
     type Item = { key: string; href: string; name: string; cover?: string; ts: number };
+    // A YouTube playlist only rises here once it has been played: the rest
+    // wait on their own shelf, below the server's playlists.
     const pl: Item[] = withPlaylists
-      ? (playlists ?? []).map((p) => {
+      ? (playlists ?? [])
+          .filter((p) => !isYoutubePlaylist(p.id) || times[`/playlist/${p.id}`] !== undefined)
+          .map((p) => {
           const href = `/playlist/${p.id}`;
           return {
             key: href,
@@ -436,19 +441,31 @@ function PlaylistsSection({ title }: { title: string }) {
   }
   if (!data || data.length === 0) return null;
 
+  // The server's playlists, then the YouTube ones Navifind lists with them
+  // (the shared account's, then one's own), on a shelf of their own below.
+  const own = data.filter((p) => !isYoutubePlaylist(p.id));
+  const youtube = data.filter((p) => isYoutubePlaylist(p.id));
+  const shelf = (name: string, items: Playlist[]) =>
+    items.length === 0 ? null : (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{name}</Text>
+        <FlatList
+          {...listPerf}
+          horizontal
+          data={items}
+          keyExtractor={(item: Playlist) => item.id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.rowContent}
+          renderItem={({ item }) => <PlaylistCard playlist={item} width={card} />}
+        />
+      </View>
+    );
+
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <FlatList
-        {...listPerf}
-        horizontal
-        data={data}
-        keyExtractor={(item: Playlist) => item.id}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.rowContent}
-        renderItem={({ item }) => <PlaylistCard playlist={item} width={card} />}
-      />
-    </View>
+    <>
+      {shelf(title, own)}
+      {shelf('YouTube', youtube)}
+    </>
   );
 }
 
