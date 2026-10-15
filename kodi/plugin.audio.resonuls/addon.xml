@@ -14,6 +14,7 @@
     <description lang="fr_FR">Resonuls sur Kodi : parcours et écoute un serveur Navidrome (Subsonic). Derrière un proxy navifind, il lit aussi YouTube, range ce que tu écoutes dans la bibliothèque et garde un compte, une musique : lance une musique sur ton téléphone et Kodi se met en pause.</description>
     <platform>all</platform>
     <license>GPL-3.0-only</license>
+    <news>0.1.0: first version. The library and Navifind's YouTube on Kodi, a home of covers for the remote, scrobbles, resume from another device, and Kodi pauses when another device plays.</news>
     <source>https://github.com/HeLLsSs/resonus/tree/main/kodi</source>
     <assets>
       <icon>resources/icon.png</icon>

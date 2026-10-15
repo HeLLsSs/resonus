@@ -48,6 +48,8 @@ On the Kodi box, once:
 3. Add-ons › Install from zip file › `Resonuls` › `repository.resonuls.zip`.
 4. Add-ons › Install from repository › Resonuls repository › Music add-ons ›
    **Resonuls** › Install.
+   "Could not connect to repository" right after step 3 means Kodi has not
+   read the repository yet: restart Kodi and try again.
 5. Fill in the server address, username and password in the add-on's
    settings (Configure).
 
@@ -58,7 +60,9 @@ repository's version on its information page.
 
 ## Release a version
 
-1. Raise `version` in `plugin.audio.resonuls/addon.xml`.
+1. Raise `version` in `plugin.audio.resonuls/addon.xml`, add the version to
+   `CHANGELOG.md` and put its summary in the `<news>` of `addon.xml`, which
+   Kodi shows when it updates.
 2. `./build.sh publish`: builds the repository and pushes it to the
    `gh-pages` branch, which GitHub Pages serves. It stops if that version is
    already out.
