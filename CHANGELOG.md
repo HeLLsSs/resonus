@@ -7,7 +7,7 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
-## [Unreleased]
+## [1.13.1] - 2026-10-15
 
 ### Changed
 
@@ -17,6 +17,12 @@ Releases before 0.2.1 are only listed on the
 - With Navifind, the mixes the YouTube home page offers ("Couleurs
   d'automne", the account's own mixes…) are playlists as well, here and in
   every Subsonic app.
+
+### Fixed
+
+- With Navifind, a YouTube playlist that has been opened once keeps its
+  song count and cover in every app's list, instead of "0 songs" and a
+  blank square.
 
 ## [1.13.0] - 2026-10-15
 

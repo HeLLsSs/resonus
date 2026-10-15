@@ -91,6 +91,8 @@ appear when it is switched off.
   "YT-2 · …" for your own. Starring a YouTube song likes it, a YT playlist
   takes songs added and removed on the account it belongs to, and a playlist
   named "YT-C · …" is created on the shared account, for everyone to see.
+  The mixes the YouTube home page offers are playlists too, and on Home they
+  have a "YouTube" shelf of their own, below the server's playlists.
 
 ### A mix built from what you listen to
 
