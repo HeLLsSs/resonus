@@ -7,6 +7,20 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [1.15.0] - 2026-10-20
+
+### Added
+
+- Car mode, for a car with nothing but Bluetooth (Settings › Car mode): when
+  the car connects, the volume is set, the navigation app comes up, the songs
+  are read out over the car speakers and the music starts again, each with
+  its own switch. Several cars can be chosen.
+
+### Changed
+
+- Ride mode starts on several intercoms, each with a switch in Settings ›
+  Ride mode, instead of a single one. The one already chosen is kept.
+
 ## [1.14.0] - 2026-10-15
 
 ### Changed
