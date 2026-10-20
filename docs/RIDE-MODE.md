@@ -107,10 +107,10 @@ follows the speed while the ride screen is in front.
 
 ## Starting it from the intercom
 
-Settings › Ride mode › **Start when this device connects** lists the
-Bluetooth devices paired with the phone; pick the intercom. From then on,
-ride mode starts on its own when that device connects, app running or not,
-and stops when it disconnects. A drop of a few seconds does not count: the
+Settings › Ride mode › **Intercom** lists the Bluetooth devices paired with
+the phone, each with a switch; turn on the intercom, or several of them for
+several helmets. From then on, ride mode starts on its own when one of them
+connects, app running or not, and stops when it disconnects. A drop of a few seconds does not count: the
 intercom is given fifteen seconds to come back before ride mode stops.
 
 Started by the intercom, ride mode sets the media volume to **Volume at the
@@ -148,6 +148,22 @@ the link `resonuls://ride`. The **Ride mode** tile of the quick settings
 shade (edit the shade to add it) starts and stops it the way the intercom
 does, from anywhere.
 
+## Car mode
+
+For a car with nothing but Bluetooth (one with Android Auto has its own
+screen): Settings › **Car mode** lists the paired devices the same way; turn
+on the car, or several cars. A device is an intercom or a car, never both.
+When one connects, car mode sets **Volume at the start**, brings the
+**Navigation app** up, says "Car mode" and the **Status at the start** when
+those are on, and starts the music with **Resume playback** (on by default),
+with **With an empty queue** as for ride mode. While it is on, each new song
+is read out over the car speakers with **Announce songs**, the music dips
+under the navigation app's prompts instead of pausing, and it comes back
+after a call. No ride screen, no floating player and no lock screen: the
+phone is on a mount. It stops fifteen seconds after the car disconnects.
+Bringing the navigation app up from behind needs **Draw over other apps**,
+asked when one is chosen.
+
 ## Google Assistant
 
 "Hey Google, play X on Resonus" is Google's call, not the app's: on the
@@ -167,7 +183,7 @@ floating player is for.
 ## How it is built
 
 The native half is `modules/ride-mode`: a manifest receiver for the Bluetooth
-connection broadcasts, which reads the chosen intercom from its own
+connection broadcasts, which reads the chosen intercoms and cars from its own
 preferences so it works with no JavaScript running and starts the runtime
 when it has to; the overlay window; the text-to-speech engine; the battery,
 the screen going on and off, and the GPS speed, sent up as events. The JS half

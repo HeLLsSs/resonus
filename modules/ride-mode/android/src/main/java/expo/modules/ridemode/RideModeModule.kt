@@ -27,10 +27,17 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Field
 import expo.modules.kotlin.records.Record
 
+/** A paired device, as JS writes it. */
+class DeviceRecord : Record {
+  @Field val name: String = ""
+  @Field val address: String = ""
+}
+
 /** The configuration as JS writes it (`src/store/rideMode.ts`). */
 class RideConfigRecord : Record {
-  @Field val intercomName: String = ""
-  @Field val intercomAddress: String = ""
+  @Field val intercoms: List<DeviceRecord> = emptyList()
+  @Field val cars: List<DeviceRecord> = emptyList()
+  @Field val car: Map<String, Any?> = emptyMap()
   @Field val overlay: Boolean = false
   @Field val announce: Boolean = false
   @Field val resume: Boolean = false
@@ -137,8 +144,9 @@ class RideModeModule : Module() {
     Function("setConfig") { record: RideConfigRecord ->
       val ctx = context ?: return@Function
       RideConfig(
-        intercomName = record.intercomName,
-        intercomAddress = record.intercomAddress,
+        intercoms = record.intercoms.map { Device(it.name, it.address) },
+        cars = record.cars.map { Device(it.name, it.address) },
+        car = record.car,
         overlay = record.overlay,
         announce = record.announce,
         resume = record.resume,
@@ -284,7 +292,7 @@ class RideModeModule : Module() {
 
     Function("stopSpeaking") { main.post { speaker?.stop() } }
 
-    /** The intercom that connected while JS was not running, if any; read once and cleared. */
+    /** The intercom or car that connected while JS was not running, `{name, kind}`, if any; read once and cleared. */
     Function("takePendingIntercom") { Intercom.take() }
 
     /** Whether the screen is lit, the lock screen included. */
@@ -422,9 +430,9 @@ class RideModeModule : Module() {
       context?.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
   /** True when JS was listening and got it. */
-  fun emitIntercom(connected: Boolean, name: String, source: String): Boolean {
+  fun emitIntercom(connected: Boolean, name: String, source: String, kind: String): Boolean {
     if (!observing) return false
-    sendEvent("intercom", mapOf("connected" to connected, "name" to name, "source" to source))
+    sendEvent("intercom", mapOf("connected" to connected, "name" to name, "source" to source, "kind" to kind))
     return true
   }
 

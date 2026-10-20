@@ -1,19 +1,34 @@
 package expo.modules.ridemode
 
 import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
+
+/** A paired Bluetooth device ride or car mode starts on. */
+internal data class Device(val name: String, val address: String) {
+  /** Whether the device that just connected is this one, by address or by name. */
+  fun matches(name: String?, address: String?): Boolean =
+    (this.address.isNotEmpty() && this.address.equals(address, ignoreCase = true)) ||
+      (this.name.isNotEmpty() && this.name == name)
+
+  fun toMap(): Map<String, String> = mapOf("name" to name, "address" to address)
+}
 
 /**
  * What ride mode has been told, kept in SharedPreferences so the receiver
- * can read it with no JS running: which Bluetooth device is the intercom,
- * and what starting ride mode does. JS keeps a copy in memory
+ * can read it with no JS running: which Bluetooth devices are intercoms and
+ * which are cars, and what starting ride mode does. What car mode does is
+ * JS's business alone, kept here as it is handed over. JS keeps a copy in memory
  * (`src/store/rideMode.ts`), read from here at start and written back here
  * on every change, so this is the one copy on disk.
  */
 internal data class RideConfig(
-  /** The intercom as the phone names it; empty for none, which turns the automatic start off. */
-  val intercomName: String,
-  /** Its address, to match a device whose name the system will not give. */
-  val intercomAddress: String,
+  /** The intercoms that start ride mode; none turns its automatic start off. */
+  val intercoms: List<Device>,
+  /** The cars that start car mode. */
+  val cars: List<Device>,
+  /** Car mode's settings, as JS writes them (`CarConfig` in `src/lib/rideMode.ts`). */
+  val car: Map<String, Any?>,
   /** The floating player over other apps. */
   val overlay: Boolean,
   /** Every new song read out through text to speech. */
@@ -42,20 +57,19 @@ internal data class RideConfig(
   /** How far: "light", "medium" or "strong". */
   val speedStrength: String,
 ) {
-  /** Whether a connection is worth looking at: an intercom has been chosen. */
-  val autoStart: Boolean
-    get() = intercomName.isNotEmpty() || intercomAddress.isNotEmpty()
-
-  /** Whether a device that just connected is the intercom, by address or by name. */
-  fun matches(name: String?, address: String?): Boolean =
-    (intercomAddress.isNotEmpty() && intercomAddress.equals(address, ignoreCase = true)) ||
-      (intercomName.isNotEmpty() && intercomName == name)
+  /** "ride" for an intercom, "car" for a car, null for any other device. */
+  fun kindOf(name: String?, address: String?): String? = when {
+    intercoms.any { it.matches(name, address) } -> "ride"
+    cars.any { it.matches(name, address) } -> "car"
+    else -> null
+  }
 
   fun save(context: Context) {
     context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
       .edit()
-      .putString(KEY_NAME, intercomName)
-      .putString(KEY_ADDRESS, intercomAddress)
+      .putString(KEY_INTERCOMS, devicesJson(intercoms))
+      .putString(KEY_CARS, devicesJson(cars))
+      .putString(KEY_CAR, JSONObject(car).toString())
       .putBoolean(KEY_OVERLAY, overlay)
       .putBoolean(KEY_ANNOUNCE, announce)
       .putBoolean(KEY_RESUME, resume)
@@ -74,8 +88,9 @@ internal data class RideConfig(
   }
 
   fun toMap(): Map<String, Any> = mapOf(
-    "intercomName" to intercomName,
-    "intercomAddress" to intercomAddress,
+    "intercoms" to intercoms.map { it.toMap() },
+    "cars" to cars.map { it.toMap() },
+    "car" to car,
     "overlay" to overlay,
     "announce" to announce,
     "resume" to resume,
@@ -94,8 +109,12 @@ internal data class RideConfig(
 
   companion object {
     const val PREFS = "ride_mode"
+    /** The one intercom of builds before 1.15, read when there is no list yet. */
     private const val KEY_NAME = "intercomName"
     private const val KEY_ADDRESS = "intercomAddress"
+    private const val KEY_INTERCOMS = "intercoms"
+    private const val KEY_CARS = "cars"
+    private const val KEY_CAR = "car"
     private const val KEY_OVERLAY = "overlay"
     private const val KEY_ANNOUNCE = "announce"
     private const val KEY_RESUME = "resume"
@@ -115,9 +134,12 @@ internal data class RideConfig(
 
     fun load(context: Context): RideConfig {
       val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+      val single = Device(prefs.getString(KEY_NAME, null).orEmpty(), prefs.getString(KEY_ADDRESS, null).orEmpty())
       return RideConfig(
-        intercomName = prefs.getString(KEY_NAME, null).orEmpty(),
-        intercomAddress = prefs.getString(KEY_ADDRESS, null).orEmpty(),
+        intercoms = prefs.getString(KEY_INTERCOMS, null)?.let(::devices)
+          ?: listOf(single).filter { it.name.isNotEmpty() || it.address.isNotEmpty() },
+        cars = prefs.getString(KEY_CARS, null)?.let(::devices).orEmpty(),
+        car = prefs.getString(KEY_CAR, null)?.let(::jsonMap).orEmpty(),
         overlay = prefs.getBoolean(KEY_OVERLAY, false),
         announce = prefs.getBoolean(KEY_ANNOUNCE, false),
         resume = prefs.getBoolean(KEY_RESUME, false),
@@ -134,6 +156,22 @@ internal data class RideConfig(
         speedStrength = prefs.getString(KEY_SPEED_STRENGTH, null).orEmpty().ifEmpty { "medium" },
       )
     }
+
+    private fun devicesJson(devices: List<Device>): String =
+      JSONArray(devices.map { JSONObject(it.toMap()) }).toString()
+
+    private fun devices(json: String): List<Device> = runCatching {
+      val array = JSONArray(json)
+      (0 until array.length()).map { i ->
+        val o = array.getJSONObject(i)
+        Device(o.optString("name"), o.optString("address"))
+      }
+    }.getOrDefault(emptyList())
+
+    private fun jsonMap(json: String): Map<String, Any?> = runCatching {
+      val o = JSONObject(json)
+      o.keys().asSequence().associateWith { o.get(it) }
+    }.getOrDefault(emptyMap())
 
     fun isActive(context: Context): Boolean =
       context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ACTIVE, false)

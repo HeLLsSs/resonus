@@ -1,5 +1,5 @@
 /**
- * Ride mode: what it has been told and whether it is on.
+ * Ride mode and car mode: what they have been told and whether they are on.
  *
  * The configuration is the phone's rather than the profile's, the way the
  * Home Assistant one is: the helmet is the same whichever server is signed
@@ -8,8 +8,8 @@
  * `RideConfig.kt` in modules/ride-mode); this store is the copy in memory,
  * read from there at start and written back on every change.
  *
- * `active` is turned on and off by `src/lib/rideSync.ts`, which is what
- * starting and stopping ride mode means.
+ * `active` and `carActive` are turned on and off by `src/lib/rideSync.ts`,
+ * which is what starting and stopping each mode means.
  */
 import { create } from 'zustand';
 
@@ -19,6 +19,8 @@ interface RideModeState {
   config: RideConfig;
   /** Whether ride mode is on: the overlay up, songs announced, the music ducking. */
   active: boolean;
+  /** Whether car mode is on: songs announced and the music ducking, with no screen of its own. */
+  carActive: boolean;
   /** Reads the configuration the native side holds. Once, at start. */
   hydrate: () => void;
   setConfig: (patch: Partial<RideConfig>) => void;
@@ -27,6 +29,7 @@ interface RideModeState {
 export const useRideMode = create<RideModeState>((set, get) => ({
   config: NO_RIDE_CONFIG,
   active: false,
+  carActive: false,
 
   hydrate: () => set({ config: getRideConfig() }),
 

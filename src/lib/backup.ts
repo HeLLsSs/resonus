@@ -44,7 +44,7 @@ import * as Sharing from 'expo-sharing';
 import { hashKey } from '@/lib/localLibrary';
 import { clearLocalFavs, clearLocalPlaylists } from '@/lib/localQueries';
 import { queryClient } from '@/lib/query';
-import { getRideConfig, NO_RIDE_CONFIG, type RideConfig, rideModeAvailable, setRideConfig } from '@/lib/rideMode';
+import { getRideConfig, readRideConfig, type RideConfig, rideModeAvailable, setRideConfig } from '@/lib/rideMode';
 import { primaryUrl } from '@/lib/serverUrls';
 import { getItem, setItem } from '@/lib/storage';
 import { type OfflineSource, type Profile, type ServerProfile, useAuthStore } from '@/store/auth';
@@ -425,12 +425,7 @@ function fits(raw: string, shape: Shape): boolean {
  * handed something it cannot store. Undefined for anything that is not one.
  */
 function readRide(value: unknown): RideConfig | undefined {
-  if (!isRecord(value)) return undefined;
-  const ride: Record<string, unknown> = { ...NO_RIDE_CONFIG };
-  for (const [key, fallback] of Object.entries(NO_RIDE_CONFIG)) {
-    if (typeof value[key] === typeof fallback) ride[key] = value[key];
-  }
-  return ride as unknown as RideConfig;
+  return isRecord(value) ? readRideConfig(value) : undefined;
 }
 
 /** Exported for `lib/proxyBackupSync.ts`, which reads the proxy's copy the same way. */

@@ -220,6 +220,7 @@ export default function RootLayout() {
                 <Stack.Screen name="settings/theme" />
                 <Stack.Screen name="settings/about" />
                 <Stack.Screen name="settings/ride" />
+                <Stack.Screen name="settings/car" />
                 {/* Ride mode: a screen that covers the app, opened by hand or
                     by the intercom (see `src/lib/rideSync.ts`). */}
                 <Stack.Screen name="ride" />

@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1484 of them.
+Every string the app can show, under the screen it shows up on. 1492 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -359,7 +359,6 @@ you are actually typing into, which is easier than reading it here.
 | `Couldn't reach the server. Check your connection.` | Error on Home when the server does not answer at all |
 | `Discover` | Home section: discovery suggestions |
 | `Evening mix` |  |
-| `For you` | One of the values of “What to play” |
 | `For you · {date}` |  |
 | `From YouTube` |  |
 | `Good afternoon` | Home's greeting. The hours it changes at are part of the language too, see TRANSLATING.md |
@@ -806,10 +805,10 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `{n} songs left in the queue` |  |
 | `{n} songs will be downloaded over mobile data.` |  |
-| `{title}, by {artist}` | What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it |
 | `battery at {n} %` |  |
 | `Battery at {n} %` | Read out loud in the helmet when the phone's battery reaches 20, 10 and 5 %. `{n}` is the level |
 | `battery at {n} %, charging` |  |
+| `Car mode` | Ride mode's sibling for a car with nothing but Bluetooth: started when the car connects, it sets the volume, opens the navigation app and starts the music. The name of its settings screen |
 | `Download on mobile data?` |  |
 | `Exit ride mode` |  |
 | `last song of the queue` |  |
@@ -852,7 +851,6 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
-| `{title}, by {artist}` | What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it |
 | `Back online` | The toast shown when the server answers again and the app comes out of offline mode |
 | `Exit local mode` | Leave the profile that plays the phone's own files |
 | `Listening stats` |  |
@@ -932,7 +930,6 @@ you are actually typing into, which is easier than reading it here.
 | `Choose at least one day.` |  |
 | `Choose your home speaker in Quality & playback to wake up on it.` |  |
 | `Days` |  |
-| `For you` | One of the values of “What to play” |
 | `From silence up to the volume the phone or the speaker was left at.` | The line under “Rising volume”, explaining it |
 | `If the speaker does not answer, the phone rings instead.` |  |
 | `Lost contact with the speaker` |  |
@@ -999,6 +996,35 @@ you are actually typing into, which is easier than reading it here.
 | `Working…` |  |
 | `Wrong passphrase` |  |
 | `Your profiles and every setting, pin and smart playlist kept under them, as one file. Downloads, play history and listening stats stay on this device.` |  |
+
+## Settings › Car
+
+| String | What it is |
+| --- | --- |
+| `Allow Bluetooth` |  |
+| `Android needs permission to tell which device connected.` | The line under “Allow Bluetooth”, explaining it |
+| `Announce songs` | Each new song's title and artist read out loud by the phone |
+| `Brought to the front when the car connects.` | The line under “Navigation app”, explaining it |
+| `Car` | Section title in the car mode settings: the car's Bluetooth system, the device that starts car mode when it connects |
+| `Car mode` | Ride mode's sibling for a car with nothing but Bluetooth: started when the car connects, it sets the volume, opens the navigation app and starts the music. The name of its settings screen |
+| `Car mode starts on its own when one of these Bluetooth devices connects, and stops when it disconnects. Pair the car with the phone first.` |  |
+| `Each new song is read out over the car speakers.` | The line under “Announce songs”, explaining it |
+| `Favorites, shuffled` | One of the values of “With an empty queue” |
+| `Leave as is` |  |
+| `Navigation app` | Setting: the app (Waze, Maps…) brought to the front when the intercom connects |
+| `No paired device` |  |
+| `None` | The choice of no intercom at all in that list: ride mode never starts by itself |
+| `Nothing` | A value of `On cover tap`: tapping the cover does nothing |
+| `Resume playback` |  |
+| `Shuffle all` | One of the values of “With an empty queue” |
+| `Status at the start` |  |
+| `The battery, the output and how many songs are left, said when the car connects.` | The line under “Status at the start”, explaining it |
+| `The media volume set when car mode starts, so it is not left where the kitchen had it.` | The line under “Volume at the start”, explaining it |
+| `Volume at the start` |  |
+| `What starts when there is nothing to resume.` | The line under “With an empty queue”, explaining it |
+| `What was playing starts again when the car connects.` | The line under “Resume playback”, explaining it |
+| `When the car connects` |  |
+| `With an empty queue` | Setting: what ride mode starts when the intercom connects and there is no queue to resume |
 
 ## Settings › Diagnostics
 
@@ -1589,7 +1615,6 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
-| `{title}, by {artist}` | What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it |
 | `Allow Bluetooth` |  |
 | `Android needs permission to tell which device connected.` | The line under “Allow Bluetooth”, explaining it |
 | `Announce songs` | Each new song's title and artist read out loud by the phone |
@@ -1599,7 +1624,6 @@ you are actually typing into, which is easier than reading it here.
 | `Favorites, shuffled` | One of the values of “With an empty queue” |
 | `Floating player` | A small player drawn over whatever app is in front (Waze), with play, pause and next |
 | `Floating player size` |  |
-| `For you` | One of the values of “What to play” |
 | `How many songs of the queue Prepare the ride downloads before the bike leaves the network.` |  |
 | `Intercom` | Section title: the helmet's Bluetooth intercom (Cardo, Sena…), the device that starts ride mode when it connects |
 | `Large, for thick gloves` | One of the values of “Floating player size” |
@@ -1622,9 +1646,8 @@ you are actually typing into, which is easier than reading it here.
 | `Raised by` |  |
 | `Resume playback` |  |
 | `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
-| `Ride mode starts on its own when the chosen Bluetooth device connects, and stops when it disconnects. Pair the intercom with the phone first.` |  |
+| `Ride mode starts on its own when one of these Bluetooth devices connects, and stops when it disconnects. Pair the intercom with the phone first.` |  |
 | `Shuffle all` | One of the values of “With an empty queue” |
-| `Start when this device connects` |  |
 | `Status at the start` |  |
 | `Strong, three steps` | One of the values of “Raised by” |
 | `The battery, the output and how many songs are left, said when the intercom connects.` | The line under “Status at the start”, explaining it |
@@ -1970,6 +1993,7 @@ you are actually typing into, which is easier than reading it here.
 | `{songs} need about {size}, but only {free} is free. The download may stop partway.` | The same line when the phone is nearly full |
 | `{songs} will be saved to this device (about {size}).` | The same line when the size is known. `{size}` is like "340 MB" |
 | `{songs} will be saved to this device.` | The line under that title. `{songs}` is already worded and inflected, "12 songs" |
+| `{title}, by {artist}` | What the phone reads out when a song starts. `{title}` is the song, `{artist}` who plays it |
 | `Add anyway` | The confirm button of that warning: put it in a second time |
 | `Add only the new ones` | The other button of that warning, when some are already in the playlist and some are not: leave the ones that are and add the rest |
 | `Add to a playlist` | Menu action: put this song, album or selection into a playlist |
@@ -2018,6 +2042,7 @@ you are actually typing into, which is easier than reading it here.
 | `Favorites` | The songs, albums and artists you starred |
 | `Favorites only` | Written over a list that is hiding everything that is not a favorite. Tapping it shows the whole list again |
 | `Find in playlist` | Placeholder of the search box hidden above a tracklist, for finding a song within it |
+| `For you` | One of the values of “What to play” |
 | `History` | The listening history: what was played and when |
 | `Hold to go back to {tab}` | The hint on holding the back arrow. `{tab}` is Home, Search or Library |
 | `Jam` |  |
@@ -2031,6 +2056,7 @@ you are actually typing into, which is easier than reading it here.
 | `Name` | The Name field when editing a playlist or a station |
 | `Navifind can't reach YouTube or SoundCloud right now` |  |
 | `New playlist` | Row at the top of the playlist picker, and the button on an empty library: make one |
+| `New songs in your taste` |  |
 | `No results` | Nothing matched what was typed |
 | `No results for “{q}”` | Empty state. `{q}` is what was typed |
 | `Not available offline` | This one is not downloaded, so it cannot play without a connection |
@@ -2088,7 +2114,6 @@ you are actually typing into, which is easier than reading it here.
 | `View` | Title of the menu that chooses how a collection is drawn, and the label of the button that opens it. A noun: what you are looking at, not the verb |
 | `View cover` | The same as `View image`, for album and playlist artwork |
 | `Your library and your YouTube likes, dealt together` |  |
-| `Your likes and picks, dealt` |  |
 | `YouTube is out of reach: shuffling your library` |  |
 | `YouTube only` |  |
 | `YouTube shuffle` |  |

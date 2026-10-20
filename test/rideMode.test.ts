@@ -2,7 +2,8 @@
  * What the helmet hears when a song starts: the title and the artist, the
  * title alone, and nothing for a radio that has not said what it plays. And
  * which songs of the queue "Prepare the ride" fetches, when it fetches them
- * on its own, and how far the speed raises the volume.
+ * on its own, and how far the speed raises the volume. And the settings as
+ * the module or a backup file hands them over.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -12,7 +13,9 @@ import {
   announcement,
   AUTO_PREPARE_EVERY_MS,
   AUTO_PREPARE_IDLE_MS,
+  NO_CAR_CONFIG,
   nextSpeedSteps,
+  readRideConfig,
   shouldAutoPrepare,
   smoothSpeed,
   songsToPrepare,
@@ -149,5 +152,31 @@ describe('nextSpeedSteps', () => {
       seen.add(applied);
     }
     assert.deepEqual([...seen], [1]);
+  });
+});
+
+describe('readRideConfig', () => {
+  const helmet = { name: 'Cardo', address: 'AA:BB' };
+
+  it('reads the intercoms and the cars', () => {
+    const config = readRideConfig({ intercoms: [helmet], cars: [{ name: 'Clio', address: 'CC:DD' }] });
+    assert.deepEqual([config.intercoms, config.cars], [[helmet], [{ name: 'Clio', address: 'CC:DD' }]]);
+  });
+
+  it('turns the one intercom of an older backup into a list', () => {
+    assert.deepEqual(readRideConfig({ intercomName: 'Cardo', intercomAddress: 'AA:BB' }).intercoms, [helmet]);
+  });
+
+  it('reads no intercom from an older backup that had none', () => {
+    assert.deepEqual(readRideConfig({ intercomName: '', intercomAddress: '' }).intercoms, []);
+  });
+
+  it('leaves out a device that is not one', () => {
+    assert.deepEqual(readRideConfig({ cars: [helmet, { name: 3 }, null, 'Clio'] }).cars, [helmet]);
+  });
+
+  it('reads car mode settings field by field, the rest as the default', () => {
+    const car = readRideConfig({ car: { resume: false, startVolume: '9', emptyQueue: 'later' } }).car;
+    assert.deepEqual(car, { ...NO_CAR_CONFIG, resume: false });
   });
 });

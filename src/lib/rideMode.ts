@@ -4,8 +4,12 @@
  * Ride mode is the app for a motorbike: a screen of buttons a glove can hit
  * (`src/app/ride.tsx`), a floating player over the navigation app, each new
  * song read out in the helmet, and all of it started on its own when the
- * helmet's intercom connects. The module holds the native half: which
- * Bluetooth device is the intercom and the receiver that hears it connect,
+ * helmet's intercom connects. Car mode is its small sibling for a car with
+ * nothing but Bluetooth: started the same way when the car connects, it
+ * sets the volume, brings the navigation app up, says hello and starts the
+ * music, with no screen or floating player of its own. The module holds the
+ * native half: which Bluetooth devices are intercoms and cars and the
+ * receiver that hears them connect,
  * the overlay window, the text-to-speech engine, and the app brought to the
  * front from behind another one. What ride mode does with them is
  * `src/lib/rideSync.ts`.
@@ -20,11 +24,32 @@ import { type Song } from '@/api/subsonic';
 import { tg } from '@/i18n';
 import type { StreamInfo } from '@/store/player';
 
+/**
+ * What starting ride or car mode on its own does, the part they share: ride
+ * mode's own fields in `RideConfig`, car mode's in `RideConfig.car`.
+ */
+export interface DriveConfig {
+  /** Every new song read out loud. */
+  announce: boolean;
+  /** The queue starts again when the device connects. */
+  resume: boolean;
+  /** What plays when the queue is empty at that point. */
+  emptyQueue: EmptyQueueAction;
+  /** The package of the navigation app brought up; empty for none. */
+  navigationApp: string;
+  /** The media volume set when the mode starts by itself, 0 to 1; 0 leaves it alone. */
+  startVolume: number;
+  /** The battery, the output and what is left of the queue said when the device connects. */
+  status: boolean;
+}
+
 export interface RideConfig {
-  /** The intercom as the phone names it; empty for none, which is ride mode never starting by itself. */
-  intercomName: string;
-  /** Its Bluetooth address, for a device whose name the system will not give. */
-  intercomAddress: string;
+  /** The intercoms that start ride mode; none is ride mode never starting by itself. */
+  intercoms: BluetoothDevice[];
+  /** The cars that start car mode. */
+  cars: BluetoothDevice[];
+  /** What car mode does. */
+  car: DriveConfig;
   /** The floating player over other apps. */
   overlay: boolean;
   /** Every new song read out loud. */
@@ -83,18 +108,22 @@ export interface RideOverlayState {
   isPlaying: boolean;
 }
 
-/** The intercom coming or going, or the quick settings tile tapped, which asks for the same. */
+/** Which mode a device starts: ride mode for an intercom, car mode for a car. */
+export type DriveKind = 'ride' | 'car';
+
+/** An intercom or a car coming or going, or the quick settings tile tapped, which asks for the same as an intercom. */
 export interface IntercomEvent {
   connected: boolean;
   name: string;
   source: 'intercom' | 'tile';
+  kind: DriveKind;
 }
 
 /** A button of the floating player. Its title opens the app on its own, natively. */
 export type RideAction = 'toggle' | 'next' | 'previous';
 
 interface NativeRideMode {
-  getConfig: () => RideConfig;
+  getConfig: () => Record<string, unknown> | null;
   setConfig: (config: RideConfig) => void;
   hasBluetoothPermission: () => boolean;
   getBondedDevices: () => BluetoothDevice[];
@@ -106,7 +135,7 @@ interface NativeRideMode {
   openApp: (link: string) => void;
   speak: (text: string, queue: boolean) => void;
   stopSpeaking: () => void;
-  takePendingIntercom: () => string | null;
+  takePendingIntercom: () => { name: string; kind: DriveKind } | null;
   getNavigationApps: () => NavigationApp[];
   openNavigationApp: (pkg: string) => boolean;
   setShowWhenLocked: (on: boolean) => void;
@@ -140,9 +169,19 @@ export const rideModeAvailable = !!native;
 /** The deep link that opens the app on the ride screen, from the overlay, a shortcut or the module. */
 export const RIDE_LINK = 'resonuls://ride';
 
+export const NO_CAR_CONFIG: DriveConfig = {
+  announce: false,
+  resume: true,
+  emptyQueue: 'nothing',
+  navigationApp: '',
+  startVolume: 0,
+  status: false,
+};
+
 export const NO_RIDE_CONFIG: RideConfig = {
-  intercomName: '',
-  intercomAddress: '',
+  intercoms: [],
+  cars: [],
+  car: NO_CAR_CONFIG,
   overlay: false,
   announce: false,
   resume: false,
@@ -161,13 +200,51 @@ export const NO_RIDE_CONFIG: RideConfig = {
 
 export function getRideConfig(): RideConfig {
   const config = native?.getConfig();
-  if (!config) return NO_RIDE_CONFIG;
-  // A value written by a later build, or by hand, is read as the default.
-  const emptyQueue = EMPTY_QUEUE_ACTIONS.find((a) => a === config.emptyQueue) ?? 'nothing';
-  const overlaySize = config.overlaySize === 'large' ? 'large' : 'normal';
-  const prepareCount = PREPARE_COUNTS.includes(config.prepareCount) ? config.prepareCount : 30;
-  const speedStrength = SPEED_STRENGTHS.find((s) => s === config.speedStrength) ?? 'medium';
-  return { ...config, emptyQueue, overlaySize, prepareCount, speedStrength };
+  return config ? readRideConfig(config) : NO_RIDE_CONFIG;
+}
+
+/**
+ * The configuration as the module or a backup file gives it, field by field:
+ * each one is taken only when it has the type of its default, and a value
+ * written by a later build, or by hand, is read as the default.
+ */
+export function readRideConfig(value: Record<string, unknown>): RideConfig {
+  const config: Record<string, unknown> = { ...NO_RIDE_CONFIG };
+  for (const [key, fallback] of Object.entries(NO_RIDE_CONFIG)) {
+    if (typeof value[key] === typeof fallback) config[key] = value[key];
+  }
+  const read = config as unknown as RideConfig;
+  return {
+    ...read,
+    // A backup from before 1.15 has the one intercom of the time.
+    intercoms: readDevices(value.intercoms ?? [{ name: value.intercomName, address: value.intercomAddress }]),
+    cars: readDevices(value.cars),
+    car: readCarConfig(value.car),
+    emptyQueue: EMPTY_QUEUE_ACTIONS.find((a) => a === read.emptyQueue) ?? 'nothing',
+    overlaySize: read.overlaySize === 'large' ? 'large' : 'normal',
+    prepareCount: PREPARE_COUNTS.includes(read.prepareCount) ? read.prepareCount : 30,
+    speedStrength: SPEED_STRENGTHS.find((s) => s === read.speedStrength) ?? 'medium',
+  };
+}
+
+function readDevices(value: unknown): BluetoothDevice[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((d: unknown) => {
+    if (typeof d !== 'object' || d === null) return [];
+    const { name, address } = d as Record<string, unknown>;
+    return typeof name === 'string' && typeof address === 'string' && (name || address) ? [{ name, address }] : [];
+  });
+}
+
+function readCarConfig(value: unknown): DriveConfig {
+  if (typeof value !== 'object' || value === null) return NO_CAR_CONFIG;
+  const given = value as Record<string, unknown>;
+  const car: Record<string, unknown> = { ...NO_CAR_CONFIG };
+  for (const [key, fallback] of Object.entries(NO_CAR_CONFIG)) {
+    if (typeof given[key] === typeof fallback) car[key] = given[key];
+  }
+  const read = car as unknown as DriveConfig;
+  return { ...read, emptyQueue: EMPTY_QUEUE_ACTIONS.find((a) => a === read.emptyQueue) ?? 'nothing' };
 }
 
 export function setRideConfig(config: RideConfig): void {
@@ -264,7 +341,7 @@ export function stopSpeaking(): void {
 }
 
 /** The intercom that connected while JS was not running, if any; read once and cleared. */
-export function takePendingIntercom(): string | null {
+export function takePendingIntercom(): { name: string; kind: DriveKind } | null {
   return native?.takePendingIntercom() ?? null;
 }
 

@@ -1,6 +1,6 @@
 /**
- * Settings › Ride mode: which Bluetooth device is the helmet's intercom, and
- * what ride mode does when it connects (see `src/lib/rideSync.ts`).
+ * Settings › Ride mode: which Bluetooth devices are helmet intercoms, and
+ * what ride mode does when one connects (see `src/lib/rideSync.ts`).
  *
  * The phone's, not the profile's: the helmet is the same whichever server
  * is signed in, which is why it lives in `store/rideMode.ts` rather than in
@@ -9,7 +9,7 @@
  *
  * Two permissions, each asked where it is first needed rather than at
  * start: knowing which device connected (Android 12 and later), asked when
- * the list of paired devices is first opened; and drawing over other apps,
+ * the list of paired devices is first opened (`DevicePicker`); and drawing over other apps,
  * asked when the floating player is switched on, which is also what lets
  * the app come up on its own over the navigation app; and the position,
  * asked when the volume with the speed is switched on.
@@ -19,19 +19,16 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { DevicePicker } from '@/components/DevicePicker';
 import { SelectList, SettingRow, SettingsPage, settingsStyles, SliderRow, SwitchList } from '@/components/SettingsUI';
 import { getRadioStations } from '@/api/subsonic';
 import { useT } from '@/i18n';
 import {
   canDrawOverlays,
-  getBondedDevices,
   getNavigationApps,
-  hasBluetoothPermission,
   PREPARE_COUNTS,
-  requestBluetoothPermission,
   requestLocationPermission,
   requestOverlayPermission,
-  type BluetoothDevice,
   type EmptyQueueAction,
   type OverlaySize,
   type SpeedStrength,
@@ -48,8 +45,6 @@ export default function RideSettings() {
   const router = useRouter();
   const config = useRideMode((s) => s.config);
   const setConfig = useRideMode((s) => s.setConfig);
-  const [allowed, setAllowed] = useState(hasBluetoothPermission);
-  const [devices, setDevices] = useState<BluetoothDevice[]>(() => (allowed ? getBondedDevices() : []));
   // Asked again every time the screen is looked at: the answer is given on
   // the system's own screen, which this one has no way of hearing from.
   const [overlayAllowed, setOverlayAllowed] = useState(canDrawOverlays);
@@ -61,12 +56,6 @@ export default function RideSettings() {
     queryFn: () => getRadioStations(auth!),
     enabled: !!auth,
   });
-
-  const ask = async () => {
-    const granted = await requestBluetoothPermission();
-    setAllowed(granted);
-    if (granted) setDevices(getBondedDevices());
-  };
 
   const setOverlay = (on: boolean) => {
     setConfig({ overlay: on });
@@ -83,49 +72,25 @@ export default function RideSettings() {
     setConfig({ speedVolume: on });
   };
 
-  // The chosen intercom stays in the list even if it is not paired right
-  // now: unpaired and paired again it keeps its name, and a choice that
-  // vanished from the screen would look like it was never made.
-  const chosen = config.intercomAddress;
-  const options = [
-    { value: '', label: t('None') },
-    ...devices.map((d) => ({ value: d.address, label: d.name })),
-    ...(chosen && !devices.some((d) => d.address === chosen)
-      ? [{ value: chosen, label: config.intercomName || chosen }]
-      : []),
-  ];
-
   return (
     <SettingsPage title={t('Ride mode')}>
       <ScrollView contentContainerStyle={settingsStyles.content}>
         <Text style={[settingsStyles.sectionTitle, { marginTop: 0 }]}>{t('Intercom')}</Text>
-        {allowed ? (
-          <SelectList
-            label={t('Start when this device connects')}
-            description={t(
-              'Ride mode starts on its own when the chosen Bluetooth device connects, and stops when it disconnects. Pair the intercom with the phone first.',
-            )}
-            options={options}
-            value={chosen}
-            onChange={(address) => {
-              const device = devices.find((d) => d.address === address);
-              setConfig({ intercomAddress: address, intercomName: device?.name ?? '' });
-              // Coming up over the navigation app is only allowed to an app
-              // that may draw over others: asked here, where it is needed.
-              if (address && !canDrawOverlays()) requestOverlayPermission();
-            }}
-          />
-        ) : (
-          <SettingRow
-            label={t('Allow Bluetooth')}
-            description={t('Android needs permission to tell which device connected.')}
-            chevron
-            onPress={() => void ask()}
-          />
-        )}
-        {allowed && devices.length === 0 ? (
-          <Text style={settingsStyles.rowDescription}>{t('No paired device')}</Text>
-        ) : null}
+        <Text style={settingsStyles.sectionDescription}>
+          {t(
+            'Ride mode starts on its own when one of these Bluetooth devices connects, and stops when it disconnects. Pair the intercom with the phone first.',
+          )}
+        </Text>
+        <DevicePicker
+          chosen={config.intercoms}
+          taken={config.cars}
+          onChange={(intercoms, added) => {
+            setConfig({ intercoms });
+            // Coming up over the navigation app is only allowed to an app
+            // that may draw over others: asked here, where it is needed.
+            if (added && !canDrawOverlays()) requestOverlayPermission();
+          }}
+        />
 
         <Text style={settingsStyles.sectionTitle}>{t('On the road')}</Text>
         <SwitchList

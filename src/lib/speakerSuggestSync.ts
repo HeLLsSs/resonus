@@ -65,7 +65,7 @@ function flags(trigger: HandoffTrigger): HandoffFlags {
     onPhone: remoteKind() === null,
     wifi: onWifi(),
     jam: isJamActive(),
-    ride: useRideMode.getState().active,
+    ride: useRideMode.getState().active || useRideMode.getState().carActive,
   };
 }
 

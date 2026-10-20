@@ -73,7 +73,7 @@ function consider(): void {
     now,
     enabled: useSettings.getState().nightSleepSuggest,
     armed: sleepEndsAt !== null || sleepAtSongEnd,
-    ride: useRideMode.getState().active,
+    ride: useRideMode.getState().active || useRideMode.getState().carActive,
     jam: isJamActive(),
     lastNight,
   });

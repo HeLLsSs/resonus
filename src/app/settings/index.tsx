@@ -123,6 +123,8 @@ export default function SettingsScreen() {
     // The motorbike: the intercom, the floating player and the spoken titles
     // are the native module's, so only a phone that has it gets the row.
     ...(rideModeAvailable ? [{ key: 'ride', title: 'Ride mode', icon: 'speedometer-outline' as const }] : []),
+    // The car, for one with nothing but Bluetooth: the same module.
+    ...(rideModeAvailable ? [{ key: 'car', title: 'Car mode', icon: 'car-outline' as const }] : []),
     // The alarm rings through its native module, and plays from the server.
     ...(alarmAvailable && auth ? [{ key: 'alarm', title: 'Wake-up alarm', icon: 'alarm-outline' as const }] : []),
     // Theme lives inside Appearance (row with chevron, like Language).

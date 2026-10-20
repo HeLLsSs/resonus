@@ -207,6 +207,9 @@ appear when it is switched off.
 - **Prepare on its own and volume with the speed**: the next songs download
   while the phone charges on Wi-Fi at night, and the volume rises over the
   rider's own level as the bike goes faster, from the GPS.
+- **Several intercoms**, for several helmets, and **car mode** for a car with
+  nothing but Bluetooth: the car connecting sets the volume, brings the
+  navigation app up and starts the music, each with its own switch.
 - **The helmet hears the state of things** when the intercom connects: the
   battery, where the music is going and how many songs are left, and again
   on asking for "status".

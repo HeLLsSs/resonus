@@ -7,12 +7,11 @@ import android.content.Intent
 import android.os.Build
 
 /**
- * Every Bluetooth device coming or going, from the system. Only the one
- * chosen as the intercom is of interest, and only when one has been chosen
- * at all; the rest is `Intercom`.
+ * Every Bluetooth device coming or going, from the system. Only the ones
+ * chosen as an intercom or a car are of interest; the rest is `Intercom`.
  *
  * The device's name needs BLUETOOTH_CONNECT from Android 12, which is asked
- * for when the intercom is chosen; should it have been taken away since, the
+ * for when a device is chosen; should it have been taken away since, the
  * address still tells.
  */
 class IntercomReceiver : BroadcastReceiver() {
@@ -23,11 +22,11 @@ class IntercomReceiver : BroadcastReceiver() {
       else -> return
     }
     val config = RideConfig.load(context)
-    if (!config.autoStart) return
+    if (config.intercoms.isEmpty() && config.cars.isEmpty()) return
     val device = deviceOf(intent) ?: return
     val name = runCatching { device.name }.getOrNull()
-    if (!config.matches(name, device.address)) return
-    Intercom.deliver(context.applicationContext, connected, name ?: config.intercomName)
+    val kind = config.kindOf(name, device.address) ?: return
+    Intercom.deliver(context.applicationContext, connected, name ?: device.address, kind = kind)
   }
 
   private fun deviceOf(intent: Intent): BluetoothDevice? =

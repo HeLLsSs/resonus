@@ -17,6 +17,12 @@
  * With **Volume with the speed** on, the media volume also rises over the
  * rider's own level as the bike goes faster, from the GPS (see `syncSpeed`).
  *
+ * Car mode is the same start without the ride screen: a car connecting
+ * sets its own volume, brings its own navigation app up, says hello and
+ * starts the music, each as `RideConfig.car` says, and the songs are read
+ * out and the music ducks while it is on. Ride mode, when both are on, is
+ * the one whose settings count.
+ *
  * The preparation of the ride on its own, which has nothing to do with
  * ride mode being on, is started from here too (`startAutoPrepare` in
  * `lib/ridePrepare.ts`).
@@ -50,6 +56,9 @@ import {
   takePendingIntercom,
   updateRideOverlay,
   watchSpeed,
+  type DriveConfig,
+  type DriveKind,
+  type EmptyQueueAction,
   type RideOverlayState,
 } from '@/lib/rideMode';
 import { startAutoPrepare } from '@/lib/ridePrepare';
@@ -61,7 +70,7 @@ import { currentSong, setDuckOthers, SOURCE_FAVORITES, usePlayerStore } from '@/
 import { useRideMode } from '@/store/rideMode';
 
 /**
- * How long a lost intercom is given to come back before ride mode stops:
+ * How long a lost intercom or car is given to come back before its mode stops:
  * a helmet intercom drops the link for a moment now and then, and the
  * overlay going away and coming back at every blink would be worse than
  * either.
@@ -88,7 +97,7 @@ let overlayShown = false;
 /** The song last read out, so a pause and a resume do not read it again. */
 let announced = '';
 
-let lostTimer: ReturnType<typeof setTimeout> | undefined;
+const lostTimers: Partial<Record<DriveKind, ReturnType<typeof setTimeout>>> = {};
 
 /** Whether the music was going when a call came in, so it can be brought back after. */
 let playingBeforeCall = false;
@@ -208,7 +217,7 @@ function overlayState(): RideOverlayState {
  * what to start instead, if anything: the mix built from what this phone
  * plays, the favourites, or the whole library in random order.
  */
-async function resumeSaved(): Promise<void> {
+async function resumeSaved(emptyQueue: EmptyQueueAction): Promise<void> {
   await waitFor(usePlayerStore, (s) => s.queue.length > 0, QUEUE_WAIT_MS);
   const state = usePlayerStore.getState();
   if (state.isPlaying) return;
@@ -216,7 +225,6 @@ async function resumeSaved(): Promise<void> {
     state.toggle();
     return;
   }
-  const { emptyQueue } = useRideMode.getState().config;
   if (emptyQueue === 'foryou') {
     await playForYou();
   } else if (emptyQueue === 'favorites') {
@@ -257,42 +265,87 @@ export async function activateRide(from: 'intercom' | 'intent' | 'manual'): Prom
   if (AppState.currentState === 'active') pushOnce('/ride');
   else openRideScreen();
   if (config.navigationApp) openNavigationApp(config.navigationApp);
-  // The greeting and the status as one line: two lines would be the second
-  // cutting the first short, or replacing it while the engine comes up. The
-  // first song of the ride waits for it (see `announceCurrent`).
-  if (config.status) await waitFor(usePlayerStore, (s) => s.queue.length > 0, STATUS_QUEUE_WAIT_MS);
-  const greeting = [config.announce ? tg('Ride mode') : '', config.status ? statusSentence(rideStatus()) : ''];
-  if (config.announce || config.status) speak(greeting.filter(Boolean).join('. '));
-  if (config.resume) await resumeSaved();
+  await greetAndResume(config, tg('Ride mode'));
+}
+
+/**
+ * The greeting and the status as one line: two lines would be the second
+ * cutting the first short, or replacing it while the engine comes up. The
+ * first song of the ride waits for it (see `announceCurrent`). Then the
+ * music, when asked for.
+ */
+async function greetAndResume(settings: DriveConfig, name: string): Promise<void> {
+  if (settings.status) await waitFor(usePlayerStore, (s) => s.queue.length > 0, STATUS_QUEUE_WAIT_MS);
+  const greeting = [settings.announce ? name : '', settings.status ? statusSentence(rideStatus()) : ''];
+  if (settings.announce || settings.status) speak(greeting.filter(Boolean).join('. '));
+  if (settings.resume) await resumeSaved(settings.emptyQueue);
 }
 
 /** Turns ride mode off: the overlay down, the voice quiet, the music back to pausing for prompts. */
 export function deactivateRide(): void {
-  if (lostTimer) clearTimeout(lostTimer);
-  lostTimer = undefined;
-  if (!useRideMode.getState().active) return;
+  clearLost('ride');
+  const { active, carActive } = useRideMode.getState();
+  if (!active) return;
   useRideMode.setState({ active: false });
   setRideActive(false);
-  setDuckOthers(false);
+  setDuckOthers(carActive);
   setShowWhenLocked(false);
   syncOverlay();
   stopSpeaking();
   announced = '';
 }
 
-async function intercomConnected(): Promise<void> {
-  if (lostTimer) clearTimeout(lostTimer);
-  lostTimer = undefined;
-  if (useRideMode.getState().active) return;
+/**
+ * Turns car mode on, as the car connecting asks: the volume, the navigation
+ * app, the greeting and the music, each as car mode's settings say. The app
+ * stays where it is; the phone is on a mount, and its screens are fine.
+ */
+async function activateCar(): Promise<void> {
+  const { carActive, config } = useRideMode.getState();
+  if (carActive) return;
+  useRideMode.setState({ carActive: true });
+  setDuckOthers(true);
+  batteryWarned = new Set();
+  const { car } = config;
+  if (car.startVolume > 0) setVolumeLevel(car.startVolume);
+  if (car.navigationApp) openNavigationApp(car.navigationApp);
+  await greetAndResume(car, tg('Car mode'));
+}
+
+function deactivateCar(): void {
+  clearLost('car');
+  const { active, carActive } = useRideMode.getState();
+  if (!carActive) return;
+  useRideMode.setState({ carActive: false });
+  if (active) return;
+  setDuckOthers(false);
+  stopSpeaking();
+  announced = '';
+}
+
+function clearLost(kind: DriveKind): void {
+  clearTimeout(lostTimers[kind]);
+  delete lostTimers[kind];
+}
+
+async function deviceConnected(kind: DriveKind): Promise<void> {
+  clearLost(kind);
   // The connection can be what started this runtime: the profile, and the
   // settings that say what to do, are still coming back from disk.
   await whenProfileReady();
-  await activateRide('intercom');
+  if (kind === 'car') await activateCar();
+  else await activateRide('intercom');
 }
 
-function intercomLost(): void {
-  if (lostTimer) clearTimeout(lostTimer);
-  lostTimer = setTimeout(deactivateRide, RECONNECT_GRACE_MS);
+function deviceLost(kind: DriveKind): void {
+  clearLost(kind);
+  lostTimers[kind] = setTimeout(kind === 'car' ? deactivateCar : deactivateRide, RECONNECT_GRACE_MS);
+}
+
+/** The settings of the mode that is on, ride mode first; null with neither on. */
+function driving(): DriveConfig | null {
+  const { active, carActive, config } = useRideMode.getState();
+  return active ? config : carActive ? config.car : null;
 }
 
 /**
@@ -320,14 +373,15 @@ export function startRideSync(): void {
   started = true;
   useRideMode.getState().hydrate();
 
-  onIntercom(({ connected, source }) => {
-    if (connected) void intercomConnected();
-    // The tile asks for a stop now; a lost intercom gets its grace period.
+  onIntercom(({ connected, source, kind }) => {
+    if (connected) void deviceConnected(kind);
+    // The tile asks for a stop now; a lost device gets its grace period.
     else if (source === 'tile') deactivateRide();
-    else intercomLost();
+    else deviceLost(kind);
   });
   // The connection that started this runtime, or arrived before it listened.
-  if (takePendingIntercom()) void intercomConnected();
+  const pending = takePendingIntercom();
+  if (pending) void deviceConnected(pending.kind);
 
   AppState.addEventListener('change', syncOverlay);
   onSpeed(speedRead);
@@ -349,7 +403,7 @@ export function startRideSync(): void {
   // A call in the middle of the ride: what was playing comes back after,
   // when the phone has not brought it back itself.
   onCall((inCall) => {
-    if (!useRideMode.getState().active) return;
+    if (!driving()) return;
     if (inCall) {
       playingBeforeCall = usePlayerStore.getState().isPlaying;
       return;
@@ -358,15 +412,14 @@ export function startRideSync(): void {
     playingBeforeCall = false;
     setTimeout(() => {
       const state = usePlayerStore.getState();
-      if (useRideMode.getState().active && !state.isPlaying && state.queue.length > 0) state.toggle();
+      if (driving() && !state.isPlaying && state.queue.length > 0) state.toggle();
     }, AFTER_CALL_MS);
   });
 
   // The battery going down on a mount with no charger: said once at each
   // step, in the helmet, where the screen is not being looked at.
   onBattery(({ level, charging }) => {
-    const { active, config } = useRideMode.getState();
-    if (!active || !config.announce || charging) return;
+    if (!driving()?.announce || charging) return;
     const step = BATTERY_WARNINGS.find((w) => level <= w && !batteryWarned.has(w));
     if (step === undefined) return;
     for (const w of BATTERY_WARNINGS) if (w >= step) batteryWarned.add(w);
@@ -381,7 +434,8 @@ export function startRideSync(): void {
   });
 
   usePlayerStore.subscribe((state, prev) => {
-    if (!useRideMode.getState().active) return;
+    const settings = driving();
+    if (!settings) return;
     const changed =
       state.queue !== prev.queue ||
       state.index !== prev.index ||
@@ -389,6 +443,6 @@ export function startRideSync(): void {
       state.streamInfo !== prev.streamInfo;
     if (!changed) return;
     if (overlayShown) updateRideOverlay(overlayState());
-    if (useRideMode.getState().config.announce) announceCurrent();
+    if (settings.announce) announceCurrent();
   });
 }

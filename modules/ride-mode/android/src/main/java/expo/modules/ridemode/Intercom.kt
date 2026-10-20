@@ -21,26 +21,27 @@ internal object Intercom {
   /** How long a note stays worth acting on: long enough for JS to start and read it. */
   private const val MAX_WAIT_MS = 60_000L
 
-  @Volatile private var pending: Pair<Long, String>? = null
+  @Volatile private var pending: Triple<Long, String, String>? = null
 
   /**
    * [source] is "intercom" for the receiver and "tile" for the quick settings
    * tile, which asks for the same start and a stop with no grace period.
+   * [kind] is "ride" for an intercom or the tile and "car" for a car.
    */
   @Synchronized
-  fun deliver(context: Context, connected: Boolean, name: String, source: String = "intercom") {
-    Log.i(TAG, "$source ${if (connected) "on" else "off"}: $name")
-    if (RideModeModule.instance?.emitIntercom(connected, name, source) == true) return
+  fun deliver(context: Context, connected: Boolean, name: String, source: String = "intercom", kind: String = "ride") {
+    Log.i(TAG, "$source $kind ${if (connected) "on" else "off"}: $name")
+    if (RideModeModule.instance?.emitIntercom(connected, name, source, kind) == true) return
     if (!connected) return
-    pending = SystemClock.elapsedRealtime() to name
+    pending = Triple(SystemClock.elapsedRealtime(), name, kind)
     JsRuntime.start(context, TAG)
   }
 
-  /** The intercom that connected while JS was not listening, if it is recent; cleared as it is read. */
+  /** The device that connected while JS was not listening, `{name, kind}`, if it is recent; cleared as it is read. */
   @Synchronized
-  fun take(): String? {
-    val (at, name) = pending ?: return null
+  fun take(): Map<String, String>? {
+    val (at, name, kind) = pending ?: return null
     pending = null
-    return name.takeIf { SystemClock.elapsedRealtime() - at <= MAX_WAIT_MS }
+    return mapOf("name" to name, "kind" to kind).takeIf { SystemClock.elapsedRealtime() - at <= MAX_WAIT_MS }
   }
 }

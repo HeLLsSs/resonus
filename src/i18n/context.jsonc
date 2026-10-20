@@ -283,6 +283,8 @@
     // ── Ride mode (Settings › Ride mode, and the ride screen) ───────────────
     "Ride mode": "The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut",
     "Intercom": "Section title: the helmet's Bluetooth intercom (Cardo, Sena…), the device that starts ride mode when it connects",
+    "Car mode": "Ride mode's sibling for a car with nothing but Bluetooth: started when the car connects, it sets the volume, opens the navigation app and starts the music. The name of its settings screen",
+    "Car": "Section title in the car mode settings: the car's Bluetooth system, the device that starts car mode when it connects",
     "None": "The choice of no intercom at all in that list: ride mode never starts by itself",
     "On the road": "Section title over the three switches of what ride mode does once it is on",
     "Floating player": "A small player drawn over whatever app is in front (Waze), with play, pause and next",
