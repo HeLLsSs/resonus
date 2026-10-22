@@ -7,6 +7,18 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Releases before 0.2.1 are only listed on the
 [GitHub releases page](https://github.com/juananzzz/resonus/releases).
 
+## [Unreleased]
+
+## [1.15.1] - 2026-10-22
+
+### Fixed
+
+- In car mode and ride mode, the music no longer comes through Android Auto
+  as a voice command or a call, with the sound of a phone line: it asked for
+  the audio the way a navigation prompt does, for a moment, and the car put
+  it on its voice channel. It now asks for it the way music does, and still
+  dips under the prompts instead of pausing.
+
 ## [1.15.0] - 2026-10-20
 
 ### Added
