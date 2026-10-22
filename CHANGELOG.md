@@ -9,6 +9,48 @@ Releases before 0.2.1 are only listed on the
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-10-23
+
+### Added
+
+- A log of what happens on the road, in Settings › Diagnostics and in the
+  problem report: every Bluetooth device coming and going and what it
+  started, car mode and ride mode turning on and off, the audio focus the
+  player asked for and what Android answered, and where the music went each
+  time it started (the phone's audio mode, the output, what each player is
+  playing). A car is where the sound goes wrong, and this says why without a
+  cable.
+- A notification while car mode or ride mode is on, with what started it
+  and a Stop button, and a "Car mode is on" or "Ride mode is on" row with Stop
+  at the top of their settings. Car mode had no screen, so nothing said it
+  was on. Choosing a car or an intercom asks for notifications.
+- Car mode steps aside for Android Auto (Settings › Car mode › Not with
+  Android Auto, on by default): a car that comes up with Android Auto within
+  ten seconds of its Bluetooth link leaves car mode off, and Android Auto
+  arriving later turns it off. Android Auto already resumes the music and has
+  its own screen.
+- Sleep mode, from the sleep timer menu: a black screen with the time in dim
+  grey, the timer in 15 to 90 minutes with the volume going down over the
+  last ten (half for a short one) instead of half a minute, more time or off
+  in a tap, and when the alarm rings next.
+- Lyrics on the car screen (Settings › Player, off by default): with Android
+  Auto, the line being sung shows in place of the artist on the car's
+  playback screen, the artist one line lower. Synced lyrics only.
+- Settings › At home: the home speaker and what happens when you get home,
+  moved out of Quality & playback, with Home Assistant, Music Assistant and
+  Kodi behind it.
+
+### Changed
+
+- The main settings list is in groups under a title: Listening, Home and on
+  the road, Server, App. YouTube has its own row there when Navifind is on.
+- Ride mode started by hand, from the tile or from another app turns itself
+  off after three hours with no intercom connected: nothing else would, and
+  it went on ducking the music and reading songs out in the car.
+- A car or an intercom is recognised by its Bluetooth address whenever both
+  sides have one, and by its name only for a choice saved without an address.
+  Two cars with the same name ("MY CAR") can no longer pass for each other.
+
 ## [1.15.1] - 2026-10-22
 
 ### Fixed
