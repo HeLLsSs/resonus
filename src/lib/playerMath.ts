@@ -87,10 +87,11 @@ export const SLEEP_FADE_MS = 30_000;
  * When the sleep fade starts and how long it runs, `msLeft` before the timer
  * fires: the fade FINISHES at expiry, not starts then. "Stop in 30 minutes"
  * means at 30 minutes there is silence, and a timer shorter than the fade
- * fades from the moment it is set.
+ * fades from the moment it is set. `fadeMax` is the fade's length: the half
+ * minute of the plain timer, or the long slope of sleep mode.
  */
-export function sleepFadeSchedule(msLeft: number): { fadeMs: number; wait: number } {
-  const fadeMs = Math.min(SLEEP_FADE_MS, msLeft);
+export function sleepFadeSchedule(msLeft: number, fadeMax = SLEEP_FADE_MS): { fadeMs: number; wait: number } {
+  const fadeMs = Math.min(fadeMax, msLeft);
   return { fadeMs, wait: msLeft - fadeMs };
 }
 

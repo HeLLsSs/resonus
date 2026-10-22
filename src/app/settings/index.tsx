@@ -6,7 +6,7 @@
  */
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { ScreenHeader, SettingsSafeArea, settingsStyles } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
@@ -39,6 +39,7 @@ export default function SettingsScreen() {
   // library that needs it.
   const hasDownloads = useDownloads((s) => !s.hydrated || anyDownloads(s));
   const toast = useToast((s) => s.show);
+  const navifind = useSettings((s) => s.navifind);
 
   // Server account in offline mode (auth intact) vs local profile (no auth).
   const serverOffline = offline && !!auth;
@@ -59,79 +60,106 @@ export default function SettingsScreen() {
   // either (#114). "Library" is the exception, since server-offline leaves it
   // with nothing but scanning, and "Local music" is what a local profile gets
   // in its place.
-  const sections: {
+  //
+  // In groups under a title, since a single list of nearly twenty rows was
+  // read top to bottom every time: what you listen to, where it goes (the
+  // house, the road), the server and what is tied to it, and the app itself.
+  type Row = {
     key: string;
     title: string;
     icon: keyof typeof Ionicons.glyphMap;
     disabled?: boolean;
-  }[] = [
-    { key: 'playback', title: 'Quality & playback', icon: 'musical-notes-outline' as const },
-    { key: 'player', title: 'Player', icon: 'play-circle-outline' as const },
-    // Downloads: in server-offline it reduces to used space and delete (no
-    // server means no downloading, but freeing space is still useful). In the
-    // local profile (no account) there are NO server downloads, so it's skipped.
-    ...(offline && !auth
-      ? []
-      : [
-          {
-            key: 'downloads',
-            // Named for both halves of what is in there: what gets downloaded,
-            // and what the app does when there is no connection. The switch
-            // that turns the mode on by itself lived here with no sign of it
-            // from the outside (#89).
-            title: 'Downloads & offline',
-            icon: 'download-outline' as const,
-          },
-        ]),
-    // Library: online is the server's; in local profile, the device's music.
-    // Server-offline it is greyed out and says nothing else: what is inside
-    // (scanning, choosing libraries) is the server's, and what could be done
-    // from here without one is already in "Downloads & offline" above. The row
-    // dims like any other disabled control, arrow included, which is a thing
-    // people already know how to read.
+    /** Where it leads, when that is not `/settings/<key>`. */
+    href?: string;
+  };
+  const groups: { title: string; rows: Row[] }[] = [
     {
-      key: 'library',
-      title: offline && !auth ? 'Local music' : 'Library',
-      icon: offline && !auth ? ('phone-portrait-outline' as const) : ('server-outline' as const),
-      disabled: serverOffline,
+      title: 'Listening',
+      rows: [
+        { key: 'playback', title: 'Quality & playback', icon: 'musical-notes-outline' },
+        { key: 'player', title: 'Player', icon: 'play-circle-outline' },
+        // Downloads: in server-offline it reduces to used space and delete (no
+        // server means no downloading, but freeing space is still useful). In the
+        // local profile (no account) there are NO server downloads, so it's skipped.
+        ...(offline && !auth
+          ? []
+          : [
+              {
+                key: 'downloads',
+                // Named for both halves of what is in there: what gets downloaded,
+                // and what the app does when there is no connection. The switch
+                // that turns the mode on by itself lived here with no sign of it
+                // from the outside (#89).
+                title: 'Downloads & offline',
+                icon: 'download-outline' as const,
+              },
+            ]),
+        // Library: online is the server's; in local profile, the device's music.
+        // Server-offline it is greyed out and says nothing else: what is inside
+        // (scanning, choosing libraries) is the server's, and what could be done
+        // from here without one is already in "Downloads & offline" above. The row
+        // dims like any other disabled control, arrow included, which is a thing
+        // people already know how to read.
+        {
+          key: 'library',
+          title: offline && !auth ? 'Local music' : 'Library',
+          icon: offline && !auth ? 'phone-portrait-outline' : 'server-outline',
+          disabled: serverOffline,
+        },
+        { key: 'webdav', title: 'Network shares', icon: 'folder-outline' },
+        // The alarm rings through its native module, and plays from the server.
+        ...(alarmAvailable && auth ? [{ key: 'alarm', title: 'Wake-up alarm', icon: 'alarm-outline' as const }] : []),
+      ],
     },
-    // Network: the addresses of the server and the switching between them. It
-    // is the one thing here that must work offline and not merely be visible:
-    // an address that is wrong, or a server that moved, is exactly why you
-    // ended up offline, and hiding this screen left no way back in short of
-    // deleting the profile and signing in again (#113). Checking an address is
-    // a ping, which is one of the two requests offline mode lets through. A
-    // local profile has no server, so there is nothing for it here.
-    ...(auth ? [{ key: 'network', title: 'Network', icon: 'git-network-outline' as const }] : []),
-    // Only with a server: the proxy sits in front of one. Its own name, not
-    // translated, and off by default (see `lib/navifind.ts`).
-    ...(auth ? [{ key: 'navifind', title: 'Navifind', icon: 'cloud-download-outline' as const }] : []),
-    ...(auth ? [{ key: 'account', title: 'Account', icon: 'person-circle-outline' as const }] : []),
-    // Scrobbling is also reachable from Quality & playback, where the thresholds
-    // live; the accounts to link are what people come looking for.
-    ...(auth ? [{ key: 'scrobbling', title: 'Scrobbling', icon: 'radio-outline' as const }] : []),
-    // The house's speakers, through Home Assistant. Every profile: the house
-    // is the same whichever server is signed in, and a local profile's files
-    // go out through the phone the same way they do to a Cast receiver.
-    { key: 'home-assistant', title: 'Home Assistant', icon: 'home-outline' as const },
-    // And Music Assistant on its own, which reaches its players directly and
-    // plays them from the server's own library rather than through the phone.
-    { key: 'music-assistant', title: 'Music Assistant', icon: 'musical-notes-outline' as const },
-    // The TV, through Kodi's remote control over HTTP. Not in a browser: the
-    // page is served over HTTPS and Kodi only speaks HTTP, which it refuses.
-    ...(Platform.OS !== 'web' ? [{ key: 'kodi', title: 'Kodi', icon: 'tv-outline' as const }] : []),
-    // The motorbike: the intercom, the floating player and the spoken titles
-    // are the native module's, so only a phone that has it gets the row.
-    ...(rideModeAvailable ? [{ key: 'ride', title: 'Ride mode', icon: 'speedometer-outline' as const }] : []),
-    // The car, for one with nothing but Bluetooth: the same module.
-    ...(rideModeAvailable ? [{ key: 'car', title: 'Car mode', icon: 'car-outline' as const }] : []),
-    // The alarm rings through its native module, and plays from the server.
-    ...(alarmAvailable && auth ? [{ key: 'alarm', title: 'Wake-up alarm', icon: 'alarm-outline' as const }] : []),
-    // Theme lives inside Appearance (row with chevron, like Language).
-    { key: 'webdav', title: 'Network shares', icon: 'folder-outline' as const },
-    { key: 'personalization', title: 'Appearance', icon: 'color-palette-outline' as const },
-    { key: 'about', title: 'About::app', icon: 'information-circle-outline' as const },
-    { key: 'backup', title: 'Backup & restore', icon: 'archive-outline' as const },
+    {
+      title: 'Home and on the road',
+      rows: [
+        // The house's speakers: the handoff when you get home, and Home
+        // Assistant, Music Assistant and Kodi behind it. Every profile: the
+        // house is the same whichever server is signed in.
+        { key: 'home', title: 'At home', icon: 'home-outline' },
+        // The motorbike: the intercom, the floating player and the spoken titles
+        // are the native module's, so only a phone that has it gets the row.
+        ...(rideModeAvailable ? [{ key: 'ride', title: 'Ride mode', icon: 'speedometer-outline' as const }] : []),
+        // The car, for one with nothing but Bluetooth: the same module.
+        ...(rideModeAvailable ? [{ key: 'car', title: 'Car mode', icon: 'car-outline' as const }] : []),
+      ],
+    },
+    {
+      title: 'Server',
+      rows: [
+        // Network: the addresses of the server and the switching between them. It
+        // is the one thing here that must work offline and not merely be visible:
+        // an address that is wrong, or a server that moved, is exactly why you
+        // ended up offline, and hiding this screen left no way back in short of
+        // deleting the profile and signing in again (#113). Checking an address is
+        // a ping, which is one of the two requests offline mode lets through. A
+        // local profile has no server, so there is nothing for it here.
+        ...(auth ? [{ key: 'network', title: 'Network', icon: 'git-network-outline' as const }] : []),
+        ...(auth ? [{ key: 'account', title: 'Account', icon: 'person-circle-outline' as const }] : []),
+        // Scrobbling is also reachable from Quality & playback, where the thresholds
+        // live; the accounts to link are what people come looking for.
+        ...(auth ? [{ key: 'scrobbling', title: 'Scrobbling', icon: 'radio-outline' as const }] : []),
+        // Only with a server: the proxy sits in front of one. Its own name, not
+        // translated, and off by default (see `lib/navifind.ts`).
+        ...(auth ? [{ key: 'navifind', title: 'Navifind', icon: 'cloud-download-outline' as const }] : []),
+        // YouTube is Navifind's: shown only with it on, where it does something,
+        // instead of one level down inside its screen.
+        ...(auth && navifind ? [{ key: 'youtube', title: 'YouTube', icon: 'logo-youtube' as const }] : []),
+      ],
+    },
+    {
+      title: 'App',
+      rows: [
+        // Theme lives inside Appearance (row with chevron, like Language).
+        { key: 'personalization', title: 'Appearance', icon: 'color-palette-outline' },
+        { key: 'backup', title: 'Backup & restore', icon: 'archive-outline' },
+        // Not a settings section: a screen of its own, reached from here
+        // because this is where somebody looks for what the app knows.
+        { key: 'stats', title: 'Listening stats', icon: 'stats-chart-outline', href: '/stats' },
+        { key: 'about', title: 'About::app', icon: 'information-circle-outline' },
+      ],
+    },
   ];
 
   return (
@@ -153,35 +181,31 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {sections.map((s) => (
-          <Pressable
-            key={s.key}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !!s.disabled }}
-            disabled={s.disabled}
-            style={({ pressed }) => [
-              styles.sectionRow,
-              s.disabled && { opacity: 0.5 },
-              pressed && !s.disabled && { opacity: 0.6 },
-            ]}
-            onPress={() => router.push(`/settings/${s.key}`)}
-          >
-            <Ionicons name={s.icon} size={24} color={colors.text} />
-            <Text style={styles.sectionRowTitle}>{t(s.title)}</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-          </Pressable>
-        ))}
-        {/* Not a settings section: a screen of its own, reached from here
-            because this is where somebody looks for what the app knows. */}
-        <Pressable
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.sectionRow, pressed && { opacity: 0.6 }]}
-          onPress={() => router.push('/stats')}
-        >
-          <Ionicons name="stats-chart-outline" size={24} color={colors.text} />
-          <Text style={styles.sectionRowTitle}>{t('Listening stats')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        </Pressable>
+        {groups
+          .filter((group) => group.rows.length > 0)
+          .map((group) => (
+            <View key={group.title}>
+              <Text style={settingsStyles.sectionTitle}>{t(group.title)}</Text>
+              {group.rows.map((s) => (
+                <Pressable
+                  key={s.key}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: !!s.disabled }}
+                  disabled={s.disabled}
+                  style={({ pressed }) => [
+                    styles.sectionRow,
+                    s.disabled && { opacity: 0.5 },
+                    pressed && !s.disabled && { opacity: 0.6 },
+                  ]}
+                  onPress={() => router.push(s.href ?? `/settings/${s.key}`)}
+                >
+                  <Ionicons name={s.icon} size={24} color={colors.text} />
+                  <Text style={styles.sectionRowTitle}>{t(s.title)}</Text>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                </Pressable>
+              ))}
+            </View>
+          ))}
 
         <View style={styles.sessionRow}>
           {/* MODE action (outline pill, left): same placement online and offline.

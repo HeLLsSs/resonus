@@ -892,6 +892,12 @@ interface SettingsState {
   /** The Sunday evening report and the week's playlist (`lib/weeklyReport.ts`). */
   weeklyReport: boolean;
   /**
+   * The line of the lyrics being sung, in the artist's place on Android
+   * Auto's playback screen (`lib/carLyrics.ts`). Off by default: it is text
+   * moving on a screen in front of a driver, which is the driver's call.
+   */
+  carLyrics: boolean;
+  /**
    * What the die plays when nothing says otherwise (`lib/diceModes.ts`): the
    * Home chip, the widget, the car's "Shuffle everything", the shortcuts.
    */
@@ -1103,6 +1109,7 @@ interface SettingsState {
   setNavifind: (value: boolean) => void;
   setExclusivePlayback: (value: boolean) => void;
   setYoutubeOutageAlert: (value: boolean) => void;
+  setCarLyrics: (value: boolean) => void;
   setAutoImportLiked: (value: boolean) => void;
   /** Both at once, empty to forget: they are only ever set from a token that
    *  ListenBrainz has just said whose it is. */
@@ -1270,6 +1277,7 @@ function snapshot(get: () => SettingsState) {
     batteryWarning: s.batteryWarning,
     nightSleepSuggest: s.nightSleepSuggest,
     weeklyReport: s.weeklyReport,
+    carLyrics: s.carLyrics,
     diceMode: s.diceMode,
     homeHandoff: s.homeHandoff,
     homeSpeakerHost: s.homeSpeakerHost,
@@ -1412,6 +1420,7 @@ const DEFAULTS = {
   batteryWarning: true,
   nightSleepSuggest: true,
   weeklyReport: true,
+  carLyrics: false,
   diceMode: 'mix' as DiceMode,
   homeHandoff: 'ask' as HandoffMode,
   homeSpeakerHost: '',
@@ -1802,6 +1811,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
 
   setWeeklyReport: (weeklyReport) => {
     set({ weeklyReport });
+    persist(snapshot(get));
+  },
+
+  setCarLyrics: (carLyrics) => {
+    set({ carLyrics });
     persist(snapshot(get));
   },
 
@@ -2227,6 +2241,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           batteryWarning: boolean;
           nightSleepSuggest: boolean;
           weeklyReport?: boolean;
+          carLyrics?: boolean;
           suggestKnownSpeakers?: boolean;
           diceMode?: unknown;
           homeHandoff?: unknown;
@@ -2518,6 +2533,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         }
         if (typeof parsed.weeklyReport === 'boolean') {
           set({ weeklyReport: parsed.weeklyReport });
+        }
+        if (typeof parsed.carLyrics === 'boolean') {
+          set({ carLyrics: parsed.carLyrics });
         }
         if (isDiceMode(parsed.diceMode)) {
           set({ diceMode: parsed.diceMode });

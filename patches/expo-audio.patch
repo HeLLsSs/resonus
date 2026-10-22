@@ -1,8 +1,8 @@
 diff --git a/android/build.gradle b/android/build.gradle
-index f465e68db548adeff856a5dd3d01162dbd2bf3d9..6ecfd0872ffb8663fc7538fd47a2e2328d71354f 100644
+index f465e68db548adeff856a5dd3d01162dbd2bf3d9..3f6b0bba6a7106e4c4ce33f10b17039744db1650 100644
 --- a/android/build.gradle
 +++ b/android/build.gradle
-@@ -35,4 +35,9 @@ dependencies {
+@@ -35,4 +35,12 @@ dependencies {
    implementation "androidx.media3:media3-datasource-okhttp:$androidxMedia3Version"
    implementation "androidx.media3:media3-exoplayer-hls:$androidxMedia3Version"
    implementation "androidx.media3:media3-exoplayer-smoothstreaming:$androidxMedia3Version"
@@ -11,6 +11,9 @@ index f465e68db548adeff856a5dd3d01162dbd2bf3d9..6ecfd0872ffb8663fc7538fd47a2e232
 +  // session, so the player has to build its sink with it (see
 +  // `DspRenderersFactory`). A local module of this app, not a package.
 +  implementation project(':audio-dsp')
++  // The road's log (`DriveLog`): what focus was asked for, what Android
++  // answered, and where the music went when it started.
++  implementation project(':crash-log')
  }
 diff --git a/android/src/main/AndroidManifest.xml b/android/src/main/AndroidManifest.xml
 index 36a19f2d9c4a979a940ab681a1fb844ce45f7c75..3509de4747f3ebdda1a014f05fb02f0710563498 100644
@@ -26,10 +29,19 @@ index 36a19f2d9c4a979a940ab681a1fb844ce45f7c75..3509de4747f3ebdda1a014f05fb02f07
 +  <uses-permission android:name="android.permission.WAKE_LOCK" />
  </manifest>
 diff --git a/android/src/main/java/expo/modules/audio/AudioModule.kt b/android/src/main/java/expo/modules/audio/AudioModule.kt
-index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a47375cbfdeed 100644
+index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da7685b3b2de 100644
 --- a/android/src/main/java/expo/modules/audio/AudioModule.kt
 +++ b/android/src/main/java/expo/modules/audio/AudioModule.kt
-@@ -18,6 +18,7 @@ import androidx.media3.common.C.CONTENT_TYPE_HLS
+@@ -10,6 +10,8 @@ import android.media.AudioFocusRequest
+ import android.media.AudioManager
+ import android.net.Uri
+ import android.os.Build
++import android.os.Handler
++import android.os.Looper
+ import android.util.Log
+ import androidx.core.content.ContextCompat
+ import androidx.core.net.toUri
+@@ -18,6 +20,7 @@ import androidx.media3.common.C.CONTENT_TYPE_HLS
  import androidx.media3.common.C.CONTENT_TYPE_OTHER
  import androidx.media3.common.C.CONTENT_TYPE_SS
  import androidx.media3.common.MediaItem
@@ -37,16 +49,17 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
  import androidx.media3.common.Player
  import androidx.media3.common.util.Util
  import androidx.media3.datasource.DataSource
-@@ -28,6 +29,8 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
+@@ -28,6 +31,9 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
  import androidx.media3.exoplayer.smoothstreaming.SsMediaSource
  import androidx.media3.exoplayer.source.MediaSource
  import androidx.media3.exoplayer.source.ProgressiveMediaSource
 +import androidx.media3.extractor.DefaultExtractorsFactory
 +import androidx.media3.extractor.ExtractorsFactory
++import expo.modules.crashlog.DriveLog
  import expo.modules.interfaces.permissions.Permissions
  import expo.modules.kotlin.Promise
  import expo.modules.kotlin.exception.Exceptions
-@@ -57,6 +60,8 @@ class AudioModule : Module() {
+@@ -57,6 +63,8 @@ class AudioModule : Module() {
    private var shouldPlayInBackground = false
    private var audioEnabled = true
    private var shouldRouteThroughEarpiece = false
@@ -55,7 +68,15 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
    private var focusAcquired = false
    private var interruptionMode: InterruptionMode? = null
    private var allowsBackgroundRecording = false
-@@ -140,22 +145,40 @@ class AudioModule : Module() {
+@@ -78,6 +86,7 @@ class AudioModule : Module() {
+ 
+   private var audioFocusRequest: AudioFocusRequest? = null
+   private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
++    driveLog("focus ${DriveLog.focusName(focusChange)}")
+     appContext.mainQueue.launch {
+       when (focusChange) {
+         AudioManager.AUDIOFOCUS_LOSS -> {
+@@ -140,22 +149,40 @@ class AudioModule : Module() {
      return playsInSilentMode || audioManager.ringerMode == AudioManager.RINGER_MODE_NORMAL
    }
  
@@ -104,7 +125,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
              .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
              .build()
          )
-@@ -168,12 +191,7 @@ class AudioModule : Module() {
+@@ -168,14 +195,10 @@ class AudioModule : Module() {
        }
      } else {
        @Suppress("DEPRECATION")
@@ -117,8 +138,40 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
 +      audioManager.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
      }
  
++    driveLog("focus asked: gain, ${DriveLog.resultName(result ?: -1)}")
      if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-@@ -363,7 +381,16 @@ class AudioModule : Module() {
+       focusAcquired = true
+     } else {
+@@ -183,6 +206,28 @@ class AudioModule : Module() {
+     }
+   }
+ 
++  /** One line in the road's log (`DriveLog`, in the app's crash-log module). */
++  private fun driveLog(message: String) {
++    appContext.reactContext?.let { DriveLog.add(it, message) }
++  }
++
++  /** The last route written, so a route that has not changed is not written at every song. */
++  private var loggedRoute = ""
++
++  /**
++   * The line written when a player starts sounding: where Android put it.
++   * Taken a moment after the start, once the route has settled.
++   */
++  private fun logPlaybackRoute() {
++    val context = appContext.reactContext ?: return
++    Handler(Looper.getMainLooper()).postDelayed({
++      val route = DriveLog.audioState(context)
++      if (route == loggedRoute) return@postDelayed
++      loggedRoute = route
++      DriveLog.add(context, "playing · $route")
++    }, ROUTE_SETTLE_MS)
++  }
++
+   private fun releaseAudioFocus() {
+     if (!focusAcquired) {
+       return
+@@ -363,7 +408,17 @@ class AudioModule : Module() {
              bufferDurationMs
            )
            player.onPlaybackStateChange = { isPlaying ->
@@ -132,11 +185,12 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
 +              if (!focusAcquired) {
 +                requestAudioFocus()
 +              }
++              logPlaybackRoute()
 +            } else if (shouldReleaseFocus()) {
                releaseAudioFocus()
              }
            }
-@@ -376,6 +403,15 @@ class AudioModule : Module() {
+@@ -376,6 +431,15 @@ class AudioModule : Module() {
          player.id
        }
  
@@ -152,7 +206,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
        Property("isBuffering") { player ->
          runOnMain {
            player.ref.playbackState == Player.STATE_BUFFERING
-@@ -438,6 +474,20 @@ class AudioModule : Module() {
+@@ -438,6 +502,20 @@ class AudioModule : Module() {
          player.preservesPitch = preservesPitch
        }
  
@@ -173,7 +227,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
        Property("currentTime") { player ->
          runOnMain {
            player.currentTime
-@@ -507,6 +557,27 @@ class AudioModule : Module() {
+@@ -507,6 +585,27 @@ class AudioModule : Module() {
          }
        }
  
@@ -201,7 +255,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
        Function("setActiveForLockScreen") { ref: AudioPlayer, active: Boolean, metadata: Metadata?, options: AudioLockScreenOptions? ->
          runOnMain {
            ref.setActiveForLockScreen(active, metadata, options)
-@@ -525,6 +596,14 @@ class AudioModule : Module() {
+@@ -525,6 +624,14 @@ class AudioModule : Module() {
          }
        }
  
@@ -216,7 +270,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
        Function("setAudioSamplingEnabled") { player: AudioPlayer, enabled: Boolean ->
          runOnMain {
            player.setSamplingEnabled(enabled)
-@@ -685,7 +764,16 @@ class AudioModule : Module() {
+@@ -685,7 +792,17 @@ class AudioModule : Module() {
            }
            playlist.loadInitialPlaylist()
            playlist.onPlaybackStateChange = { isPlaying ->
@@ -230,11 +284,12 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
 +              if (!focusAcquired) {
 +                requestAudioFocus()
 +              }
++              logPlaybackRoute()
 +            } else if (shouldReleaseFocus()) {
                releaseAudioFocus()
              }
            }
-@@ -860,13 +948,29 @@ class AudioModule : Module() {
+@@ -860,13 +977,29 @@ class AudioModule : Module() {
  
    private fun createMediaItem(source: AudioSource?): MediaSource? = source?.uri?.let { uriString ->
      val uri = uriString.toUri()
@@ -265,7 +320,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
  
      val preloadedBytes = AudioPreloadManager.get(uriString)
      val factory: DataSource.Factory = if (preloadedBytes != null) {
-@@ -914,10 +1018,32 @@ class AudioModule : Module() {
+@@ -914,10 +1047,32 @@ class AudioModule : Module() {
      }
    }
  
@@ -299,7 +354,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
    }
  
    private fun retrieveStreamType(uri: Uri): Int = Util.inferContentType(uri)
-@@ -931,11 +1057,37 @@ class AudioModule : Module() {
+@@ -931,11 +1086,37 @@ class AudioModule : Module() {
        CONTENT_TYPE_SS -> SsMediaSource.Factory(factory)
        CONTENT_TYPE_DASH -> DashMediaSource.Factory(factory)
        CONTENT_TYPE_HLS -> HlsMediaSource.Factory(factory)
@@ -338,6 +393,13 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a4737
    private fun <T> runOnMain(block: () -> T): T =
      runBlocking(appContext.mainQueue.coroutineContext) { block() }
  
+@@ -948,5 +1129,6 @@ class AudioModule : Module() {
+ 
+   companion object {
+     val TAG: String = AudioModule::class.java.simpleName
++    private const val ROUTE_SETTLE_MS = 1_500L
+   }
+ }
 diff --git a/android/src/main/java/expo/modules/audio/AudioPlayer.kt b/android/src/main/java/expo/modules/audio/AudioPlayer.kt
 index c76a9fd2a53743a691782e0f67d0d71401df58f6..4696a41e8644ff4202bc244922df795e846b51fc 100644
 --- a/android/src/main/java/expo/modules/audio/AudioPlayer.kt

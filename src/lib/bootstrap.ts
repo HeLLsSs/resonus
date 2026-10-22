@@ -19,6 +19,7 @@ import { startPerfLog } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
 import { startCarAutoSync } from '@/lib/carAutoSync';
+import { startCarLyrics } from '@/lib/carLyrics';
 import { startPlaybackLock } from '@/store/playbackLock';
 import { startHaBridge } from '@/lib/haBridge';
 import { startIntentsApi } from '@/lib/intentsApi';
@@ -230,6 +231,7 @@ export function startApp(): void {
   watchProfile();
   watchQueueRestore();
   startCarAutoSync();
+  startCarLyrics();
   startWidgetSync();
   startPlaybackLock();
   startRideSync();

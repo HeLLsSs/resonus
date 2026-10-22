@@ -163,6 +163,13 @@ describe('readRideConfig', () => {
     assert.deepEqual([config.intercoms, config.cars], [[helmet], [{ name: 'Clio', address: 'CC:DD' }]]);
   });
 
+  it('keeps car mode off under Android Auto unless a backup says otherwise', () => {
+    assert.deepEqual(
+      [readRideConfig({ car: { resume: false } }).car.notWithAndroidAuto, readRideConfig({ car: { notWithAndroidAuto: false } }).car.notWithAndroidAuto],
+      [true, false],
+    );
+  });
+
   it('turns the one intercom of an older backup into a list', () => {
     assert.deepEqual(readRideConfig({ intercomName: 'Cardo', intercomAddress: 'AA:BB' }).intercoms, [helmet]);
   });

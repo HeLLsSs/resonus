@@ -5,13 +5,16 @@
  *
  * Knowing which device connected needs a permission from Android 12, asked
  * here the first time the list is opened. A device the other mode has is
- * left out, since one connection cannot start both.
+ * left out, since one connection cannot start both. Choosing one also asks
+ * for notifications, which is how a mode that is on says so (with its Stop
+ * button) from Android 13.
  */
 import { useState } from 'react';
 import { Text } from 'react-native';
 
 import { SettingRow, settingsStyles, SwitchList } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
+import { askNotificationPermission } from '@/lib/navifindWatch';
 import {
   getBondedDevices,
   hasBluetoothPermission,
@@ -63,8 +66,10 @@ export function DevicePicker({
       options={devices.map((device) => ({
         label: device.name || device.address,
         value: has(chosen, device),
-        onChange: (on) =>
-          onChange(on ? [...chosen, device] : chosen.filter((c) => c.address !== device.address), on),
+        onChange: (on) => {
+          if (on) void askNotificationPermission();
+          onChange(on ? [...chosen, device] : chosen.filter((c) => c.address !== device.address), on);
+        },
       }))}
     />
   );

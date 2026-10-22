@@ -84,6 +84,7 @@ describe('buildReport', () => {
         text: `${'é'.repeat(200)}\n${'word '.repeat(3000)}`,
         crashLog: Array.from({ length: 20 }, (_, i) => `Error ${i}\n${'    at frame (file.js:1:2)\n'.repeat(80)}`),
         carLog: Array.from({ length: 500 }, (_, i) => `line ${i} 😀`).join('\n'),
+        driveLog: Array.from({ length: 300 }, (_, i) => `drive ${i} · mode=normal media→remote-submix`).join('\n'),
       }),
       ISSUE_BODY_MAX,
     );
@@ -98,6 +99,24 @@ describe('buildReport', () => {
     const at = (s: string) => body.indexOf(s);
     const order = ['Playback stops', '### Environment', 'newest crash', 'older crash', '### Android Auto', 'new line', 'old line'].map(at);
     assert.deepEqual(order, [...order].sort((a, b) => a - b));
+  });
+
+  it('gives the road log its own section after the car log, newest first, and a share of the room', () => {
+    const { body } = buildReport(
+      input({
+        carLog: Array.from({ length: 500 }, (_, i) => `car ${i}`).join('\n'),
+        driveLog: 'car mode on\nplaying · mode=communication',
+      }),
+      ISSUE_BODY_MAX,
+    );
+    const at = (s: string) => body.indexOf(s);
+    const order = ['### Android Auto', 'car 499', '### Car and ride mode', 'playing · mode=communication', 'car mode on'].map(at);
+    assert.ok(order.every((i) => i >= 0), JSON.stringify(order));
+    assert.deepEqual(order, [...order].sort((a, b) => a - b));
+  });
+
+  it('leaves the road log out when it is empty', () => {
+    assert.ok(!buildReport(input({ driveLog: '' }), MAIL_BODY_MAX).body.includes('Car and ride mode'));
   });
 });
 

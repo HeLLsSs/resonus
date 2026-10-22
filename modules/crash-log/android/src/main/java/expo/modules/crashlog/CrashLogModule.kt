@@ -18,6 +18,8 @@ import java.util.TimeZone
  * writes over: the handler goes in when the modules are created, which is
  * before any JavaScript runs. The file is capped as the JavaScript side caps
  * it: past 64 KB the oldest half is dropped, at an entry boundary.
+ *
+ * It also hands JS the road's log (`DriveLog`), to read and to write to.
  */
 class CrashLogModule : Module() {
   override fun definition() = ModuleDefinition {
@@ -26,6 +28,23 @@ class CrashLogModule : Module() {
     OnCreate {
       val dir = appContext.reactContext?.filesDir ?: return@OnCreate
       install(File(dir, FILE_NAME))
+    }
+
+    Function("readDriveLog") {
+      appContext.reactContext?.let { DriveLog.read(it) }.orEmpty()
+    }
+
+    Function("addDriveLog") { message: String ->
+      appContext.reactContext?.let { DriveLog.add(it, message) }
+    }
+
+    Function("clearDriveLog") {
+      appContext.reactContext?.let { DriveLog.clear(it) }
+    }
+
+    /** Where the sound is going right now, as one line (`DriveLog.audioState`). */
+    Function("audioState") {
+      appContext.reactContext?.let { DriveLog.audioState(it) }.orEmpty()
     }
   }
 

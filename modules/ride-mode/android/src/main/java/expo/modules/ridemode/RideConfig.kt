@@ -6,10 +6,15 @@ import org.json.JSONObject
 
 /** A paired Bluetooth device ride or car mode starts on. */
 internal data class Device(val name: String, val address: String) {
-  /** Whether the device that just connected is this one, by address or by name. */
+  /**
+   * Whether the device that just connected is this one. By address whenever
+   * both sides have one: two cars can carry the same name ("MY CAR"), never
+   * the same address. The name only for a device chosen without an address,
+   * by a build that did not keep one.
+   */
   fun matches(name: String?, address: String?): Boolean =
-    (this.address.isNotEmpty() && this.address.equals(address, ignoreCase = true)) ||
-      (this.name.isNotEmpty() && this.name == name)
+    if (this.address.isNotEmpty() && !address.isNullOrEmpty()) this.address.equals(address, ignoreCase = true)
+    else this.name.isNotEmpty() && this.name == name
 
   fun toMap(): Map<String, String> = mapOf("name" to name, "address" to address)
 }

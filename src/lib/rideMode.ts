@@ -43,13 +43,23 @@ export interface DriveConfig {
   status: boolean;
 }
 
+/** What car mode does: the shared part, and what only a car has. */
+export interface CarConfig extends DriveConfig {
+  /**
+   * Car mode stays off while Android Auto is on the car's screen: Android
+   * Auto starts the music and has its own screen, and car mode on top of it
+   * only did the same things twice.
+   */
+  notWithAndroidAuto: boolean;
+}
+
 export interface RideConfig {
   /** The intercoms that start ride mode; none is ride mode never starting by itself. */
   intercoms: BluetoothDevice[];
   /** The cars that start car mode. */
   cars: BluetoothDevice[];
   /** What car mode does. */
-  car: DriveConfig;
+  car: CarConfig;
   /** The floating player over other apps. */
   overlay: boolean;
   /** Every new song read out loud. */
@@ -111,12 +121,16 @@ export interface RideOverlayState {
 /** Which mode a device starts: ride mode for an intercom, car mode for a car. */
 export type DriveKind = 'ride' | 'car';
 
-/** An intercom or a car coming or going, or the quick settings tile tapped, which asks for the same as an intercom. */
+/**
+ * An intercom or a car coming or going, the quick settings tile tapped,
+ * which asks for the same as an intercom, or the Stop button of the
+ * notification shown while a mode is on, which stops both (`kind: 'all'`).
+ */
 export interface IntercomEvent {
   connected: boolean;
   name: string;
-  source: 'intercom' | 'tile';
-  kind: DriveKind;
+  source: 'intercom' | 'tile' | 'stop';
+  kind: DriveKind | 'all';
 }
 
 /** A button of the floating player. Its title opens the app on its own, natively. */
@@ -135,7 +149,7 @@ interface NativeRideMode {
   openApp: (link: string) => void;
   speak: (text: string, queue: boolean) => void;
   stopSpeaking: () => void;
-  takePendingIntercom: () => { name: string; kind: DriveKind } | null;
+  takePendingIntercom: () => { name: string; kind: DriveKind; source: 'intercom' | 'tile' } | null;
   getNavigationApps: () => NavigationApp[];
   openNavigationApp: (pkg: string) => boolean;
   setShowWhenLocked: (on: boolean) => void;
@@ -145,6 +159,9 @@ interface NativeRideMode {
   listen: () => Promise<string>;
   isScreenOn: () => boolean;
   watchSpeed: (on: boolean) => void;
+  showModeNotice: (channel: string, title: string, text: string, stop: string) => void;
+  hideModeNotice: () => void;
+  isAndroidAutoConnected: () => boolean;
   addListener: {
     (event: 'screen', cb: (e: { on: boolean }) => void): { remove: () => void };
     (event: 'speed', cb: (e: { speed: number }) => void): { remove: () => void };
@@ -169,13 +186,14 @@ export const rideModeAvailable = !!native;
 /** The deep link that opens the app on the ride screen, from the overlay, a shortcut or the module. */
 export const RIDE_LINK = 'resonuls://ride';
 
-export const NO_CAR_CONFIG: DriveConfig = {
+export const NO_CAR_CONFIG: CarConfig = {
   announce: false,
   resume: true,
   emptyQueue: 'nothing',
   navigationApp: '',
   startVolume: 0,
   status: false,
+  notWithAndroidAuto: true,
 };
 
 export const NO_RIDE_CONFIG: RideConfig = {
@@ -236,14 +254,14 @@ function readDevices(value: unknown): BluetoothDevice[] {
   });
 }
 
-function readCarConfig(value: unknown): DriveConfig {
+function readCarConfig(value: unknown): CarConfig {
   if (typeof value !== 'object' || value === null) return NO_CAR_CONFIG;
   const given = value as Record<string, unknown>;
   const car: Record<string, unknown> = { ...NO_CAR_CONFIG };
   for (const [key, fallback] of Object.entries(NO_CAR_CONFIG)) {
     if (typeof given[key] === typeof fallback) car[key] = given[key];
   }
-  const read = car as unknown as DriveConfig;
+  const read = car as unknown as CarConfig;
   return { ...read, emptyQueue: EMPTY_QUEUE_ACTIONS.find((a) => a === read.emptyQueue) ?? 'nothing' };
 }
 
@@ -341,7 +359,7 @@ export function stopSpeaking(): void {
 }
 
 /** The intercom that connected while JS was not running, if any; read once and cleared. */
-export function takePendingIntercom(): { name: string; kind: DriveKind } | null {
+export function takePendingIntercom(): { name: string; kind: DriveKind; source: 'intercom' | 'tile' } | null {
   return native?.takePendingIntercom() ?? null;
 }
 
@@ -362,6 +380,28 @@ export function setShowWhenLocked(on: boolean): void {
 /** The screen's brightness while the app is in front, 0 to 1; -1 gives it back to the phone. */
 export function setScreenBrightness(level: number): void {
   native?.setScreenBrightness(level);
+}
+
+/**
+ * The quiet notification that says a mode is on, with a Stop button, in the
+ * app's words: the name of its channel in the system settings, its title and
+ * line, and the button.
+ */
+export function showModeNotice(channel: string, title: string, text: string, stop: string): void {
+  native?.showModeNotice(channel, title, text, stop);
+}
+
+export function hideModeNotice(): void {
+  native?.hideModeNotice();
+}
+
+/** Whether Android Auto is on a car's screen right now. */
+export function isAndroidAutoConnected(): boolean {
+  try {
+    return native?.isAndroidAutoConnected() ?? false;
+  } catch {
+    return false;
+  }
 }
 
 /** Tells the quick settings tile whether ride mode is on. */

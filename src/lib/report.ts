@@ -38,6 +38,8 @@ export interface ReportInput {
   crashLog: string[];
   /** The car module's log, oldest line first, as `recentCarAutoLog` gives it. */
   carLog: string;
+  /** The road's log, oldest line first, as `readDriveLog` gives it. */
+  driveLog?: string;
   /**
    * Things that must not appear anywhere, matched as they are: the username,
    * the server addresses. The patterns below catch what looks like a secret;
@@ -142,10 +144,10 @@ export function redact(text: string, secrets: string[] = []): string {
 
 /**
  * The report itself: what the person wrote, the phone and the app, then the
- * newest crashes and the car's last lines, newest first. `maxLength` is what
- * the body may weigh once encoded into a link; the text and the environment
- * come first, the text with half of it at most, and the crashes get half of
- * what is left when there is a car log to share it with.
+ * newest crashes, the car's last lines and the road's, newest first.
+ * `maxLength` is what the body may weigh once encoded into a link; the text
+ * and the environment come first, the text with half of it at most, and what
+ * is left is shared evenly between the logs that have something in them.
  */
 export function buildReport(input: ReportInput, maxLength: number): Report {
   const clean = (s: string) => redact(s, input.secrets);
@@ -165,15 +167,16 @@ export function buildReport(input: ReportInput, maxLength: number): Report {
   const tail = `\n\n${environment}`;
   // Half at most, or a pasted wall of text would leave no room for the logs.
   let body = cut(text || '(no description)', Math.floor(maxLength / 2)) + tail;
-  const carLines = clean(input.carLog).split('\n').filter((l) => l.trim()).reverse();
-  const left = maxLength - size(body);
-  body += section(
-    'Crashes (newest first)',
-    input.crashLog.map(clean),
-    carLines.length ? Math.floor(left / 2) : left,
-    '\n\n',
-  );
-  body += section('Android Auto (newest first)', carLines, maxLength - size(body), '\n');
+  const lines = (log = '') => clean(log).split('\n').filter((l) => l.trim()).reverse();
+  const carLines = lines(input.carLog);
+  const driveLines = lines(input.driveLog);
+  // The crashes and every log after them with something in it, each given an
+  // even share of what is still left when its turn comes.
+  let shares = 1 + (carLines.length ? 1 : 0) + (driveLines.length ? 1 : 0);
+  const share = () => Math.floor((maxLength - size(body)) / shares--);
+  body += section('Crashes (newest first)', input.crashLog.map(clean), share(), '\n\n');
+  body += section('Android Auto (newest first)', carLines, carLines.length ? share() : maxLength - size(body), '\n');
+  if (driveLines.length) body += section('Car and ride mode (newest first)', driveLines, share(), '\n');
   return { title, body };
 }
 

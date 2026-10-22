@@ -152,7 +152,8 @@ does, from anywhere.
 
 For a car with nothing but Bluetooth (one with Android Auto has its own
 screen): Settings › **Car mode** lists the paired devices the same way; turn
-on the car, or several cars. A device is an intercom or a car, never both.
+on the car, or several cars. A device is an intercom or a car, never both,
+and is recognised by its address, so two cars of the same name are two.
 When one connects, car mode sets **Volume at the start**, brings the
 **Navigation app** up, says "Car mode" and the **Status at the start** when
 those are on, and starts the music with **Resume playback** (on by default),
@@ -164,9 +165,35 @@ phone is on a mount. It stops fifteen seconds after the car disconnects.
 Bringing the navigation app up from behind needs **Draw over other apps**,
 asked when one is chosen.
 
-A car with Android Auto connects over Bluetooth as well, so it can be
-chosen too, for the announcements and the status; leave **Navigation app**
-on None there, since it would come up on the phone, not on the car's screen.
+A car with Android Auto connects over Bluetooth as well. With **Not with
+Android Auto** on (the default), car mode waits ten seconds after the
+Bluetooth link for Android Auto to come up, and stays off if it does;
+Android Auto arriving later turns it off. Android Auto already resumes the
+music and has its own screen. Turned off, car mode runs under Android Auto
+too, for the announcements and the status; leave **Navigation app** on None
+then, since it would come up on the phone, not on the car's screen.
+
+## Seeing that a mode is on
+
+While car mode or ride mode is on, a quiet notification says so, with what
+started it (the device's name, or "by hand") and a **Stop** button that
+turns both off. Their settings screens show the same at the top, with Stop.
+From Android 13 the notification needs the permission to notify, asked when
+a car or an intercom is chosen. Ride mode started by hand, from the tile or
+from another app turns itself off after three hours with no intercom
+connected.
+
+## The road's log
+
+Settings › Diagnostics (tap the version five times in About) has a **Car and
+ride mode** section, also sent with **Report a problem**: every Bluetooth
+device coming and going and what it started, the modes turning on and off,
+calls, the audio focus the player asked for and what Android answered, and
+where the music went each time it started. That last line reads like
+`mode=normal media→bt-a2dp calls→none players=[media→bt-a2dp]`: an audio
+mode other than `normal`, or a player on `bt-sco(call)`, is the music
+travelling as a phone call. A device is shown by its name and the end of its
+address only.
 
 ## Google Assistant
 

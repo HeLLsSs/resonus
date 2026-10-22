@@ -141,3 +141,17 @@ export function serializeLrc(lyrics: SongLyrics): string {
     })
     .join('\n');
 }
+
+/**
+ * The line being sung `positionMs` into the song, or null before the first
+ * one and for a line with nothing in it (the gaps between verses).
+ */
+export function lineAt(lines: LyricLine[], positionMs: number): string | null {
+  let found: LyricLine | undefined;
+  for (const line of lines) {
+    if (line.start === undefined || line.start > positionMs) break;
+    found = line;
+  }
+  const text = found?.value.trim();
+  return text ? text : null;
+}

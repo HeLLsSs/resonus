@@ -97,6 +97,10 @@ describe('sleepFadeSchedule', () => {
   it('fades the whole of a timer shorter than the fade, from now', () => {
     assert.deepEqual(sleepFadeSchedule(5_000), { fadeMs: 5_000, wait: 0 });
   });
+
+  it('takes a longer fade when asked, still finishing at expiry', () => {
+    assert.deepEqual(sleepFadeSchedule(30 * 60_000, 10 * 60_000), { fadeMs: 10 * 60_000, wait: 20 * 60_000 });
+  });
 });
 
 describe('fadeProgress', () => {

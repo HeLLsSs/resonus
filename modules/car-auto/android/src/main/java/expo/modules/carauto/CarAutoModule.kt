@@ -72,6 +72,11 @@ class CarAutoModule : Module() {
       player.applyNowPlaying(np)
     }
 
+    /** The line of the lyrics being sung, for the car's screen; null takes it off. */
+    Function("setLyricLine") { line: String? ->
+      ResonusCarBrowserService.activePlayer?.applyLyricLine(line?.takeIf { it.isNotBlank() })
+    }
+
     Function("setQueue") { json: String ->
       val player = ResonusCarBrowserService.activePlayer ?: return@Function
       val o = runCatching { JSONObject(json) }.getOrNull() ?: return@Function

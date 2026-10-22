@@ -63,6 +63,14 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
    * a pocket shows nobody anything.
    */
   @Volatile private var errorMessage: String? = null
+  /**
+   * The line of the lyrics being sung, shown in the artist's place on the
+   * car's playback screen ("Lyrics on the car screen"), or null. Its own
+   * field rather than a new now-playing: that one resets the position the
+   * car runs its progress bar from, and a line every few seconds would make
+   * the bar jump back each time.
+   */
+  @Volatile private var lyricLine: String? = null
 
   /** Told when the heart would change, which no Player callback covers. */
   @Volatile var onFavoriteChanged: (() -> Unit)? = null
@@ -79,6 +87,12 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
   // invalidating.
   private fun runOnMain(block: () -> Unit) {
     if (Looper.myLooper() == Looper.getMainLooper()) block() else mainHandler.post(block)
+  }
+
+  fun applyLyricLine(line: String?) = runOnMain {
+    if (line == lyricLine) return@runOnMain
+    lyricLine = line
+    invalidateState()
   }
 
   fun applyNowPlaying(np: NowPlaying?) = runOnMain {
@@ -237,8 +251,12 @@ class JsProxyPlayer(private val context: Context) : SimpleBasePlayer(Looper.getM
       // copy gets a numbered uid; the media id the car navigates by stays
       // the song's own.
       val copies = HashMap<String, Int>()
-      for ((i, item) in source.withIndex()) {
+      val lyric = lyricLine
+      for ((i, listed) in source.withIndex()) {
         val isCurrent = i == activeIndex
+        // The artist moves down to the album's line while the lyrics have
+        // the artist's: still on the screen, one line lower.
+        val item = if (isCurrent && lyric != null) listed.copy(artist = lyric, album = listed.artist) else listed
         val embed = isCurrent || artBudget > 0
         val copy = (copies[item.id] ?: 0) + 1
         copies[item.id] = copy

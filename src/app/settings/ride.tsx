@@ -33,6 +33,7 @@ import {
   type OverlaySize,
   type SpeedStrength,
 } from '@/lib/rideMode';
+import { deactivateRide } from '@/lib/rideSync';
 import { useAuthStore } from '@/store/auth';
 import { useRideMode } from '@/store/rideMode';
 import { fontSize, radius, spacing, themed, useTheme } from '@/theme';
@@ -45,6 +46,7 @@ export default function RideSettings() {
   const router = useRouter();
   const config = useRideMode((s) => s.config);
   const setConfig = useRideMode((s) => s.setConfig);
+  const active = useRideMode((s) => s.active);
   // Asked again every time the screen is looked at: the answer is given on
   // the system's own screen, which this one has no way of hearing from.
   const [overlayAllowed, setOverlayAllowed] = useState(canDrawOverlays);
@@ -75,7 +77,16 @@ export default function RideSettings() {
   return (
     <SettingsPage title={t('Ride mode')}>
       <ScrollView contentContainerStyle={settingsStyles.content}>
-        <Text style={[settingsStyles.sectionTitle, { marginTop: 0 }]}>{t('Intercom')}</Text>
+        {active ? (
+          <SettingRow
+            icon="stop-circle-outline"
+            label={t('Ride mode is on')}
+            description={t('Stops it until the intercom connects again.')}
+            right={t('Stop')}
+            onPress={deactivateRide}
+          />
+        ) : null}
+        <Text style={[settingsStyles.sectionTitle, { marginTop: active ? undefined : 0 }]}>{t('Intercom')}</Text>
         <Text style={settingsStyles.sectionDescription}>
           {t(
             'Ride mode starts on its own when one of these Bluetooth devices connects, and stops when it disconnects. Pair the intercom with the phone first.',

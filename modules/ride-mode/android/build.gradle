@@ -23,4 +23,7 @@ dependencies {
   // JsRuntime.kt). The version is the app's: the React Native gradle plugin
   // resolves it for every project.
   implementation 'com.facebook.react:react-android'
+  // The road's log (DriveLog), which the receiver writes to with no JS
+  // running. A local module of this app, not a package.
+  implementation project(':crash-log')
 }

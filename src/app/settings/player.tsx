@@ -3,6 +3,7 @@ import { ScrollView, Text } from 'react-native';
 
 import { SelectList, SettingsPage, settingsStyles, SwitchList } from '@/components/SettingsUI';
 import { useLocalProfile } from '@/hooks/useLocalProfile';
+import { carAutoAvailable } from '@/lib/carAuto';
 import { localHttpAvailable } from '@/lib/localHttp';
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
@@ -79,6 +80,8 @@ export default function PlayerSettings() {
   const lyricsSource = useSettings((s) => s.lyricsSource);
   const setLyricsSource = useSettings((s) => s.setLyricsSource);
   const wordLyrics = useSettings((s) => s.wordLyrics);
+  const carLyrics = useSettings((s) => s.carLyrics);
+  const setCarLyrics = useSettings((s) => s.setCarLyrics);
   const setWordLyrics = useSettings((s) => s.setWordLyrics);
   const marqueeTitles = useSettings((s) => s.marqueeTitles);
   const setMarqueeTitles = useSettings((s) => s.setMarqueeTitles);
@@ -322,6 +325,19 @@ export default function PlayerSettings() {
               value: wordLyrics,
               onChange: setWordLyrics,
             },
+            // Android Auto is the car module's, so only a phone with it.
+            ...(carAutoAvailable
+              ? [
+                  {
+                    label: t('Lyrics on the car screen'),
+                    description: t(
+                      "With Android Auto, the line being sung shows in place of the artist on the car's playback screen. Synced lyrics only.",
+                    ),
+                    value: carLyrics,
+                    onChange: setCarLyrics,
+                  },
+                ]
+              : []),
           ]}
         />
         <SelectList<ScreenBackground>

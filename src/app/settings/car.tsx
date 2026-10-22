@@ -11,23 +11,36 @@ import { useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 
 import { DevicePicker } from '@/components/DevicePicker';
-import { SelectList, SettingsPage, settingsStyles, SliderRow, SwitchList } from '@/components/SettingsUI';
+import { SelectList, SettingRow, SettingsPage, settingsStyles, SliderRow, SwitchList } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
-import { canDrawOverlays, getNavigationApps, requestOverlayPermission, type DriveConfig, type EmptyQueueAction } from '@/lib/rideMode';
+import { canDrawOverlays, getNavigationApps, requestOverlayPermission, type CarConfig, type EmptyQueueAction } from '@/lib/rideMode';
+import { deactivateCar } from '@/lib/rideSync';
 import { useRideMode } from '@/store/rideMode';
 
 export default function CarSettings() {
   const t = useT();
   const config = useRideMode((s) => s.config);
   const setConfig = useRideMode((s) => s.setConfig);
+  const carActive = useRideMode((s) => s.carActive);
   const [navigationApps] = useState(getNavigationApps);
   const car = config.car;
-  const setCar = (patch: Partial<DriveConfig>) => setConfig({ car: { ...car, ...patch } });
+  const setCar = (patch: Partial<CarConfig>) => setConfig({ car: { ...car, ...patch } });
 
   return (
     <SettingsPage title={t('Car mode')}>
       <ScrollView contentContainerStyle={settingsStyles.content}>
-        <Text style={[settingsStyles.sectionTitle, { marginTop: 0 }]}>{t('Car')}</Text>
+        {/* Car mode has no screen: this, and the notification, are where
+            it shows that it is on. */}
+        {carActive ? (
+          <SettingRow
+            icon="stop-circle-outline"
+            label={t('Car mode is on')}
+            description={t('Stops it until the car connects again.')}
+            right={t('Stop')}
+            onPress={deactivateCar}
+          />
+        ) : null}
+        <Text style={[settingsStyles.sectionTitle, { marginTop: carActive ? undefined : 0 }]}>{t('Car')}</Text>
         <Text style={settingsStyles.sectionDescription}>
           {t(
             'Car mode starts on its own when one of these Bluetooth devices connects, and stops when it disconnects. Pair the car with the phone first.',
@@ -59,6 +72,14 @@ export default function CarSettings() {
               description: t('The battery, the output and how many songs are left, said when the car connects.'),
               value: car.status,
               onChange: (status) => setCar({ status }),
+            },
+            {
+              label: t('Not with Android Auto'),
+              description: t(
+                'Car mode stays off while Android Auto is on the car screen: it already starts the music and has its own screen.',
+              ),
+              value: car.notWithAndroidAuto,
+              onChange: (notWithAndroidAuto) => setCar({ notWithAndroidAuto }),
             },
           ]}
         />

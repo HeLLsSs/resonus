@@ -103,6 +103,11 @@ export function setNodes(tree: CarTree): void {
   native?.setNodes(JSON.stringify(tree));
 }
 
+/** The line of the lyrics being sung, shown on the car's playback screen; null takes it off. */
+export function setLyricLine(line: string | null): void {
+  native?.setLyricLine(line);
+}
+
 export function setNowPlaying(track: CarTrack | null): void {
   native?.setNowPlaying(track ? JSON.stringify(track) : null);
 }

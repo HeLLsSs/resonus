@@ -2,12 +2,14 @@ package expo.modules.ridemode
 
 import android.Manifest
 import android.app.Activity
+import android.app.UiModeManager
 import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -295,6 +297,30 @@ class RideModeModule : Module() {
     /** The intercom or car that connected while JS was not running, `{name, kind}`, if any; read once and cleared. */
     Function("takePendingIntercom") { Intercom.take() }
 
+    /** The notification that says a mode is on, with its Stop button (`ModeNotice`). */
+    Function("showModeNotice") { channel: String, title: String, text: String, stop: String ->
+      context?.let { ModeNotice.show(it, channel, title, text, stop) }
+    }
+
+    Function("hideModeNotice") { context?.let { ModeNotice.hide(it) } }
+
+    /**
+     * Whether Android Auto is projecting onto a car right now. Asked of
+     * Android Auto itself, through the provider the car app library reads
+     * (`CarConnection`: 2 is a projection), with the phone's car UI mode as
+     * the fallback where the provider cannot be read.
+     */
+    Function("isAndroidAutoConnected") {
+      val ctx = context ?: return@Function false
+      val provider = runCatching {
+        ctx.contentResolver.query(Uri.parse(CAR_CONNECTION_URI), arrayOf(CAR_CONNECTION_STATE), null, null, null)
+          ?.use { c -> if (c.moveToFirst()) c.getInt(c.getColumnIndexOrThrow(CAR_CONNECTION_STATE)) else null }
+      }.getOrNull()
+      val carUi = (ctx.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager)?.currentModeType ==
+        Configuration.UI_MODE_TYPE_CAR
+      provider == CAR_CONNECTION_PROJECTION || carUi
+    }
+
     /** Whether the screen is lit, the lock screen included. */
     Function("isScreenOn") {
       (context?.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
@@ -445,6 +471,9 @@ class RideModeModule : Module() {
 
   companion object {
     private const val REQUEST_SPEECH = 0x51DE
+    private const val CAR_CONNECTION_URI = "content://androidx.car.app.connection"
+    private const val CAR_CONNECTION_STATE = "CarConnectionState"
+    private const val CAR_CONNECTION_PROJECTION = 2
 
     /**
      * The navigation apps offered, by package. The manifest declares each

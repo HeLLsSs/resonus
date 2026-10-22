@@ -28,6 +28,7 @@ import { SettingRow, SettingsPage, settingsStyles, SwitchList } from '@/componen
 import { useT } from '@/i18n';
 import { recentCarAutoLog } from '@/lib/carAuto';
 import { clearCrashLog, crashEntries, readCrashLog } from '@/lib/crashLog';
+import { clearDriveLog, readDriveLog } from '@/lib/driveLog';
 import { coverSourceOf, mirrorCoverState } from '@/lib/mirrorCovers';
 import {
   perfAway,
@@ -68,6 +69,7 @@ export default function DiagnosticsSettings() {
   const [crashText, setCrashText] = useState(() => readCrashLog());
   const crashes = crashEntries(crashText);
   const carLog = recentCarAutoLog();
+  const [driveLog, setDriveLog] = useState(() => readDriveLog());
   // What the profile is, in the terms the code asks about it. Half the reports
   // that start with "this doesn't show up for me" end here.
   const auth = useAuthStore((s) => s.auth);
@@ -164,6 +166,7 @@ export default function DiagnosticsSettings() {
         serverType: auth?.serverType,
         crashLog: crashEntries(readCrashLog()),
         carLog: recentCarAutoLog(),
+        driveLog: readDriveLog(),
         // Everything of the profile that would say whose server it is or open
         // it, in case a log line carries one in a shape the patterns miss.
         secrets: auth
@@ -201,6 +204,7 @@ export default function DiagnosticsSettings() {
         onScrollEndDrag={() => {
           setNow(Date.now());
           setCrashText(readCrashLog());
+          setDriveLog(readDriveLog());
         }}
       >
         <SettingRow
@@ -324,6 +328,22 @@ export default function DiagnosticsSettings() {
           <Text style={styles.line}>{t('Nothing logged yet.')}</Text>
         )}
 
+        <Text style={settingsStyles.sectionTitle}>{t('Car and ride mode')}</Text>
+        <Text style={settingsStyles.sectionDescription}>
+          {t(
+            'What started them, the audio focus the player asked for and where the music went, kept for a report written after the drive.',
+          )}
+        </Text>
+        {driveLog ? (
+          <ScrollView style={styles.log} nestedScrollEnabled>
+            <Text style={styles.mono} selectable>
+              {driveLog}
+            </Text>
+          </ScrollView>
+        ) : (
+          <Text style={styles.line}>{t('Nothing logged yet.')}</Text>
+        )}
+
         {/* Here and not in a settings page: this is not a preference, it is a
             switch for whoever is testing the repair against a server that has
             actually renumbered its ids. It stays off until that has been seen
@@ -352,6 +372,7 @@ export default function DiagnosticsSettings() {
                 perfReport(),
                 `Crashes (most recent first):\n${crashes.join('\n\n') || '  none recorded'}`,
                 `Android Auto:\n${carLog || '  nothing logged'}`,
+                `Car and ride mode:\n${driveLog || '  nothing logged'}`,
               ].join('\n\n'),
             })
           }
@@ -364,6 +385,16 @@ export default function DiagnosticsSettings() {
             setNow(Date.now());
           }}
         />
+        {driveLog ? (
+          <SettingRow
+            icon="trash-outline"
+            label={t('Clear the car and ride log')}
+            onPress={() => {
+              clearDriveLog();
+              setDriveLog('');
+            }}
+          />
+        ) : null}
         {crashes.length > 0 ? (
           <SettingRow
             icon="trash-outline"

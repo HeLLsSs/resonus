@@ -210,6 +210,11 @@ appear when it is switched off.
 - **Several intercoms**, for several helmets, and **car mode** for a car with
   nothing but Bluetooth: the car connecting sets the volume, brings the
   navigation app up and starts the music, each with its own switch.
+  It steps aside for Android Auto, and a notification with a Stop button
+  says while either mode is on.
+- **A log of the road** in Diagnostics and in the problem report: which
+  device started what, the audio focus asked for and where the music went,
+  for a sound that goes wrong in a car where no cable reaches.
 - **The helmet hears the state of things** when the intercom connects: the
   battery, where the music is going and how many songs are left, and again
   on asking for "status".
@@ -354,6 +359,8 @@ appear when it is switched off.
   output**, **DJ-style transitions** for mixes, a **weekly report**, a Jam
   **guest mode** by QR code, **resume from another device** and an **alert
   when YouTube is down**.
+- **Sleep mode**: a black bedside screen with the time, the sleep timer
+  fading the music over its last ten minutes, and when the alarm rings next.
 - **The sleep timer offered late at night**, once, when the music starts.
 - **A die on the home-screen widget**, even when nothing is playing.
 - **YouTube in the stats**, and **settings saved on the proxy** to come back
@@ -391,7 +398,7 @@ Everything the upstream project does:
 - **Local mode**: play music straight from your device or a folder, no server needed
 - **Offline mode**: your favorites, playlists and albums stay browsable with no connection; downloaded songs play, the rest show grayed out, and it switches automatically when the server is unreachable
 - **Downloads**: albums, playlists, an artist's whole discography or single songs, in original quality or transcoded
-- **Synced lyrics**: karaoke view with tap-to-seek, full-screen mode, optional LRCLIB lookup
+- **Synced lyrics**: karaoke view with tap-to-seek, full-screen mode, optional LRCLIB lookup, and the line being sung on Android Auto's screen
 - **Internet radio**: browse and manage your stations
 - **Cast to speakers**: UPnP/DLNA renderers and Sonos, with room grouping; local music streams to them too
 - **Playback**: gapless, crossfade, built-in equalizer, ReplayGain normalization, playback speed, sleep timer, queue with undo, shuffle, repeat, background & lock-screen controls

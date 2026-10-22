@@ -31,12 +31,15 @@ import { AppState } from 'react-native';
 
 import { getStarred } from '@/api/data';
 import { tg } from '@/i18n';
+import { driveLog, driveLogWithAudio } from '@/lib/driveLog';
 import { playForYou } from '@/lib/forYouMix';
 import { playShuffle } from '@/lib/playShuffle';
 import {
   announcement,
   canDrawOverlays,
+  hideModeNotice,
   hideRideOverlay,
+  isAndroidAutoConnected,
   nextSpeedSteps,
   onBattery,
   onCall,
@@ -48,6 +51,7 @@ import {
   rideModeAvailable,
   setRideActive,
   setShowWhenLocked,
+  showModeNotice,
   showRideOverlay,
   smoothSpeed,
   speak,
@@ -98,6 +102,35 @@ let overlayShown = false;
 let announced = '';
 
 const lostTimers: Partial<Record<DriveKind, ReturnType<typeof setTimeout>>> = {};
+
+/** Whether an intercom, or a car, is connected right now, as the last connection or loss said. */
+const connected: Record<DriveKind, boolean> = { ride: false, car: false };
+
+/** What started each mode that is on, for the notification: a device's name, or the tile. */
+const startedBy: Partial<Record<DriveKind, string>> = {};
+
+/**
+ * How long a car that just connected is watched for Android Auto before car
+ * mode starts: wireless Android Auto comes up a few seconds after the
+ * Bluetooth link. A car without it waits this long for its music, which is
+ * about what its media link takes to come up anyway.
+ */
+const ANDROID_AUTO_SETTLE_MS = 10_000;
+
+/** How often car mode looks again, while it is on, for Android Auto having come up late. */
+const ANDROID_AUTO_RECHECK_MS = 15_000;
+
+let androidAutoWatch: ReturnType<typeof setInterval> | undefined;
+
+/**
+ * How long ride mode started by hand, from the tile or another app stays on
+ * with no intercom connected. Nothing else turns it off: started on the
+ * bike's stand and forgotten, it would go on ducking the music and reading
+ * songs out in the car for days.
+ */
+const RIDE_UNATTENDED_MS = 3 * 60 * 60 * 1000;
+
+let rideUnattended: ReturnType<typeof setTimeout> | undefined;
 
 /** Whether the music was going when a call came in, so it can be brought back after. */
 let playingBeforeCall = false;
@@ -248,6 +281,15 @@ export async function activateRide(from: 'intercom' | 'intent' | 'manual'): Prom
   setRideActive(true);
   setDuckOthers(true);
   batteryWarned = new Set();
+  driveLogWithAudio(`ride mode on (${from})`);
+  clearTimeout(rideUnattended);
+  if (from !== 'intercom') {
+    rideUnattended = setTimeout(() => {
+      if (connected.ride) return;
+      driveLog('ride mode off: on for hours with no intercom');
+      deactivateRide();
+    }, RIDE_UNATTENDED_MS);
+  }
   // A phone locked in a pocket: the ride screen is worth nothing behind the
   // lock screen. Every screen of the app is reachable that way while ride
   // mode is on, which is the point of it and stops with it.
@@ -289,6 +331,9 @@ export function deactivateRide(): void {
   useRideMode.setState({ active: false });
   setRideActive(false);
   setDuckOthers(carActive);
+  clearTimeout(rideUnattended);
+  driveLog('ride mode off');
+  startedBy.ride = undefined;
   setShowWhenLocked(false);
   syncOverlay();
   stopSpeaking();
@@ -306,17 +351,31 @@ async function activateCar(): Promise<void> {
   useRideMode.setState({ carActive: true });
   setDuckOthers(true);
   batteryWarned = new Set();
+  driveLogWithAudio('car mode on');
   const { car } = config;
+  // Android Auto coming up after car mode started: car mode steps aside.
+  if (car.notWithAndroidAuto) {
+    androidAutoWatch = setInterval(() => {
+      if (!isAndroidAutoConnected()) return;
+      driveLog('car mode off: Android Auto came up');
+      deactivateCar();
+    }, ANDROID_AUTO_RECHECK_MS);
+  }
   if (car.startVolume > 0) setVolumeLevel(car.startVolume);
   if (car.navigationApp) openNavigationApp(car.navigationApp);
   await greetAndResume(car, tg('Car mode'));
 }
 
-function deactivateCar(): void {
+/** Turns car mode off, as the car leaving would, with no grace period: the settings screen's Stop. */
+export function deactivateCar(): void {
   clearLost('car');
   const { active, carActive } = useRideMode.getState();
   if (!carActive) return;
   useRideMode.setState({ carActive: false });
+  clearInterval(androidAutoWatch);
+  androidAutoWatch = undefined;
+  driveLog('car mode off');
+  startedBy.car = undefined;
   if (active) return;
   setDuckOthers(false);
   stopSpeaking();
@@ -328,18 +387,62 @@ function clearLost(kind: DriveKind): void {
   delete lostTimers[kind];
 }
 
-async function deviceConnected(kind: DriveKind): Promise<void> {
+async function deviceConnected(kind: DriveKind, name: string): Promise<void> {
   clearLost(kind);
+  connected[kind] = true;
+  startedBy[kind] = name;
   // The connection can be what started this runtime: the profile, and the
   // settings that say what to do, are still coming back from disk.
   await whenProfileReady();
-  if (kind === 'car') await activateCar();
-  else await activateRide('intercom');
+  if (kind === 'ride') {
+    clearTimeout(rideUnattended);
+    await activateRide('intercom');
+    return;
+  }
+  if (useRideMode.getState().config.car.notWithAndroidAuto && (await androidAutoWithin(ANDROID_AUTO_SETTLE_MS))) {
+    driveLog('car mode left off: Android Auto is on');
+    return;
+  }
+  // Gone again while Android Auto was being waited for.
+  if (!connected.car) return;
+  await activateCar();
+}
+
+/** Whether Android Auto is on, or comes up within `ms`; looked at once a second. */
+async function androidAutoWithin(ms: number): Promise<boolean> {
+  const until = Date.now() + ms;
+  for (;;) {
+    if (isAndroidAutoConnected()) return true;
+    if (Date.now() >= until) return false;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
 }
 
 function deviceLost(kind: DriveKind): void {
   clearLost(kind);
+  connected[kind] = false;
   lostTimers[kind] = setTimeout(kind === 'car' ? deactivateCar : deactivateRide, RECONNECT_GRACE_MS);
+}
+
+/**
+ * The notification that says which mode is on, with its Stop button, or
+ * none with neither on.
+ */
+function syncNotice(): void {
+  const { active, carActive } = useRideMode.getState();
+  if (!active && !carActive) {
+    hideModeNotice();
+    return;
+  }
+  const title =
+    active && carActive ? tg('Ride mode and car mode are on') : active ? tg('Ride mode is on') : tg('Car mode is on');
+  const by = (active ? startedBy.ride : startedBy.car) ?? '';
+  showModeNotice(
+    tg('Car mode and ride mode'),
+    title,
+    by ? tg('Started by {name}', { name: by }) : tg('Started by hand'),
+    tg('Stop'),
+  );
 }
 
 /** The settings of the mode that is on, ride mode first; null with neither on. */
@@ -373,15 +476,29 @@ export function startRideSync(): void {
   started = true;
   useRideMode.getState().hydrate();
 
-  onIntercom(({ connected, source, kind }) => {
-    if (connected) void deviceConnected(kind);
-    // The tile asks for a stop now; a lost device gets its grace period.
-    else if (source === 'tile') deactivateRide();
+  onIntercom(({ connected: on, name, source, kind }) => {
+    // The notification's Stop: both modes off, now.
+    if (kind === 'all') {
+      deactivateRide();
+      deactivateCar();
+      return;
+    }
+    if (source === 'tile') {
+      startedBy.ride = undefined;
+      if (on) void activateRide('intent');
+      else deactivateRide();
+      return;
+    }
+    // A lost device gets its grace period.
+    if (on) void deviceConnected(kind, name);
     else deviceLost(kind);
   });
   // The connection that started this runtime, or arrived before it listened.
   const pending = takePendingIntercom();
-  if (pending) void deviceConnected(pending.kind);
+  if (pending?.source === 'tile') void activateRide('intent');
+  else if (pending) void deviceConnected(pending.kind, pending.name);
+  // A notification left by a runtime that ended with a mode on.
+  hideModeNotice();
 
   AppState.addEventListener('change', syncOverlay);
   onSpeed(speedRead);
@@ -391,6 +508,7 @@ export function startRideSync(): void {
   // size takes the pill down: the size is read as it is made, and it is
   // made again the next time another app is in front.
   useRideMode.subscribe((state, prev) => {
+    if (state.active !== prev.active || state.carActive !== prev.carActive) syncNotice();
     if (state.active !== prev.active || state.config.speedVolume !== prev.config.speedVolume) syncSpeed();
     if (state.config.overlay !== prev.config.overlay) syncOverlay();
     if (state.config.overlaySize !== prev.config.overlaySize && overlayShown) {
@@ -404,6 +522,7 @@ export function startRideSync(): void {
   // when the phone has not brought it back itself.
   onCall((inCall) => {
     if (!driving()) return;
+    driveLogWithAudio(inCall ? 'call started' : 'call ended');
     if (inCall) {
       playingBeforeCall = usePlayerStore.getState().isPlaying;
       return;

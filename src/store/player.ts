@@ -236,6 +236,11 @@ let sleepFadeTimeout: ReturnType<typeof setTimeout> | null = null;
 let sleepFadeTimer: ReturnType<typeof setInterval> | null = null;
 /** When the fade began and how long it has, so any clock can advance it. */
 let sleepFade: { t0: number; ms: number } | null = null;
+/**
+ * How long the fade to silence takes: half a minute for the plain timer, and
+ * the long slope sleep mode asks for (`setSleepTimer`'s second argument).
+ */
+let sleepFadeMax = SLEEP_FADE_MS;
 
 /**
  * On a remote output the fade lowers the speaker itself, through the same
@@ -277,7 +282,7 @@ function clearSleepFade() {
     const endsAt = sleepDeadline();
     if (!endsAt || sleepFadeTimer || sleepFadeTimeout || !remoteKind()) return;
     const left = endsAt - Date.now();
-    if (left > 0 && left <= SLEEP_FADE_MS) startSleepFade(left);
+    if (left > 0 && left <= sleepFadeMax) startSleepFade(left);
   }, 1_000);
 }
 
@@ -337,7 +342,7 @@ function startSleepFade(ms: number) {
 /** Schedules the fade to finish right at expiry. */
 function armSleepFade(msLeft: number) {
   clearSleepFade();
-  const { fadeMs, wait } = sleepFadeSchedule(msLeft);
+  const { fadeMs, wait } = sleepFadeSchedule(msLeft, sleepFadeMax);
   if (wait <= 0) startSleepFade(fadeMs);
   else sleepFadeTimeout = setTimeout(() => startSleepFade(fadeMs), wait);
 }
@@ -3002,7 +3007,7 @@ function onStatus(status: AudioStatus) {
   // player heartbeat re-arms it with whatever is left.
   if (endsAt && !sleepFadeTimer) {
     const left = endsAt - Date.now();
-    if (left <= SLEEP_FADE_MS) startSleepFade(left);
+    if (left <= sleepFadeMax) startSleepFade(left);
   }
   // And once armed, it is this heartbeat that moves it along in the background.
   tickSleepFade();
@@ -4094,7 +4099,11 @@ interface PlayerState {
   stopAndClear: () => Promise<(() => void) | undefined>;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
-  setSleepTimer: (minutes: number) => void;
+  /**
+   * Pauses in `minutes`, fading to silence over the last `fadeMinutes` (half
+   * a minute when left out).
+   */
+  setSleepTimer: (minutes: number, fadeMinutes?: number) => void;
   setSleepAtSongEnd: () => void;
   cancelSleepTimer: () => void;
   /**
@@ -4828,8 +4837,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     scheduleSync();
   },
 
-  setSleepTimer: (minutes) => {
+  setSleepTimer: (minutes, fadeMinutes) => {
     if (sleepTimeout) clearTimeout(sleepTimeout);
+    sleepFadeMax = fadeMinutes ? fadeMinutes * 60_000 : SLEEP_FADE_MS;
     sleepTimeout = setTimeout(fireSleepTimer, minutes * 60_000);
     armSleepFade(minutes * 60_000);
     if (remoteKind() === 'upnp') void upnpSetSleepTimer(minutes * 60);
@@ -4842,6 +4852,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // No fade: the song ends on its own, and fading its end would ruin exactly
     // what was asked to be heard in full.
     abortSleepFade();
+    sleepFadeMax = SLEEP_FADE_MS;
     if (remoteKind() === 'upnp') void upnpSetSleepTimer(null);
     set({ sleepEndsAt: null, sleepAtSongEnd: true });
   },
@@ -4850,6 +4861,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (sleepTimeout) clearTimeout(sleepTimeout);
     sleepTimeout = null;
     abortSleepFade();
+    sleepFadeMax = SLEEP_FADE_MS;
     if (remoteKind() === 'upnp') void upnpSetSleepTimer(null);
     set({ sleepEndsAt: null, sleepAtSongEnd: false });
   },

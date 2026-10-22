@@ -45,6 +45,9 @@
     <package android:name="com.sygic.aura" />
     <package android:name="com.here.app.maps" />
     <package android:name="com.tomtom.gplay.navapp" />
+    <!-- Android Auto's own answer to "is a car connected" (isAndroidAutoConnected
+         in RideModeModule), so car mode can stay out of its way. -->
+    <provider android:authorities="androidx.car.app.connection" />
   </queries>
 
   <application>
@@ -73,5 +76,10 @@
         <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
       </intent-filter>
     </receiver>
+    <!-- The Stop button of the notification shown while car mode or ride
+         mode is on (ModeNotice). Only this app sends it. -->
+    <receiver
+      android:name="expo.modules.ridemode.ModeStopReceiver"
+      android:exported="false" />
   </application>
 </manifest>

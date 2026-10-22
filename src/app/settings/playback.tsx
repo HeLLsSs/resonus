@@ -25,12 +25,9 @@ import {
 } from '@/components/SettingsUI';
 import { useLocalProfile } from '@/hooks/useLocalProfile';
 import { DICE_MODES } from '@/lib/diceModes';
-import { normalizeOutputDisplayName } from '@/lib/format';
-import { linkPlayAvailable } from '@/lib/linkplay';
 import { diceModeName } from '@/lib/playShuffle';
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/store/auth';
-import { useLinkPlay } from '@/store/linkplay';
 import { useTheme } from '@/theme';
 import {
   BITRATE_OPTIONS,
@@ -78,11 +75,6 @@ export default function PlaybackSettings() {
   const setKeepScreenAwake = useSettings((s) => s.setKeepScreenAwake);
   const nightSleepSuggest = useSettings((s) => s.nightSleepSuggest);
   const setNightSleepSuggest = useSettings((s) => s.setNightSleepSuggest);
-  const homeHandoff = useSettings((s) => s.homeHandoff);
-  const setHomeHandoff = useSettings((s) => s.setHomeHandoff);
-  const homeSpeakerHost = useSettings((s) => s.homeSpeakerHost);
-  const setHomeSpeakerHost = useSettings((s) => s.setHomeSpeakerHost);
-  const lpDevices = useLinkPlay((s) => s.devices);
   const skipSilence = useSettings((s) => s.skipSilence);
   const diceMode = useSettings((s) => s.diceMode);
   const setDiceMode = useSettings((s) => s.setDiceMode);
@@ -339,46 +331,14 @@ export default function PlaybackSettings() {
           value={diceMode}
           onChange={setDiceMode}
         />
-        {/* Only where the phone can reach a speaker: a browser with no proxy
-            has nothing to offer. */}
-        {linkPlayAvailable() ? (
-          <SelectList
-            label={t('When you get home')}
-            description={t(
-              'What to do when the music plays on the phone and the home speaker is on the network. Switching on its own, the music also comes back to the phone when you leave the Wi-Fi.',
-            )}
-            options={[
-              { value: 'off', label: t('Do nothing') },
-              { value: 'ask', label: t('Ask') },
-              { value: 'auto', label: t('Switch on its own') },
-            ]}
-            value={homeHandoff}
-            onChange={setHomeHandoff}
-          />
-        ) : null}
-        {/* Which speaker the handoff is about. Greyed out rather than gone
-            with the choice above on "Do nothing", so it can still be found
-            (#114). A home speaker that is not on the network right now keeps
-            its row, under its address, instead of the choice silently reading
-            as "last one used". */}
-        {linkPlayAvailable() ? (
-          <SelectList
-            label={t('Home speaker')}
-            description={t(
-              'The speaker the music goes to when you get home. Without one, it is the speaker you last played on.',
-            )}
-            options={[
-              { value: '', label: t('Last one used') },
-              ...lpDevices.map((d) => ({ value: d.host, label: normalizeOutputDisplayName(d.name) })),
-              ...(homeSpeakerHost && !lpDevices.some((d) => d.host === homeSpeakerHost)
-                ? [{ value: homeSpeakerHost, label: homeSpeakerHost }]
-                : []),
-            ]}
-            value={homeSpeakerHost}
-            onChange={setHomeSpeakerHost}
-            disabled={homeHandoff === 'off'}
-          />
-        ) : null}
+        {/* What happens at home, and which speaker, live in Settings › At
+            home now, with the house's integrations. */}
+        <SettingRow
+          label={t('At home')}
+          description={t('The home speaker, and what happens when you get home.')}
+          chevron
+          onPress={() => router.push('/settings/home')}
+        />
 
         {/* Its own screen: two sliders and a line of explanation is more than
             fits under a heading here, and it is a thing somebody sets once

@@ -221,9 +221,12 @@ export default function RootLayout() {
                 <Stack.Screen name="settings/about" />
                 <Stack.Screen name="settings/ride" />
                 <Stack.Screen name="settings/car" />
+                <Stack.Screen name="settings/home" />
                 {/* Ride mode: a screen that covers the app, opened by hand or
                     by the intercom (see `src/lib/rideSync.ts`). */}
                 <Stack.Screen name="ride" />
+                {/* Sleep mode: the bedside screen, black, over everything. */}
+                <Stack.Screen name="sleep" />
               </Stack.Protected>
               <Stack.Protected guard={offline && !offlineSource && !hasDownloads}>
                 <Stack.Screen name="offline" />

@@ -461,6 +461,15 @@ export function SongMenuSheet() {
                       <Text style={styles.actionText}>{t('{n} minutes', { n: m })}</Text>
                     </Pressable>
                   ))}
+                  {/* The same timer with a long fade, a black screen and the
+                      alarm's time: for bed rather than for a nap. */}
+                  <Pressable
+                    style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]}
+                    onPress={() => go('/sleep')}
+                  >
+                    <Ionicons name="moon-outline" size={24} color={colors.text} />
+                    <Text style={styles.actionText}>{t('Sleep mode')}</Text>
+                  </Pressable>
                   <Pressable
                     style={({ pressed }) => [styles.action, pressed && { opacity: 0.6 }]}
                     onPress={() => {

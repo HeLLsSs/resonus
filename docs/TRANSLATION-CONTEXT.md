@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1492 of them.
+Every string the app can show, under the screen it shows up on. 1524 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -100,6 +100,7 @@ you are actually typing into, which is easier than reading it here.
 | `Shared from YouTube` |  |
 | `Shared links need the Navifind proxy: turn it on in Settings › Navifind` |  |
 | `Size` | The size of the quick grid tiles |
+| `Sleep mode` |  |
 | `Sleep timer` | Stop playing after a while, for falling asleep to |
 | `Sleep timer ({n} min left)` | The menu row while it is counting down. `{n}` is minutes still to go |
 | `Sleep timer (end of song)` | The same row when it is set to stop at the end of this song |
@@ -809,6 +810,8 @@ you are actually typing into, which is easier than reading it here.
 | `Battery at {n} %` | Read out loud in the helmet when the phone's battery reaches 20, 10 and 5 %. `{n}` is the level |
 | `battery at {n} %, charging` |  |
 | `Car mode` | Ride mode's sibling for a car with nothing but Bluetooth: started when the car connects, it sets the volume, opens the navigation app and starts the music. The name of its settings screen |
+| `Car mode and ride mode` | The name of the notification channel in the phone's settings, for the notification shown while one of them is on |
+| `Car mode is on` |  |
 | `Download on mobile data?` |  |
 | `Exit ride mode` |  |
 | `last song of the queue` |  |
@@ -823,8 +826,12 @@ you are actually typing into, which is easier than reading it here.
 | `Preparing the ride` |  |
 | `Previous` | Player control: the previous track (accessibility label) |
 | `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
+| `Ride mode and car mode are on` |  |
+| `Ride mode is on` |  |
 | `Ride prepared: {done} of {total} songs downloaded` |  |
 | `Ride prepared: {n} songs downloaded` |  |
+| `Started by {name}` | Line of the notification shown while car or ride mode is on; {name} is the Bluetooth device (a car, an intercom) whose connection started it |
+| `Started by hand` | Line of the same notification when the mode was turned on from the app or the quick settings tile, not by a device |
 | `The next songs are already downloaded` |  |
 | `Voice` | The ride screen's big microphone button: say a song, an artist or a command |
 | `Volume down` |  |
@@ -851,9 +858,11 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `App` | Title of the last group of rows on the main settings screen: appearance, backup, about. The application itself |
 | `Back online` | The toast shown when the server answers again and the app comes out of offline mode |
 | `Exit local mode` | Leave the profile that plays the phone's own files |
-| `Listening stats` |  |
+| `Home and on the road` | Title of a group of rows on the main settings screen: the house's speakers, ride mode and car mode |
+| `Listening` | Title of a group of rows on the main settings screen: quality, player, downloads, library. A heading, not the verb |
 | `Local profile` | The on-device profile, with no server account. Its library screen is `Local music` |
 | `Music on your device` | Signing in to nothing at all and playing the phone's own files |
 | `Offline · your downloads` | Settings subtitle shown in offline mode |
@@ -1004,20 +1013,31 @@ you are actually typing into, which is easier than reading it here.
 | `Allow Bluetooth` |  |
 | `Android needs permission to tell which device connected.` | The line under “Allow Bluetooth”, explaining it |
 | `Announce songs` | Each new song's title and artist read out loud by the phone |
+| `Battery at {n} %` | Read out loud in the helmet when the phone's battery reaches 20, 10 and 5 %. `{n}` is the level |
 | `Brought to the front when the car connects.` | The line under “Navigation app”, explaining it |
 | `Car` | Section title in the car mode settings: the car's Bluetooth system, the device that starts car mode when it connects |
 | `Car mode` | Ride mode's sibling for a car with nothing but Bluetooth: started when the car connects, it sets the volume, opens the navigation app and starts the music. The name of its settings screen |
+| `Car mode and ride mode` | The name of the notification channel in the phone's settings, for the notification shown while one of them is on |
+| `Car mode is on` |  |
 | `Car mode starts on its own when one of these Bluetooth devices connects, and stops when it disconnects. Pair the car with the phone first.` |  |
+| `Car mode stays off while Android Auto is on the car screen: it already starts the music and has its own screen.` |  |
 | `Each new song is read out over the car speakers.` | The line under “Announce songs”, explaining it |
 | `Favorites, shuffled` | One of the values of “With an empty queue” |
 | `Leave as is` |  |
 | `Navigation app` | Setting: the app (Waze, Maps…) brought to the front when the intercom connects |
 | `No paired device` |  |
 | `None` | The choice of no intercom at all in that list: ride mode never starts by itself |
+| `Not with Android Auto` |  |
 | `Nothing` | A value of `On cover tap`: tapping the cover does nothing |
 | `Resume playback` |  |
+| `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
+| `Ride mode and car mode are on` |  |
+| `Ride mode is on` |  |
 | `Shuffle all` | One of the values of “With an empty queue” |
+| `Started by {name}` | Line of the notification shown while car or ride mode is on; {name} is the Bluetooth device (a car, an intercom) whose connection started it |
+| `Started by hand` | Line of the same notification when the mode was turned on from the app or the quick settings tile, not by a device |
 | `Status at the start` |  |
+| `Stops it until the car connects again.` | The line under “Car mode is on”, explaining it |
 | `The battery, the output and how many songs are left, said when the car connects.` | The line under “Status at the start”, explaining it |
 | `The media volume set when car mode starts, so it is not left where the kitchen had it.` | The line under “Volume at the start”, explaining it |
 | `Volume at the start` |  |
@@ -1031,7 +1051,9 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `Android Auto` |  |
+| `Car and ride mode` |  |
 | `Clear crash log` |  |
+| `Clear the car and ride log` |  |
 | `Couldn't open the link` |  |
 | `Counted` | Section header on the Diagnostics screen: things that happened and how many times |
 | `Crashes` |  |
@@ -1054,6 +1076,7 @@ you are actually typing into, which is easier than reading it here.
 | `The player keeps beating twice a second while the app is away. Long silences here mean the app stopped following what it was playing.` | The line under `While minimized`. "The player" is the native audio engine, not the player screen, and "beating" is a heartbeat: it sends its state every 500 ms, and the position, the notification and the move to the next track all hang off that. Everything else on this screen stops measuring once the app is minimized, because the system takes its timers away, so this beat is the one clock still running out there. A long gap means the player itself went quiet, which is a different fault from the app coming back with a stale screen. Keep the medical sense of a pulse if your language has one |
 | `What happened, rather than how long it took.` | The line under `Counted`: that section is a tally of events, next to the sections above it which are timings |
 | `What happened?` |  |
+| `What started them, the audio focus the player asked for and where the music went, kept for a report written after the drive.` |  |
 | `What stopped the app, most recent first.` |  |
 | `While minimized` | Section header on the Diagnostics screen, over what was measured with the app in the background rather than on screen. Minimized as in put away: the screen off or another app in front, with the music still going |
 
@@ -1174,6 +1197,26 @@ you are actually typing into, which is easier than reading it here.
 | `Greeting` | Home's "Good morning" line |
 | `Leave it empty to greet you by the time of day.` | The line under “Custom greeting”, explaining it |
 | `Show greeting` | Whether Home says "Good morning" at the top |
+
+## Settings › Home
+
+| String | What it is |
+| --- | --- |
+| `Ask` | One of the values of “When you get home” |
+| `At home` |  |
+| `Connected to the house` |  |
+| `Do nothing` | One of the values of “When you get home” |
+| `Home speaker` |  |
+| `Its players, playing from the server on their own.` |  |
+| `Last one used` | One of the values of “Home speaker” |
+| `Lost contact with the speaker` |  |
+| `Switch on its own` | One of the values of “When you get home” |
+| `The house's media players in the output sheet.` |  |
+| `The speaker couldn't play this song` |  |
+| `The speaker the music goes to when you get home. Without one, it is the speaker you last played on.` |  |
+| `The television, as a speaker of the app.` |  |
+| `What to do when the music plays on the phone and the home speaker is on the network. Switching on its own, the music also comes back to the phone when you leave the Wi-Fi.` |  |
+| `When you get home` |  |
 
 ## Settings › Home assistant
 
@@ -1467,7 +1510,7 @@ you are actually typing into, which is easier than reading it here.
 | `A downloaded song normally plays from the file, which costs no data. Choose otherwise if your downloads are smaller copies and you would rather stream the good one when you can. Without a connection the file is always used.` |  |
 | `A longer blend, DJ style, in a die or "For you" mix; not into a radio or a song under 30 s. Volumes only: the beats are not matched.` |  |
 | `Always` | A value of when a downloaded song is played from the file instead of streamed |
-| `Ask` | One of the values of “When you get home” |
+| `At home` |  |
 | `Automatic` | A value of `Normalize volume`: let the app decide between per track and per album |
 | `Autoplay` | When the queue runs out, keep playing with similar songs instead of stopping |
 | `By album` | Volume normalization (ReplayGain) mode: even out loudness album by album |
@@ -1477,14 +1520,10 @@ you are actually typing into, which is easier than reading it here.
 | `Codec to transcode to. Your server must support it.` |  |
 | `Crossfade` | One song fading into the next |
 | `Cuts the quiet gaps inside and between tracks` | The line under “Skip silence”, explaining it |
-| `Do nothing` | One of the values of “When you get home” |
 | `Equalizer` |  |
 | `Evens out loudness between songs using your files' ReplayGain tags.` | The line under “Normalize volume”, explaining it |
-| `Home speaker` |  |
 | `Keep playing similar songs when your queue ends. A mix you start yourself always does, even with this off.` | The line under “Autoplay”, explaining it |
 | `Keep screen on` |  |
-| `Last one used` | One of the values of “Home speaker” |
-| `Lost contact with the speaker` |  |
 | `Mix transitions` |  |
 | `Mobile data` | Group header under `Streaming`: the settings that apply on mobile data, as opposed to Wi-Fi |
 | `Never` | A value of `Play downloaded songs from the phone`: always stream, never use the file on the phone. The share sheet's own "never expires" is a separate key, `Never::expiry`, so a language that needs two different words can have them |
@@ -1512,17 +1551,13 @@ you are actually typing into, which is easier than reading it here.
 | `Streaming quality (mobile data)` |  |
 | `Streaming quality (Wi-Fi)` |  |
 | `Suggest the sleep timer at night` |  |
-| `Switch on its own` | One of the values of “When you get home” |
+| `The home speaker, and what happens when you get home.` | The line under “At home”, explaining it |
 | `The screen never turns off while the app is visible.` | The line under “Keep screen on”, explaining it |
-| `The speaker couldn't play this song` |  |
-| `The speaker the music goes to when you get home. Without one, it is the speaker you last played on.` |  |
 | `Tune the sound band by band.` | The line under “Equalizer”, explaining it |
 | `Warn about battery optimization` |  |
 | `What the die plays on a tap: the Shuffle chip, the widget, the car. A long press on a die picks another mode once.` |  |
-| `What to do when the music plays on the phone and the home speaker is on the network. Switching on its own, the music also comes back to the phone when you leave the Wi-Fi.` |  |
 | `When a song counts as played.` | Under the `Scrobbling` row, saying what the screen it opens is about |
 | `When the music starts between 11 pm and 5 am, offer to stop it in 30 minutes, once a night.` | The line under “Suggest the sleep timer at night”, explaining it |
-| `When you get home` |  |
 | `When you open the app with nothing playing, take the queue another player left on the server if it is newer than this one. The ⋯ of the queue screen asks for it at any time.` |  |
 
 ## Settings › Player
@@ -1549,6 +1584,7 @@ you are actually typing into, which is easier than reading it here.
 | `Keep the tracks before the current one in the queue, dimmed. Tap one to go back.` |  |
 | `Lyrics background` | What is drawn behind the lyrics screen, the full screen one |
 | `Lyrics card background` | What is drawn behind the small lyrics card that peeks under the player. Not the same thing as `Lyrics background` |
+| `Lyrics on the car screen` | Switch: the line of the lyrics being sung is shown on Android Auto's playback screen |
 | `Lyrics source` | Where lyrics are looked for. Its values are the three `Prefer…`/`Disable…` lines |
 | `No` | A setting value meaning none or zero, not the answer to a question: no crossfade, no seek buttons |
 | `Nothing` | A value of `On cover tap`: tapping the cover does nothing |
@@ -1595,6 +1631,7 @@ you are actually typing into, which is easier than reading it here.
 | `What the previous button does partway through a song.` | The line under “Previous button”, explaining it |
 | `When the lyrics carry word timings, the word being sung lights up.` | The line under “Highlight words”, explaining it |
 | `Where to get lyrics from. Online search uses LRCLIB (sends the artist and title).` |  |
+| `With Android Auto, the line being sung shows in place of the artist on the car's playback screen. Synced lyrics only.` |  |
 
 ## Settings › Quick grid
 
@@ -1618,8 +1655,12 @@ you are actually typing into, which is easier than reading it here.
 | `Allow Bluetooth` |  |
 | `Android needs permission to tell which device connected.` | The line under “Allow Bluetooth”, explaining it |
 | `Announce songs` | Each new song's title and artist read out loud by the phone |
+| `Battery at {n} %` | Read out loud in the helmet when the phone's battery reaches 20, 10 and 5 %. `{n}` is the level |
 | `Big buttons for a glove, the screen kept on, and a flick to skip.` | The line under “Open ride mode”, explaining it |
 | `Brought to the front when the intercom connects, with the floating player over it.` | The line under “Navigation app”, explaining it |
+| `Car mode` | Ride mode's sibling for a car with nothing but Bluetooth: started when the car connects, it sets the volume, opens the navigation app and starts the music. The name of its settings screen |
+| `Car mode and ride mode` | The name of the notification channel in the phone's settings, for the notification shown while one of them is on |
+| `Car mode is on` |  |
 | `Each new song is read out in the helmet.` | The line under “Announce songs”, explaining it |
 | `Favorites, shuffled` | One of the values of “With an empty queue” |
 | `Floating player` | A small player drawn over whatever app is in front (Waze), with play, pause and next |
@@ -1646,9 +1687,14 @@ you are actually typing into, which is easier than reading it here.
 | `Raised by` |  |
 | `Resume playback` |  |
 | `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
+| `Ride mode and car mode are on` |  |
+| `Ride mode is on` |  |
 | `Ride mode starts on its own when one of these Bluetooth devices connects, and stops when it disconnects. Pair the intercom with the phone first.` |  |
 | `Shuffle all` | One of the values of “With an empty queue” |
+| `Started by {name}` | Line of the notification shown while car or ride mode is on; {name} is the Bluetooth device (a car, an intercom) whose connection started it |
+| `Started by hand` | Line of the same notification when the mode was turned on from the app or the quick settings tile, not by a device |
 | `Status at the start` |  |
+| `Stops it until the intercom connects again.` | The line under “Ride mode is on”, explaining it |
 | `Strong, three steps` | One of the values of “Raised by” |
 | `The battery, the output and how many songs are left, said when the intercom connects.` | The line under “Status at the start”, explaining it |
 | `The media volume set when ride mode starts on its own, so it is not left where the kitchen had it.` | The line under “Volume at the start”, explaining it |
@@ -1845,6 +1891,19 @@ you are actually typing into, which is easier than reading it here.
 | `Withdrawn` |  |
 | `YouTube has ended the session Navifind was signed in with. Nothing of yours can be read until a fresh cookie takes its place.` |  |
 | `YouTube would not accept that cookie, so nothing was changed. It is usually an old one: copy it again from a page you have just loaded.` |  |
+
+## Sleep
+
+| String | What it is |
+| --- | --- |
+| `{n} min` |  |
+| `{n} min left, the volume going down at the end` |  |
+| `+{n} min` |  |
+| `Alarm {day} at {time}` |  |
+| `Music stops at {time}` |  |
+| `No alarm set` |  |
+| `Stop the music in` | Sleep mode screen, above a row of durations (15 min, 30 min…): the sentence they finish |
+| `Turn the timer off` |  |
 
 ## Smart playlist
 
