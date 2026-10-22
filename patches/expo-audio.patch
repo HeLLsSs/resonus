@@ -26,7 +26,7 @@ index 36a19f2d9c4a979a940ab681a1fb844ce45f7c75..3509de4747f3ebdda1a014f05fb02f07
 +  <uses-permission android:name="android.permission.WAKE_LOCK" />
  </manifest>
 diff --git a/android/src/main/java/expo/modules/audio/AudioModule.kt b/android/src/main/java/expo/modules/audio/AudioModule.kt
-index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c658bc2ced 100644
+index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..a939a7caeefd8e8615577c3ade2a47375cbfdeed 100644
 --- a/android/src/main/java/expo/modules/audio/AudioModule.kt
 +++ b/android/src/main/java/expo/modules/audio/AudioModule.kt
 @@ -18,6 +18,7 @@ import androidx.media3.common.C.CONTENT_TYPE_HLS
@@ -55,13 +55,12 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
    private var focusAcquired = false
    private var interruptionMode: InterruptionMode? = null
    private var allowsBackgroundRecording = false
-@@ -140,6 +145,17 @@ class AudioModule : Module() {
+@@ -140,22 +145,40 @@ class AudioModule : Module() {
      return playsInSilentMode || audioManager.ringerMode == AudioManager.RINGER_MODE_NORMAL
    }
  
 +  /**
-+   * `AUDIOFOCUS_GAIN`, not `AUDIOFOCUS_GAIN_TRANSIENT`, when nothing else is
-+   * meant to keep playing.
++   * `AUDIOFOCUS_GAIN`, never `AUDIOFOCUS_GAIN_TRANSIENT`, whatever the mode.
 +   *
 +   * Transient focus means "lend me the audio for a moment": it is what a
 +   * navigation prompt, a notification or a call asks for, and what it tells
@@ -69,22 +68,28 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
 +   * playing an album is not borrowing anything. Upstream asked for transient
 +   * focus whatever the mode, so music was announcing itself as an
 +   * interruption for as long as it played.
++   *
++   * `duckOthers` included: dipping under a prompt instead of pausing is what
++   * the listener does with `AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK`, and has
++   * nothing to do with the kind of focus asked for. Asked for as transient,
++   * a car took the music for a voice prompt and played it on its call
++   * channel, with the bandwidth of a phone call.
 +   */
    private fun requestAudioFocus() {
      if (focusAcquired || !audioEnabled || interruptionMode == InterruptionMode.MIX_WITH_OTHERS) {
        return
-@@ -148,14 +164,23 @@ class AudioModule : Module() {
+     }
+ 
      val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-       val requestType = interruptionMode?.let {
-         if (it == InterruptionMode.DO_NOT_MIX) {
+-      val requestType = interruptionMode?.let {
+-        if (it == InterruptionMode.DO_NOT_MIX) {
 -          AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
-+          AudioManager.AUDIOFOCUS_GAIN
-         } else {
-           AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-         }
+-        } else {
+-          AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+-        }
 -      } ?: AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
-+      } ?: AudioManager.AUDIOFOCUS_GAIN
-       audioFocusRequest = AudioFocusRequest.Builder(requestType).run {
+-      audioFocusRequest = AudioFocusRequest.Builder(requestType).run {
++      audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
          setAudioAttributes(
            AudioAttributes.Builder()
 +            // Say what this focus is for, the same way the player says what it
@@ -99,16 +104,21 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
              .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
              .build()
          )
-@@ -169,7 +194,7 @@ class AudioModule : Module() {
+@@ -168,12 +191,7 @@ class AudioModule : Module() {
+       }
      } else {
        @Suppress("DEPRECATION")
-       val requestType = if (interruptionMode == InterruptionMode.DO_NOT_MIX) {
+-      val requestType = if (interruptionMode == InterruptionMode.DO_NOT_MIX) {
 -        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
-+        AudioManager.AUDIOFOCUS_GAIN
-       } else {
-         AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-       }
-@@ -363,7 +388,16 @@ class AudioModule : Module() {
+-      } else {
+-        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+-      }
+-      audioManager.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, requestType)
++      audioManager.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
+     }
+ 
+     if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+@@ -363,7 +381,16 @@ class AudioModule : Module() {
              bufferDurationMs
            )
            player.onPlaybackStateChange = { isPlaying ->
@@ -126,7 +136,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
                releaseAudioFocus()
              }
            }
-@@ -376,6 +410,15 @@ class AudioModule : Module() {
+@@ -376,6 +403,15 @@ class AudioModule : Module() {
          player.id
        }
  
@@ -142,7 +152,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
        Property("isBuffering") { player ->
          runOnMain {
            player.ref.playbackState == Player.STATE_BUFFERING
-@@ -438,6 +481,20 @@ class AudioModule : Module() {
+@@ -438,6 +474,20 @@ class AudioModule : Module() {
          player.preservesPitch = preservesPitch
        }
  
@@ -163,7 +173,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
        Property("currentTime") { player ->
          runOnMain {
            player.currentTime
-@@ -507,6 +564,27 @@ class AudioModule : Module() {
+@@ -507,6 +557,27 @@ class AudioModule : Module() {
          }
        }
  
@@ -191,7 +201,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
        Function("setActiveForLockScreen") { ref: AudioPlayer, active: Boolean, metadata: Metadata?, options: AudioLockScreenOptions? ->
          runOnMain {
            ref.setActiveForLockScreen(active, metadata, options)
-@@ -525,6 +603,14 @@ class AudioModule : Module() {
+@@ -525,6 +596,14 @@ class AudioModule : Module() {
          }
        }
  
@@ -206,7 +216,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
        Function("setAudioSamplingEnabled") { player: AudioPlayer, enabled: Boolean ->
          runOnMain {
            player.setSamplingEnabled(enabled)
-@@ -685,7 +771,16 @@ class AudioModule : Module() {
+@@ -685,7 +764,16 @@ class AudioModule : Module() {
            }
            playlist.loadInitialPlaylist()
            playlist.onPlaybackStateChange = { isPlaying ->
@@ -224,7 +234,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
                releaseAudioFocus()
              }
            }
-@@ -860,13 +955,29 @@ class AudioModule : Module() {
+@@ -860,13 +948,29 @@ class AudioModule : Module() {
  
    private fun createMediaItem(source: AudioSource?): MediaSource? = source?.uri?.let { uriString ->
      val uri = uriString.toUri()
@@ -255,7 +265,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
  
      val preloadedBytes = AudioPreloadManager.get(uriString)
      val factory: DataSource.Factory = if (preloadedBytes != null) {
-@@ -914,10 +1025,32 @@ class AudioModule : Module() {
+@@ -914,10 +1018,32 @@ class AudioModule : Module() {
      }
    }
  
@@ -289,7 +299,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..fd3a3b77dcc4c7547caef4173f6421c6
    }
  
    private fun retrieveStreamType(uri: Uri): Int = Util.inferContentType(uri)
-@@ -931,11 +1064,37 @@ class AudioModule : Module() {
+@@ -931,11 +1057,37 @@ class AudioModule : Module() {
        CONTENT_TYPE_SS -> SsMediaSource.Factory(factory)
        CONTENT_TYPE_DASH -> DashMediaSource.Factory(factory)
        CONTENT_TYPE_HLS -> HlsMediaSource.Factory(factory)

@@ -164,6 +164,10 @@ phone is on a mount. It stops fifteen seconds after the car disconnects.
 Bringing the navigation app up from behind needs **Draw over other apps**,
 asked when one is chosen.
 
+A car with Android Auto connects over Bluetooth as well, so it can be
+chosen too, for the announcements and the status; leave **Navigation app**
+on None there, since it would come up on the phone, not on the car's screen.
+
 ## Google Assistant
 
 "Hey Google, play X on Resonus" is Google's call, not the app's: on the
