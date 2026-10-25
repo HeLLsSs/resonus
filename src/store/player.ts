@@ -113,6 +113,7 @@ import {
   syncCastQueue,
   useGoogleCast,
   type CastQueueState,
+  tailIndices,
 } from './googleCast';
 import { useDownloads } from './downloads';
 import {
@@ -182,6 +183,7 @@ import { usePlayHistory } from './playHistory';
 import { cachedUri, KEEP_AFTER, keepIfWorthIt, touchCached } from './playCache';
 import { davHeaders, davUrlFor, parseDavId } from './webdav';
 import { foreignSource } from '@/lib/servers';
+import { everyMs } from '@/lib/ticker';
 import { useQueueHistory } from './queueHistory';
 import { scrobbleThresholdSec, useSettings, type TranscodeFormat } from './settings';
 import { useToast } from './toast';
@@ -1114,7 +1116,32 @@ function remoteSeek(sec: number) {
   else void upnpSeek(sec);
 }
 
+/**
+ * How often at most the output is sent a volume. The slider calls for one on
+ * every move of the finger, and every one went out: dozens of requests a
+ * second at a speaker's small web server, which has other things to answer.
+ * The latest level is what goes, and the last one always does.
+ */
+const VOLUME_SEND_EVERY_MS = 150;
+let volumeToSend: number | null = null;
+let volumeSendTimer: ReturnType<typeof setTimeout> | null = null;
+let volumeSentAt = 0;
+
 function remoteSetVolume(volume: number) {
+  volumeToSend = volume;
+  if (volumeSendTimer) return;
+  volumeSendTimer = setTimeout(
+    () => {
+      volumeSendTimer = null;
+      volumeSentAt = Date.now();
+      if (volumeToSend !== null) sendRemoteVolume(volumeToSend);
+      volumeToSend = null;
+    },
+    Math.max(0, volumeSentAt + VOLUME_SEND_EVERY_MS - Date.now()),
+  );
+}
+
+function sendRemoteVolume(volume: number) {
   const kind = remoteKind();
   if (kind === 'jukebox') {
     jukeboxSetVolume(volume);
@@ -1213,6 +1240,24 @@ function adoptCastSession() {
   void syncCastQueue(castQueueState(index), true);
 }
 
+/** How many songs after the current one a WiiM is handed in its list. */
+const LINKPLAY_AHEAD = 9;
+
+/**
+ * The songs after `index` for a WiiM to play through on its own, when the
+ * setting asks for it: none in a Jam, where the session hands over one at a
+ * time to keep everybody together, and none when the night ends with this
+ * song or it repeats alone (see `tailIndices`).
+ */
+function linkPlayFollowing(index: number): { song: Song; index: number }[] {
+  if (!useSettings.getState().linkPlayList || isJamActive()) return [];
+  const state = castQueueState(index);
+  return tailIndices(state, LINKPLAY_AHEAD).map((i) => ({ song: state.queue[i], index: i }));
+}
+
+/** Which remote load is in charge, so an older one can tell it has been overtaken (see `loadToken`). */
+let remoteLoadToken = 0;
+
 /** Loads the track at `index` into the remote output and syncs state. */
 async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
   const state = usePlayerStore.getState();
@@ -1227,7 +1272,25 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
     setTimeout(adoptCastSession, 0);
     return;
   }
+  const token = ++remoteLoadToken;
   scrobbledThisTrack = false;
+  // The screen follows the tap now, as it does for the phone (`loadIndex`)
+  // and for a new list (`playQueue`). Waiting for the output to answer kept
+  // the song before on screen, with nothing turning, for as long as the
+  // speaker took to take the track, and a Cast receiver only answers once it
+  // holds the stream: a next button that shows nothing for seconds reads as
+  // one that did nothing, and gets pressed again. What the output goes on
+  // saying about the song before is held back meanwhile, by each store's
+  // own `loading` flag.
+  usePlayerStore.setState({
+    index,
+    positionSec: startSec,
+    durationSec: song.duration ?? 0,
+    isPlaying: autoplay,
+    isBuffering: autoplay,
+    playbackError: null,
+  });
+  syncCastMedia();
   const ok =
     kind === 'jukebox'
       ? await jukeboxLoad(song, autoplay, startSec)
@@ -1238,7 +1301,7 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
           : kind === 'ma'
           ? await loadMaQueue(castQueueState(index), autoplay, startSec)
           : kind === 'linkplay'
-            ? await linkPlayLoad(song, autoplay, startSec)
+            ? await linkPlayLoad(song, autoplay, startSec, linkPlayFollowing(index))
             : kind === 'kodi'
             ? await loadKodiQueue(castQueueState(index), autoplay, startSec)
             : await loadUpnpRemoteTrack(
@@ -1252,23 +1315,17 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
             },
             autoplay,
           );
+  // Overtaken by a later tap: the screen is that one's, and so is the output.
+  if (token !== remoteLoadToken) return;
   if (!ok) {
-    // Cast, Home Assistant and Music Assistant say why themselves, when the
-    // device gave a reason.
+    // Cast, Home Assistant, Music Assistant, LinkPlay and Kodi say why
+    // themselves, when the device gave a reason.
     if (kind !== 'cast' && kind !== 'ha' && kind !== 'ma' && kind !== 'linkplay' && kind !== 'kodi') {
       useToast.getState().show(tg("This song can't be cast"));
     }
-    usePlayerStore.setState({ index, isPlaying: false, isBuffering: false });
+    usePlayerStore.setState({ isPlaying: false, isBuffering: false });
     return;
   }
-  usePlayerStore.setState({
-    index,
-    positionSec: startSec,
-    durationSec: song.duration ?? 0,
-    isPlaying: autoplay,
-    isBuffering: autoplay,
-    playbackError: null,
-  });
   onTrackChanged(song);
 }
 
@@ -3756,6 +3813,34 @@ function jamAlign(positionAt: () => number, songId: string | undefined): void {
 let remoteEvents: RemoteEvents | null = null;
 
 /**
+ * The position between two words from the output. A speaker is asked where
+ * it is every second or two, and the bar moved in steps of that; so between
+ * two answers it is carried forward from the last one at the pace of the
+ * clock, and set straight by the next. In the background too, so the lock
+ * screen is as right as the player.
+ */
+const REMOTE_TICK_MS = 250;
+let remoteTick: (() => void) | null = null;
+/** The last position the output gave, and when. */
+let remoteReported: { positionSec: number; at: number } | null = null;
+
+function startRemoteTick(): void {
+  if (remoteTick) return;
+  remoteTick = everyMs(REMOTE_TICK_MS, () => {
+    const st = usePlayerStore.getState();
+    if (!remoteReported || !st.isPlaying || st.isBuffering) return;
+    const carried = remoteReported.positionSec + (Date.now() - remoteReported.at) / 1000;
+    usePlayerStore.setState({ positionSec: st.durationSec > 0 ? Math.min(carried, st.durationSec) : carried });
+  });
+}
+
+function stopRemoteTick(): void {
+  remoteTick?.();
+  remoteTick = null;
+  remoteReported = null;
+}
+
+/**
  * Attaches remote output events (UPnP/DLNA, Jukebox, Google Cast, Home
  * Assistant) to the queue; see src/store/upnp.ts. Call once on startup.
  */
@@ -3823,6 +3908,7 @@ export function initRemoteIntegration() {
     },
     onDisconnected: (lastPositionSec) => {
       outputListeners.forEach((listener) => listener());
+      stopRemoteTick();
       castResumeAwaitingQueue = false;
       // The casting media session is already closed by `upnpDisconnect` and
       // `castDisconnect` (covers silent disconnects too). Here we just return
@@ -3837,6 +3923,7 @@ export function initRemoteIntegration() {
       })();
     },
     onProgress: (positionSec, durationSec) => {
+      remoteReported = { positionSec, at: Date.now() };
       usePlayerStore.setState({
         positionSec,
         durationSec: durationSec || usePlayerStore.getState().durationSec,
@@ -3848,8 +3935,11 @@ export function initRemoteIntegration() {
     },
     onPlayingChanged: (isPlaying, isBuffering) => {
       usePlayerStore.setState({ isPlaying, isBuffering });
-      if (isPlaying) startPeriodicSync();
-      else {
+      if (isPlaying) {
+        startPeriodicSync();
+        startRemoteTick();
+      } else {
+        stopRemoteTick();
         stopPeriodicSync();
         scheduleSync();
       }
@@ -3887,11 +3977,11 @@ export function initRemoteIntegration() {
   remoteEvents = events;
   initUpnp(events);
   initJukebox(events);
-  initLinkPlay(events);
   const queueOf = () => {
     const { queue, index } = usePlayerStore.getState();
     return { queue, index };
   };
+  initLinkPlay(events, queueOf);
   initGoogleCast(events, queueOf);
   initHomeAssistant(events, queueOf);
   initMusicAssistant(events, queueOf);

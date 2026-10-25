@@ -11,7 +11,7 @@
 import { useRouter } from 'expo-router';
 import { Platform, ScrollView, Text } from 'react-native';
 
-import { SelectList, SettingRow, SettingsPage, settingsStyles } from '@/components/SettingsUI';
+import { SelectList, SettingRow, SettingsPage, settingsStyles, SwitchList } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
 import { normalizeOutputDisplayName } from '@/lib/format';
 import { linkPlayAvailable } from '@/lib/linkplay';
@@ -30,6 +30,8 @@ export default function HomeSettings() {
   const homeSpeakerHost = useSettings((s) => s.homeSpeakerHost);
   const setHomeSpeakerHost = useSettings((s) => s.setHomeSpeakerHost);
   const lpDevices = useLinkPlay((s) => s.devices);
+  const linkPlayList = useSettings((s) => s.linkPlayList);
+  const setLinkPlayList = useSettings((s) => s.setLinkPlayList);
 
   return (
     <SettingsPage title={t('At home')}>
@@ -72,6 +74,18 @@ export default function HomeSettings() {
               value={homeSpeakerHost}
               onChange={setHomeSpeakerHost}
               disabled={homeHandoff === 'off'}
+            />
+            <SwitchList
+              options={[
+                {
+                  label: t('Hand a WiiM the next songs'),
+                  description: t(
+                    'The speaker is given the songs after this one as a list and plays through it on its own, with no silence while the phone tells it the next one. Experimental: switch it off if a speaker stops after a song.',
+                  ),
+                  value: linkPlayList,
+                  onChange: setLinkPlayList,
+                },
+              ]}
             />
           </>
         ) : null}

@@ -219,8 +219,8 @@ function localFilesOf(songs: Song[]): Served[] {
  * URL is built: `localFileUrl` answers out of what has been published, so the
  * order is the whole of it.
  */
-export async function ensureLocalFilesServed(songs: Song[]): Promise<void> {
-  const files = localFilesOf(songs);
+export async function ensureLocalFilesServed(songs: Song[], extra: Served[] = []): Promise<void> {
+  const files = [...localFilesOf(songs), ...extra];
   if (files.length === 0) return;
   await publishLocalFiles(files);
 }

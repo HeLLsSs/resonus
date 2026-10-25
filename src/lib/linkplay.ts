@@ -22,7 +22,10 @@ interface NativeLinkPlay {
   call(host: string, command: string): Promise<string>;
   startPolling(host: string, intervalMs: number): Promise<void>;
   stopPolling(): Promise<void>;
-  addListener(event: 'status', listener: (e: { host: string; body?: string; error?: string }) => void): { remove: () => void };
+  addListener(
+    event: 'status',
+    listener: (e: { host: string; body?: string; error?: string; askedAt?: number }) => void,
+  ): { remove: () => void };
 }
 
 const native = requireOptionalNativeModule<NativeLinkPlay>('LinkPlay');
@@ -85,6 +88,15 @@ export interface LinkPlayStatus {
   /** 0..1 */
   volume: number;
   muted: boolean;
+  /**
+   * When the speaker was asked, in ms since the epoch, for a status read by
+   * polling: one asked before a track was handed over describes the track
+   * before, whatever it says.
+   */
+  askedAt?: number;
+  /** Where the speaker is in the list it was handed, from 1, when it holds one. */
+  listIndex?: number;
+  listCount?: number;
 }
 
 /** A speaker following the one polled, as the leader lists it. */
@@ -117,7 +129,7 @@ export function deviceFrom(host: string, raw: unknown): LinkPlayDevice | null {
 }
 
 /** Where a speaker is, out of `getPlayerStatus`. Positions come in milliseconds, volume in percent. */
-export function statusFrom(raw: unknown): LinkPlayStatus | null {
+export function statusFrom(raw: unknown, askedAt?: number): LinkPlayStatus | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
   const state = String(r.status ?? 'none');
@@ -126,13 +138,39 @@ export function statusFrom(raw: unknown): LinkPlayStatus | null {
     return Number.isFinite(n) && n > 0 ? n / 1000 : 0;
   };
   const vol = Number(r.vol);
+  const listCount = Number(r.plicount);
+  const listIndex = Number(r.plicurr);
   return {
     state: state === 'play' || state === 'pause' || state === 'stop' || state === 'load' ? state : 'none',
     positionSec: ms(r.curpos),
     durationSec: ms(r.totlen),
     volume: Number.isFinite(vol) ? Math.max(0, Math.min(1, vol / 100)) : 0,
     muted: String(r.mute ?? '0') === '1',
+    ...(askedAt === undefined ? {} : { askedAt }),
+    ...(listCount > 0 && listIndex > 0 ? { listIndex, listCount } : {}),
   };
+}
+
+/** What goes in a playlist handed to a speaker. */
+export interface M3uItem {
+  url: string;
+  title: string;
+  durationSec: number;
+}
+
+/**
+ * The list as an M3U, which a speaker reads and plays through on its own,
+ * one item after the other, with the next one fetched while the one before
+ * still plays: the only way its API has of going from one track to the next
+ * without a silence while it is told.
+ */
+export function m3uFor(items: M3uItem[]): string {
+  const lines = ['#EXTM3U'];
+  for (const item of items) {
+    lines.push(`#EXTINF:${Math.max(0, Math.round(item.durationSec))},${item.title.replace(/[\r\n]+/g, ' ')}`);
+    lines.push(item.url);
+  }
+  return lines.join('\n') + '\n';
 }
 
 /** The speakers following this one, out of `multiroom:getSlaveList`. */
@@ -177,6 +215,10 @@ export const cmd = {
   player: 'getPlayerStatus',
   /** Plays this URL now, whatever was playing. */
   play: (url: string) => `setPlayerCmd:play:${url}`,
+  /** Plays this list (an M3U by URL) from its `index`th item, counted from 1. */
+  playlist: (url: string, index: number) => `setPlayerCmd:playlist:${url}:${Math.max(1, index)}`,
+  /** The next item of the list the speaker holds. */
+  next: 'setPlayerCmd:next',
   pause: 'setPlayerCmd:pause',
   resume: 'setPlayerCmd:resume',
   stop: 'setPlayerCmd:stop',
@@ -233,27 +275,42 @@ export async function discover(): Promise<{ name: string; host: string }[]> {
   }
 }
 
+/** The asking started by `watchStatus`: stopped, or asked at another pace. */
+export interface LinkPlayWatcher {
+  stop(): void;
+  /** Asks again now, then every `intervalMs`. */
+  every(intervalMs: number): void;
+}
+
 /**
  * Asks the speaker where it is every `intervalMs`, from native code, so the
  * asking goes on with the screen locked (JavaScript timers do not). Each
- * answer, or the failure to get one, comes to `onStatus`; the return value
- * stops the asking.
+ * answer, or the failure to get one, comes to `onStatus`.
  */
 export function watchStatus(
   host: string,
   intervalMs: number,
   onStatus: (status: LinkPlayStatus | null, error?: string) => void,
-): () => void {
+): LinkPlayWatcher {
   if (!native) {
     // No native side: a plain timer, which a browser keeps running in the
     // tab that plays.
-    const timer = setInterval(() => {
+    const poll = () => {
+      const askedAt = Date.now();
       ask(host, cmd.player).then(
-        (raw) => onStatus(statusFrom(raw), null === raw ? 'Not a status' : undefined),
+        (raw) => onStatus(statusFrom(raw, askedAt), null === raw ? 'Not a status' : undefined),
         (e) => onStatus(null, e instanceof Error ? e.message : String(e)),
       );
-    }, intervalMs);
-    return () => clearInterval(timer);
+    };
+    let timer = setInterval(poll, intervalMs);
+    return {
+      stop: () => clearInterval(timer),
+      every: (ms) => {
+        clearInterval(timer);
+        poll();
+        timer = setInterval(poll, ms);
+      },
+    };
   }
   const sub = native.addListener('status', (e) => {
     if (e.host !== host) return;
@@ -267,12 +324,16 @@ export function watchStatus(
     } catch {
       parsed = null;
     }
-    onStatus(statusFrom(parsed), parsed === null ? 'Not a status' : undefined);
+    onStatus(statusFrom(parsed, e.askedAt), parsed === null ? 'Not a status' : undefined);
   });
   void native.startPolling(host, intervalMs);
-  return () => {
-    sub.remove();
-    void native.stopPolling();
+  return {
+    stop: () => {
+      sub.remove();
+      void native.stopPolling();
+    },
+    // Starting over is how the native side changes pace, and it asks at once.
+    every: (ms) => void native.startPolling(host, ms),
   };
 }
 

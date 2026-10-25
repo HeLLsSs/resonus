@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { cleanHost, cmd, deviceFrom, fromHex, slavesFrom, statusFrom } from '@/lib/linkplay';
+import { cleanHost, cmd, deviceFrom, fromHex, m3uFor, slavesFrom, statusFrom } from '@/lib/linkplay';
 
 describe('deviceFrom', () => {
   it('reads a speaker out of its status, and whether it follows another', () => {
@@ -31,6 +31,17 @@ describe('statusFrom', () => {
     assert.deepEqual(status, { state: 'play', positionSec: 12.5, durationSec: 200, volume: 0.54, muted: false });
   });
 
+  it('carries when the speaker was asked, and only then', () => {
+    assert.equal(statusFrom({ status: 'play' }, 1_700_000_000_000)?.askedAt, 1_700_000_000_000);
+    assert.equal('askedAt' in (statusFrom({ status: 'play' }) ?? {}), false);
+  });
+
+  it('says where the speaker is in a list it holds, and nothing when it holds none', () => {
+    const held = statusFrom({ status: 'play', plicount: '10', plicurr: '3' });
+    assert.deepEqual({ listIndex: held?.listIndex, listCount: held?.listCount }, { listIndex: 3, listCount: 10 });
+    assert.equal('listIndex' in (statusFrom({ status: 'play', plicount: '0', plicurr: '0' }) ?? {}), false);
+  });
+
   it('knows the states it does not know', () => {
     assert.equal(statusFrom({ status: 'whatever' })?.state, 'none');
     assert.equal(statusFrom(null), null);
@@ -53,11 +64,22 @@ describe('slavesFrom', () => {
 describe('commands', () => {
   it('say what the speaker expects', () => {
     assert.equal(cmd.play('http://s/rest/stream?id=1&u=a'), 'setPlayerCmd:play:http://s/rest/stream?id=1&u=a');
+    assert.equal(cmd.playlist('http://p/l.m3u', 1), 'setPlayerCmd:playlist:http://p/l.m3u:1');
     assert.equal(cmd.seek(12.6), 'setPlayerCmd:seek:13');
     assert.equal(cmd.volume(0.545), 'setPlayerCmd:vol:55');
     assert.equal(cmd.volume(2), 'setPlayerCmd:vol:100');
     assert.equal(cmd.join('10.0.0.5'), 'ConnectMasterAp:JoinGroupMaster:eth10.0.0.5:wifi0.0.0.0');
     assert.equal(cmd.kick('10.0.0.6'), 'multiroom:SlaveKickout:10.0.0.6');
+  });
+});
+
+describe('m3uFor', () => {
+  it('writes the list the way a speaker reads it, one line per title', () => {
+    const text = m3uFor([
+      { url: 'http://p/1', title: 'A - One', durationSec: 200.4 },
+      { url: 'http://p/2', title: 'Two\nlines', durationSec: 0 },
+    ]);
+    assert.equal(text, '#EXTM3U\n#EXTINF:200,A - One\nhttp://p/1\n#EXTINF:0,Two lines\nhttp://p/2\n');
   });
 });
 

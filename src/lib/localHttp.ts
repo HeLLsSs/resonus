@@ -29,10 +29,14 @@ let origin: string | null = null;
 /** file URI or server URL → the key it is published under, so republishing is stable. */
 const keys = new Map<string, string>();
 
-/** A file on the phone, or a server URL to fetch from here with headers on. */
+/**
+ * A file on the phone, a server URL to fetch from here with headers on, or
+ * text written here (a playlist for a speaker), published under `name`.
+ */
 export type Served =
   | { uri: string; mime: string }
-  | { url: string; headers: Record<string, string> };
+  | { url: string; headers: Record<string, string> }
+  | { name: string; text: string; mime: string };
 
 /**
  * Random from end to end. The port is open to the whole network for as long
@@ -40,12 +44,18 @@ export type Served =
  * a counter with a few characters after it was a guess away from the next
  * one.
  */
-function keyFor(uri: string): string {
+function keyFor(uri: string, extension = ''): string {
   const known = keys.get(uri);
   if (known) return known;
-  const key = Crypto.randomUUID();
+  const key = Crypto.randomUUID() + extension;
   keys.set(uri, key);
   return key;
+}
+
+/** What a published name ends in, kept on the key: a speaker reads a list by its ending. */
+function extensionOf(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot) : '';
 }
 
 /**
@@ -65,7 +75,9 @@ export async function publishLocalFiles(files: Served[]): Promise<boolean> {
         files.map((f) =>
           'uri' in f
             ? { key: keyFor(f.uri), uri: f.uri, mime: f.mime }
-            : { key: keyFor(f.url), url: f.url, headers: f.headers },
+            : 'text' in f
+              ? { key: keyFor(f.name, extensionOf(f.name)), text: f.text, mime: f.mime }
+              : { key: keyFor(f.url), url: f.url, headers: f.headers },
         ),
       ),
     );

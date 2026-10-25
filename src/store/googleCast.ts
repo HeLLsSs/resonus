@@ -465,11 +465,12 @@ interface TrackSpec {
  * receiver repeats the item itself) or when the track is to be the last one
  * heard: the finish must reach the app for the sleep timer to act on it.
  */
-function tailIndices(state: CastQueueState): number[] {
+/** The positions of the `count` songs after `index`, wrapping when the queue repeats; none when the night ends with this song or it repeats alone. */
+export function tailIndices(state: CastQueueState, count = NEXT_ITEMS): number[] {
   const { queue, index, repeat, sleepAtSongEnd } = state;
   if (repeat === 'one' || sleepAtSongEnd || queue.length === 0) return [];
   const out: number[] = [];
-  for (let step = 1; step <= NEXT_ITEMS; step++) {
+  for (let step = 1; step <= count; step++) {
     const i = index + step;
     if (i < queue.length) out.push(i);
     else if (repeat === 'all' && queue.length > 1) out.push(i % queue.length);

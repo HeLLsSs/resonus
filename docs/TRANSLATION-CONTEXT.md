@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1524 of them.
+Every string the app can show, under the screen it shows up on. 1527 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -947,6 +947,7 @@ you are actually typing into, which is easier than reading it here.
 | `Plays music at the chosen time, even with the app closed.` | The line under “Wake me up”, explaining it |
 | `Rising volume` |  |
 | `The speaker couldn't play this song` |  |
+| `The speaker didn't answer` |  |
 | `This phone` | The on-device profile, with no server account |
 | `Wake me up` |  |
 | `Wake-up alarm` |  |
@@ -1206,6 +1207,7 @@ you are actually typing into, which is easier than reading it here.
 | `At home` |  |
 | `Connected to the house` |  |
 | `Do nothing` | One of the values of “When you get home” |
+| `Hand a WiiM the next songs` |  |
 | `Home speaker` |  |
 | `Its players, playing from the server on their own.` |  |
 | `Last one used` | One of the values of “Home speaker” |
@@ -1213,6 +1215,8 @@ you are actually typing into, which is easier than reading it here.
 | `Switch on its own` | One of the values of “When you get home” |
 | `The house's media players in the output sheet.` |  |
 | `The speaker couldn't play this song` |  |
+| `The speaker didn't answer` |  |
+| `The speaker is given the songs after this one as a list and plays through it on its own, with no silence while the phone tells it the next one. Experimental: switch it off if a speaker stops after a song.` |  |
 | `The speaker the music goes to when you get home. Without one, it is the speaker you last played on.` |  |
 | `The television, as a speaker of the app.` |  |
 | `What to do when the music plays on the phone and the home speaker is on the network. Switching on its own, the music also comes back to the phone when you leave the Wi-Fi.` |  |

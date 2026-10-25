@@ -183,7 +183,10 @@ appear when it is switched off.
   speaker chosen in Settings › Playback, or else the one last played on. Set
   to switch on its own, the music moves to it without asking, also when the
   phone joins the Wi-Fi mid-song, with an "Undo"; and it comes back to the
-  phone, where it was, when the phone leaves the Wi-Fi.
+  phone, where it was, when the phone leaves the Wi-Fi. Skipping on a
+  speaker changes the screen at once, and a WiiM can be handed the next
+  songs as a list it plays through on its own (Settings › At home), so
+  nothing is silent while the phone tells it the next one.
 - **Music Assistant**, spoken to directly rather than through Home Assistant.
   Nothing is polled, and no address is handed to a speaker: a song is named by
   its id in the library Music Assistant already keeps, and it fetches the song

@@ -41,13 +41,16 @@ class LinkPlayModule : Module() {
       pollJob?.cancel()
       pollJob = scope.launch {
         while (isActive) {
+          // When the question left, so that JS can tell an answer about the
+          // track before from one about the track it has since handed over.
+          val askedAt = System.currentTimeMillis()
           val result = runCatching { LinkPlayHttp.call(host, "getPlayerStatus") }
           if (!isActive) break
           sendEvent(
             "status",
             result.fold(
-              { mapOf("host" to host, "body" to it) },
-              { mapOf("host" to host, "error" to (it.message ?: "LinkPlay call failed")) },
+              { mapOf("host" to host, "body" to it, "askedAt" to askedAt) },
+              { mapOf("host" to host, "error" to (it.message ?: "LinkPlay call failed"), "askedAt" to askedAt) },
             ),
           )
           delay(intervalMs.toLong())

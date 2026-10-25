@@ -966,6 +966,13 @@ interface SettingsState {
    * have four years of muscle memory in which ⏭ means "play the next one".
    */
   keepPausedOnSkip: boolean;
+  /**
+   * A WiiM is handed the songs after the current one as a list it plays
+   * through on its own, rather than one song at a time once the one before
+   * has ended: no silence between two songs while the phone notices and
+   * tells it. Off until it has been heard working on a speaker.
+   */
+  linkPlayList: boolean;
   /** Action when swiping a song right in lists. */
   swipeAction: SwipeAction;
   /** Action when swiping a song left in lists. */
@@ -1144,6 +1151,7 @@ interface SettingsState {
   setSeekButtonsSec: (value: number) => void;
   setPreviousButtonMode: (value: PreviousButtonMode) => void;
   setKeepPausedOnSkip: (value: boolean) => void;
+  setLinkPlayList: (value: boolean) => void;
   setSwipeAction: (value: SwipeAction) => void;
   setSwipeLeftAction: (value: SwipeAction) => void;
   setHomeSection: (key: HomeSectionKey, value: boolean) => void;
@@ -1297,6 +1305,7 @@ function snapshot(get: () => SettingsState) {
     seekButtonsSec: s.seekButtonsSec,
     previousButtonMode: s.previousButtonMode,
     keepPausedOnSkip: s.keepPausedOnSkip,
+    linkPlayList: s.linkPlayList,
     swipeAction: s.swipeAction,
     swipeLeftAction: s.swipeLeftAction,
     homeSections: s.homeSections,
@@ -1445,6 +1454,7 @@ const DEFAULTS = {
   seekButtonsSec: 0,
   previousButtonMode: 'restart' as PreviousButtonMode,
   keepPausedOnSkip: false,
+  linkPlayList: false,
   // By default, swiping right queues (previous behavior) and left does
   // nothing (opt-in).
   swipeAction: 'queue' as SwipeAction,
@@ -1920,6 +1930,11 @@ export const useSettings = create<SettingsState>((set, get) => ({
     persist(snapshot(get));
   },
 
+  setLinkPlayList: (linkPlayList) => {
+    set({ linkPlayList });
+    persist(snapshot(get));
+  },
+
   setSwipeLeftAction: (swipeLeftAction) => {
     set({ swipeLeftAction });
     persist(snapshot(get));
@@ -2263,6 +2278,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
           seekButtonsSec: number;
           previousButtonMode: PreviousButtonMode;
           keepPausedOnSkip?: boolean;
+          linkPlayList?: boolean;
           swipeAction: SwipeAction;
           swipeLeftAction: SwipeAction;
           homeSections: unknown;
@@ -2617,6 +2633,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
         }
         if (typeof parsed.keepPausedOnSkip === 'boolean') {
           set({ keepPausedOnSkip: parsed.keepPausedOnSkip });
+        }
+        if (typeof parsed.linkPlayList === 'boolean') {
+          set({ linkPlayList: parsed.linkPlayList });
         }
         if (
           parsed.swipeAction === 'off' ||

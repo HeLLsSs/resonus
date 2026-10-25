@@ -48,6 +48,9 @@ class FileServer(private val ctx: Context) {
 
     /** A URL on the server, fetched from here with these headers on. */
     data class Remote(val url: String, val headers: Map<String, String>) : Entry()
+
+    /** Text written by JS, a playlist for a speaker that reads one. */
+    class Text(val body: ByteArray, val mime: String) : Entry()
   }
 
   /**
@@ -100,7 +103,8 @@ class FileServer(private val ctx: Context) {
 
   /**
    * Replaces what is published. The payload is a list of `{ key, uri, mime }`
-   * for a file on the phone or `{ key, url, headers }` for one to relay.
+   * for a file on the phone, `{ key, url, headers }` for one to relay or
+   * `{ key, text, mime }` for text written by JS.
    */
   fun setEntries(json: String) {
     val list = JSONArray(json)
@@ -111,7 +115,9 @@ class FileServer(private val ctx: Context) {
       if (key.isEmpty()) continue
       val uri = item.optString("uri")
       val url = item.optString("url")
-      if (uri.isNotEmpty()) {
+      if (item.has("text")) {
+        next[key] = Entry.Text(item.optString("text").toByteArray(), item.optString("mime", "text/plain"))
+      } else if (uri.isNotEmpty()) {
         next[key] = Entry.Local(uri, item.optString("mime", "application/octet-stream"))
       } else if (url.startsWith("http://") || url.startsWith("https://")) {
         val headers = HashMap<String, String>()
@@ -176,7 +182,15 @@ class FileServer(private val ctx: Context) {
     when (val entry = entries[parts[1]] ?: return status(out, 404, "Not Found")) {
       is Entry.Remote -> relay(method, lines, entry, out)
       is Entry.Local -> serveFile(method, lines, entry, out)
+      is Entry.Text -> serveText(method, entry, out)
     }
+  }
+
+  /** Whole, with its length: nothing ranges over a playlist. */
+  private fun serveText(method: String, entry: Entry.Text, out: OutputStream) {
+    writeHead(out, 200, "OK", entry.mime, entry.body.size.toLong(), null, ranges = false)
+    if (method != "HEAD") out.write(entry.body)
+    out.flush()
   }
 
   /**
