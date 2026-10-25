@@ -9,6 +9,20 @@ Releases before 0.2.1 are only listed on the
 
 ## [Unreleased]
 
+## [1.17.1] - 2026-10-25
+
+### Added
+
+- What a speaker was handed and what it answered goes in the road log
+  (Settings › Diagnostics, and the problem report): each load with how long
+  the speaker took to take it, a retry, a load it stayed silent on, a poll
+  that took seconds, a track ending, a list moving on. A speaker that
+  misbehaves can now be described from the phone rather than remembered.
+- On a speaker, the next song is asked of the proxy twenty-five seconds
+  before the end of the one playing when it comes from YouTube or
+  SoundCloud: the proxy finds where the stream is kept, which takes
+  seconds, and has it ready when the speaker comes for it.
+
 ## [1.17.0] - 2026-10-25
 
 ### Added
