@@ -9,6 +9,44 @@ Releases before 0.2.1 are only listed on the
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-10-25
+
+### Added
+
+- A WiiM can be handed the songs after the current one as a list it plays
+  through on its own (Settings › At home › Hand a WiiM the next songs, off
+  by default): no silence between two songs while the phone notices one has
+  ended and tells the speaker the next, and a tap on next moves the speaker
+  on to a song it already holds. A queue changed in the meantime is put
+  right as the speaker reaches the song that differs. Experimental until it
+  has been heard working on a speaker.
+
+### Fixed
+
+- Skipping to another song on a speaker (next, previous, a tap in the queue,
+  a swipe across the cover) changes the screen at once, with the loading
+  spinner turning while the speaker fetches the track. It used to wait for
+  the speaker's answer, which on a Cast receiver only comes once the stream
+  is loaded: seconds with the old song still on screen and nothing moving,
+  and a second tap that then overtook the first. Two taps in a row now leave
+  the screen to the last one.
+- A WiiM status read by a poll that left before the new track was handed over
+  is no longer taken for the new track playing: it sent the saved position
+  too early, where the speaker dropped it, and read a stop that followed as
+  the track ending, skipping a song.
+- A speaker that does not answer the play command is asked once more a
+  second later, and says so if it still does not answer, instead of leaving
+  the song on screen paused in silence.
+- A WiiM is asked where it is four times a second while it takes a track and
+  in the last seconds of one, so the spinner stops and the next song is
+  handed over up to a second sooner; and a song it takes without playing is
+  reported after six seconds, twelve for one fetched from YouTube or
+  SoundCloud, rather than twelve for all.
+- The position on a speaker moves smoothly between two of its answers
+  instead of jumping a second and a half at a time.
+- The volume slider sends a speaker at most one level every 150 ms rather
+  than one per move of the finger.
+
 ## [1.16.0] - 2026-10-23
 
 ### Added
