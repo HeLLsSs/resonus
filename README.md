@@ -212,7 +212,8 @@ appear when it is switched off.
   rider's own level as the bike goes faster, from the GPS.
 - **Several intercoms**, for several helmets, and **car mode** for a car with
   nothing but Bluetooth: the car connecting sets the volume, brings the
-  navigation app up and starts the music, each with its own switch.
+  navigation app up and starts the music, each with its own switch, and
+  can download the next songs while the car is still on the house Wi-Fi.
   It steps aside for Android Auto, and a notification with a Stop button
   says while either mode is on.
 - **A log of the road** in Diagnostics and in the problem report: which

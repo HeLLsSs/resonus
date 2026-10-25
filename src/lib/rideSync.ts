@@ -65,7 +65,7 @@ import {
   type EmptyQueueAction,
   type RideOverlayState,
 } from '@/lib/rideMode';
-import { startAutoPrepare } from '@/lib/ridePrepare';
+import { prepareDrive, startAutoPrepare } from '@/lib/ridePrepare';
 import { pushOnce } from '@/lib/pushOnce';
 import { rideStatus, statusSentence } from '@/lib/rideVoice';
 import { waitFor, whenProfileReady } from '@/lib/storeWait';
@@ -353,6 +353,7 @@ async function activateCar(): Promise<void> {
   batteryWarned = new Set();
   driveLogWithAudio('car mode on');
   const { car } = config;
+  if (car.prepareOnConnect) void prepareDrive();
   // Android Auto coming up after car mode started: car mode steps aside.
   if (car.notWithAndroidAuto) {
     androidAutoWatch = setInterval(() => {

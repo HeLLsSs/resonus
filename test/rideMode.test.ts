@@ -163,6 +163,13 @@ describe('readRideConfig', () => {
     assert.deepEqual([config.intercoms, config.cars], [[helmet], [{ name: 'Clio', address: 'CC:DD' }]]);
   });
 
+  it('prepares the drive as the car connects only when asked', () => {
+    assert.deepEqual(
+      [readRideConfig({ car: {} }).car.prepareOnConnect, readRideConfig({ car: { prepareOnConnect: true } }).car.prepareOnConnect],
+      [false, true],
+    );
+  });
+
   it('keeps car mode off under Android Auto unless a backup says otherwise', () => {
     assert.deepEqual(
       [readRideConfig({ car: { resume: false } }).car.notWithAndroidAuto, readRideConfig({ car: { notWithAndroidAuto: false } }).car.notWithAndroidAuto],

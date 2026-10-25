@@ -51,6 +51,12 @@ export interface CarConfig extends DriveConfig {
    * only did the same things twice.
    */
   notWithAndroidAuto: boolean;
+  /**
+   * The next songs of the queue are downloaded as the car connects, on
+   * Wi-Fi only: the car is leaving the house, and the road may leave the
+   * network behind (see `prepareDrive` in `lib/ridePrepare.ts`).
+   */
+  prepareOnConnect: boolean;
 }
 
 export interface RideConfig {
@@ -194,6 +200,7 @@ export const NO_CAR_CONFIG: CarConfig = {
   startVolume: 0,
   status: false,
   notWithAndroidAuto: true,
+  prepareOnConnect: false,
 };
 
 export const NO_RIDE_CONFIG: RideConfig = {

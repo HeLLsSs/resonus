@@ -22,6 +22,7 @@ import { create } from 'zustand';
 
 import { type Song } from '@/api/subsonic';
 import { tg } from '@/i18n';
+import { driveLog } from '@/lib/driveLog';
 import { getPlainItem, setPlainItem } from '@/lib/plainStorage';
 import {
   AUTO_PREPARE_IDLE_MS,
@@ -70,6 +71,29 @@ export async function prepareRide(songs: Song[], auto = false): Promise<void> {
       ? tg('Ride prepared: {n} songs downloaded', { n: done })
       : tg('Ride prepared: {done} of {total} songs downloaded', { done, total: songs.length }),
   );
+}
+
+/**
+ * The next songs downloaded as the car connects, when its settings ask for
+ * it: the car is leaving the house, still on its Wi-Fi for a moment, and
+ * the road may leave the network behind. On Wi-Fi only, whatever the
+ * download's own rule says: thirty songs over mobile data at every start
+ * of the car is not what anybody meant by it.
+ */
+export async function prepareDrive(): Promise<void> {
+  if (useRidePreparation.getState().preparing) return;
+  const network = await Network.getNetworkStateAsync();
+  const wifi = network.type === Network.NetworkStateType.WIFI || network.type === Network.NetworkStateType.ETHERNET;
+  if (!wifi) {
+    driveLog('car: not preparing the drive, not on Wi-Fi');
+    return;
+  }
+  await whenProfileReady();
+  const { config } = useRideMode.getState();
+  const { queue, index, repeat } = usePlayerStore.getState();
+  const songs = songsToPrepare(queue, index, config.prepareCount, repeat === 'all', useDownloads.getState().files);
+  driveLog(`car: preparing the drive, ${songs.length} songs to download`);
+  if (songs.length > 0) void prepareRide(songs, true);
 }
 
 /** When the ride was last prepared on its own, kept across launches; the phone's, not the profile's. */

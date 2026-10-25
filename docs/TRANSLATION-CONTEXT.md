@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1527 of them.
+Every string the app can show, under the screen it shows up on. 1534 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -1011,6 +1011,7 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `{n} songs will be downloaded over mobile data.` |  |
 | `Allow Bluetooth` |  |
 | `Android needs permission to tell which device connected.` | The line under “Allow Bluetooth”, explaining it |
 | `Announce songs` | Each new song's title and artist read out loud by the phone |
@@ -1022,29 +1023,41 @@ you are actually typing into, which is easier than reading it here.
 | `Car mode is on` |  |
 | `Car mode starts on its own when one of these Bluetooth devices connects, and stops when it disconnects. Pair the car with the phone first.` |  |
 | `Car mode stays off while Android Auto is on the car screen: it already starts the music and has its own screen.` |  |
+| `Download on mobile data?` |  |
 | `Each new song is read out over the car speakers.` | The line under “Announce songs”, explaining it |
 | `Favorites, shuffled` | One of the values of “With an empty queue” |
+| `How many songs of the queue are downloaded, by the button and on its own. Shared with ride mode.` | The line under “Songs to prepare”, explaining it |
 | `Leave as is` |  |
 | `Navigation app` | Setting: the app (Waze, Maps…) brought to the front when the intercom connects |
 | `No paired device` |  |
 | `None` | The choice of no intercom at all in that list: ride mode never starts by itself |
 | `Not with Android Auto` |  |
 | `Nothing` | A value of `On cover tap`: tapping the cover does nothing |
+| `On Wi-Fi only, the next songs are downloaded as the car connects, before the road leaves the network.` | The line under “Prepare the drive on its own”, explaining it |
+| `Prepare the drive` |  |
+| `Prepare the drive on its own` |  |
+| `Preparing the drive` |  |
 | `Resume playback` |  |
 | `Ride mode` | The app for a motorbike: big buttons, a floating player, spoken titles. Also the name of the settings screen and the launcher shortcut |
 | `Ride mode and car mode are on` |  |
 | `Ride mode is on` |  |
+| `Ride prepared: {done} of {total} songs downloaded` |  |
+| `Ride prepared: {n} songs downloaded` |  |
 | `Shuffle all` | One of the values of “With an empty queue” |
+| `Songs to prepare` |  |
 | `Started by {name}` | Line of the notification shown while car or ride mode is on; {name} is the Bluetooth device (a car, an intercom) whose connection started it |
 | `Started by hand` | Line of the same notification when the mode was turned on from the app or the quick settings tile, not by a device |
 | `Status at the start` |  |
 | `Stops it until the car connects again.` | The line under “Car mode is on”, explaining it |
 | `The battery, the output and how many songs are left, said when the car connects.` | The line under “Status at the start”, explaining it |
 | `The media volume set when car mode starts, so it is not left where the kitchen had it.` | The line under “Volume at the start”, explaining it |
+| `The next songs are already downloaded` |  |
+| `The next songs of the queue downloaded now, for a road that leaves the network behind.` |  |
 | `Volume at the start` |  |
 | `What starts when there is nothing to resume.` | The line under “With an empty queue”, explaining it |
 | `What was playing starts again when the car connects.` | The line under “Resume playback”, explaining it |
 | `When the car connects` |  |
+| `Whole queue` |  |
 | `With an empty queue` | Setting: what ride mode starts when the intercom connects and there is no queue to resume |
 
 ## Settings › Diagnostics

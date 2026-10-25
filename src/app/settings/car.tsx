@@ -10,12 +10,28 @@
 import { useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 
+import { Dialog } from '@/components/Dialog';
 import { DevicePicker } from '@/components/DevicePicker';
 import { SelectList, SettingRow, SettingsPage, settingsStyles, SliderRow, SwitchList } from '@/components/SettingsUI';
 import { useT } from '@/i18n';
-import { canDrawOverlays, getNavigationApps, requestOverlayPermission, type CarConfig, type EmptyQueueAction } from '@/lib/rideMode';
+import {
+  canDrawOverlays,
+  getNavigationApps,
+  PREPARE_COUNTS,
+  requestOverlayPermission,
+  songsToPrepare,
+  type CarConfig,
+  type EmptyQueueAction,
+} from '@/lib/rideMode';
+import { prepareRide, useRidePreparation } from '@/lib/ridePrepare';
+import type { Song } from '@/api/subsonic';
 import { deactivateCar } from '@/lib/rideSync';
+import { useDownloads } from '@/store/downloads';
+import { useNetworkType } from '@/store/networkType';
+import { usePlayerStore } from '@/store/player';
 import { useRideMode } from '@/store/rideMode';
+import { useSettings } from '@/store/settings';
+import { useToast } from '@/store/toast';
 
 export default function CarSettings() {
   const t = useT();
@@ -25,6 +41,26 @@ export default function CarSettings() {
   const [navigationApps] = useState(getNavigationApps);
   const car = config.car;
   const setCar = (patch: Partial<CarConfig>) => setConfig({ car: { ...car, ...patch } });
+  // The same preparation as the ride screen's button, with the same word
+  // asked over mobile data (see `src/app/ride.tsx`).
+  const files = useDownloads((s) => s.files);
+  const preparing = useRidePreparation((s) => s.preparing);
+  const [confirming, setConfirming] = useState<Song[] | null>(null);
+  const prepared = preparing ? preparing.filter((id) => files[id]).length : 0;
+  const askPrepare = () => {
+    if (preparing) return;
+    const { queue, index, repeat } = usePlayerStore.getState();
+    const songs = songsToPrepare(queue, index, config.prepareCount, repeat === 'all', files);
+    if (songs.length === 0) {
+      useToast.getState().show(t('The next songs are already downloaded'));
+      return;
+    }
+    if (useNetworkType.getState().cellular && !useSettings.getState().downloadWifiOnly) {
+      setConfirming(songs);
+      return;
+    }
+    void prepareRide(songs);
+  };
 
   return (
     <SettingsPage title={t('Car mode')}>
@@ -72,6 +108,12 @@ export default function CarSettings() {
               description: t('The battery, the output and how many songs are left, said when the car connects.'),
               value: car.status,
               onChange: (status) => setCar({ status }),
+            },
+            {
+              label: t('Prepare the drive on its own'),
+              description: t('On Wi-Fi only, the next songs are downloaded as the car connects, before the road leaves the network.'),
+              value: car.prepareOnConnect,
+              onChange: (prepareOnConnect) => setCar({ prepareOnConnect }),
             },
             {
               label: t('Not with Android Auto'),
@@ -128,6 +170,33 @@ export default function CarSettings() {
             }}
           />
         ) : null}
+
+        <Text style={settingsStyles.sectionTitle}>{t('Prepare the drive')}</Text>
+        <SettingRow
+          icon="cloud-download-outline"
+          label={preparing ? `${t('Preparing the drive')}  ${prepared} / ${preparing.length}` : t('Prepare the drive')}
+          description={t('The next songs of the queue downloaded now, for a road that leaves the network behind.')}
+          onPress={askPrepare}
+        />
+        <SelectList<number>
+          label={t('Songs to prepare')}
+          description={t('How many songs of the queue are downloaded, by the button and on its own. Shared with ride mode.')}
+          options={PREPARE_COUNTS.map((count) => ({ value: count, label: count === 0 ? t('Whole queue') : String(count) }))}
+          value={config.prepareCount}
+          onChange={(prepareCount) => setConfig({ prepareCount })}
+        />
+        <Dialog
+          visible={confirming !== null}
+          title={t('Download on mobile data?')}
+          message={t('{n} songs will be downloaded over mobile data.', { n: confirming?.length ?? 0 })}
+          confirmLabel={t('Download')}
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => {
+            const songs = confirming;
+            setConfirming(null);
+            if (songs) void prepareRide(songs);
+          }}
+        />
       </ScrollView>
     </SettingsPage>
   );
