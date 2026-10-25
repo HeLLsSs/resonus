@@ -1052,7 +1052,7 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `Android Auto` |  |
-| `Car and ride mode` |  |
+| `Car, ride mode and speakers` |  |
 | `Clear crash log` |  |
 | `Clear the car and ride log` |  |
 | `Couldn't open the link` |  |
@@ -1077,7 +1077,7 @@ you are actually typing into, which is easier than reading it here.
 | `The player keeps beating twice a second while the app is away. Long silences here mean the app stopped following what it was playing.` | The line under `While minimized`. "The player" is the native audio engine, not the player screen, and "beating" is a heartbeat: it sends its state every 500 ms, and the position, the notification and the move to the next track all hang off that. Everything else on this screen stops measuring once the app is minimized, because the system takes its timers away, so this beat is the one clock still running out there. A long gap means the player itself went quiet, which is a different fault from the app coming back with a stale screen. Keep the medical sense of a pulse if your language has one |
 | `What happened, rather than how long it took.` | The line under `Counted`: that section is a tally of events, next to the sections above it which are timings |
 | `What happened?` |  |
-| `What started them, the audio focus the player asked for and where the music went, kept for a report written after the drive.` |  |
+| `What started them, the audio focus the player asked for and where the music went, and what a speaker was handed and answered, kept for a report written after the drive.` |  |
 | `What stopped the app, most recent first.` |  |
 | `While minimized` | Section header on the Diagnostics screen, over what was measured with the app in the background rather than on screen. Minimized as in put away: the screen off or another app in front, with the music still going |
 

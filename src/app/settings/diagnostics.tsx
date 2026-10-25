@@ -328,10 +328,10 @@ export default function DiagnosticsSettings() {
           <Text style={styles.line}>{t('Nothing logged yet.')}</Text>
         )}
 
-        <Text style={settingsStyles.sectionTitle}>{t('Car and ride mode')}</Text>
+        <Text style={settingsStyles.sectionTitle}>{t('Car, ride mode and speakers')}</Text>
         <Text style={settingsStyles.sectionDescription}>
           {t(
-            'What started them, the audio focus the player asked for and where the music went, kept for a report written after the drive.',
+            'What started them, the audio focus the player asked for and where the music went, and what a speaker was handed and answered, kept for a report written after the drive.',
           )}
         </Text>
         {driveLog ? (
@@ -372,7 +372,7 @@ export default function DiagnosticsSettings() {
                 perfReport(),
                 `Crashes (most recent first):\n${crashes.join('\n\n') || '  none recorded'}`,
                 `Android Auto:\n${carLog || '  nothing logged'}`,
-                `Car and ride mode:\n${driveLog || '  nothing logged'}`,
+                `Car, ride mode and speakers:\n${driveLog || '  nothing logged'}`,
               ].join('\n\n'),
             })
           }

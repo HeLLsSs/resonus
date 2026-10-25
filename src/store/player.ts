@@ -81,6 +81,7 @@ import { COVER, coverArtUrl, getRandomSongs } from '@/api/data';
 import { prefetchLyrics } from '@/hooks/useLyrics';
 import { tg } from '@/i18n';
 import { attachBookmarks } from '@/lib/bookmarks';
+import { driveLog } from '@/lib/driveLog';
 import type { Remap } from '@/lib/navidromeRemap';
 import { remapSong } from '@/lib/navidromeRemap';
 import { beat, bump, timed } from '@/lib/perfLog';
@@ -1238,6 +1239,30 @@ function adoptCastSession() {
   scheduleSync();
   syncCastMedia();
   void syncCastQueue(castQueueState(index), true);
+}
+
+/**
+ * How long before the end of a song on a remote output the next one is asked
+ * of the proxy, when it is an online one: the proxy finds where YouTube or
+ * SoundCloud keeps the stream on the first request, which takes seconds, and
+ * keeps the answer a while; asked now, it has it ready when the speaker
+ * comes for it. The phone's own player has the next song queued in the
+ * native player and needs none of this.
+ */
+const REMOTE_WARM_AHEAD_SEC = 25;
+
+function warmNextOnline(positionSec: number, durationSec: number): void {
+  if (bootQuiet || durationSec <= 0 || durationSec - positionSec > REMOTE_WARM_AHEAD_SEC) return;
+  const { auth, offline } = useAuthStore.getState();
+  if (!auth || offline) return;
+  const { queue, index } = usePlayerStore.getState();
+  const ni = nextIndex(false);
+  if (ni == null || ni === index) return;
+  const song = queue[ni];
+  if (!song || !isOnlineTrackId(song.id) || warmedIds.has(song.id)) return;
+  warmedIds.add(song.id);
+  driveLog(`speaker: warming the next online song · ${song.title}`);
+  warmStream(song.id, streamUrl(auth, song.id));
 }
 
 /** How many songs after the current one a WiiM is handed in its list. */
@@ -3924,6 +3949,7 @@ export function initRemoteIntegration() {
     },
     onProgress: (positionSec, durationSec) => {
       remoteReported = { positionSec, at: Date.now() };
+      warmNextOnline(positionSec, durationSec);
       usePlayerStore.setState({
         positionSec,
         durationSec: durationSec || usePlayerStore.getState().durationSec,

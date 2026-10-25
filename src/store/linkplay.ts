@@ -17,6 +17,7 @@ import { fetch } from 'expo/fetch';
 
 import { authHeaders, authParams, isOnlineTrackId, type Song, type SubsonicAuth } from '@/api/subsonic';
 import { tg } from '@/i18n';
+import { driveLog } from '@/lib/driveLog';
 import {
   ask,
   cleanHost,
@@ -94,6 +95,8 @@ const LOAD_QUIET_MS = 6_000;
 const ONLINE_LOAD_QUIET_MS = 12_000;
 /** How long after a play command went unanswered before it is sent once more. */
 const PLAY_RETRY_MS = 1_000;
+/** A poll slower than this is worth a line in the log: the speaker's API is stalling. */
+const SLOW_POLL_MS = 2_000;
 /** What the list handed to a speaker is published as on the phone (see `lib/localHttp`). */
 const M3U_NAME = 'linkplay.m3u';
 const M3U_MIME = 'audio/x-mpegurl';
@@ -322,6 +325,7 @@ export async function linkPlayConnect(device: LinkPlayDevice): Promise<boolean> 
   if (current.connected && current.host && current.host !== device.host) await linkPlayDisconnect(true);
   resetTrackState();
   merge([device]);
+  driveLog(`speaker: on ${device.name} (${device.host})`);
   useLinkPlay.setState({ connected: true, host: device.host, slaves: [] });
   void refreshSlaves();
   startPolling();
@@ -334,6 +338,7 @@ export async function linkPlayDisconnect(silent = false): Promise<void> {
   if (!isLinkPlayConnected()) return;
   stopPolling();
   const { host } = useLinkPlay.getState();
+  driveLog(`speaker: off${silent ? ' (switching output)' : ''}`);
   castStop();
   // The phone's own server, up for a list or a file of the phone's: closed
   // the way every other output closes it, rather than left open on the
@@ -383,6 +388,7 @@ function startPolling(): void {
     }
     failures++;
     if (failures >= MAX_FAILURES) {
+      driveLog(`speaker: lost contact, ${failures} polls unanswered (${error ?? 'no status'})`);
       useToast.getState().show(tg('Lost contact with the speaker'));
       void linkPlayDisconnect();
     }
@@ -407,6 +413,9 @@ function onStatus(status: LinkPlayStatus): void {
   reportVolume(status.volume);
   const playing = status.state === 'play';
   const buffering = status.state === 'load';
+  if (status.askedAt !== undefined && Date.now() - status.askedAt > SLOW_POLL_MS) {
+    driveLog(`speaker: a poll took ${Date.now() - status.askedAt} ms`);
+  }
   if (loading) {
     if (status.askedAt !== undefined && status.askedAt < loadAckedAt) return;
     // The speaker still describes the track before, until it is heard
@@ -414,6 +423,7 @@ function onStatus(status: LinkPlayStatus): void {
     if (!playing) {
       if (Date.now() - loadSentAt >= quietLimitMs) {
         loading = false;
+        driveLog(`speaker: silent for ${Math.round((Date.now() - loadSentAt) / 1000)} s after the load, says ${status.state}`);
         if (__DEV__) console.log(`[linkplay] load fell flat · speaker says ${status.state}`);
         useToast.getState().show(tg("The speaker couldn't play this song"));
         events?.onPlayingChanged(false, false);
@@ -422,6 +432,7 @@ function onStatus(status: LinkPlayStatus): void {
       return;
     }
     loading = false;
+    driveLog(`speaker: playing ${Date.now() - loadSentAt} ms after the load`);
     void settleLoad();
   }
   if (list && status.listIndex !== undefined && status.listIndex - 1 !== list.pos && (playing || buffering)) {
@@ -440,8 +451,10 @@ function onStatus(status: LinkPlayStatus): void {
     pendingPause = false;
     lastPositionSec = status.positionSec;
     lastDurationSec = status.durationSec;
+    const follows = id !== undefined && index !== undefined && queueOf().queue[index]?.id === id;
+    driveLog(`speaker: moved on to item ${status.listIndex}/${status.listCount}${follows ? '' : ', queue changed since: handing over again'}`);
     if (__DEV__) console.log(`[linkplay] list · item ${status.listIndex}/${status.listCount}`);
-    if (id !== undefined && index !== undefined && queueOf().queue[index]?.id === id) {
+    if (follows) {
       events?.onTrackChanged(index, status.positionSec, status.durationSec);
     } else {
       list = null;
@@ -474,6 +487,7 @@ function onStatus(status: LinkPlayStatus): void {
   if (ended && (lastDurationSec === 0 || lastPositionSec >= lastDurationSec - 3 || status.positionSec === 0)) {
     finishedFired = true;
     wasPlaying = false;
+    driveLog(`speaker: track ended at ${Math.round(lastPositionSec)}/${Math.round(lastDurationSec)} s (${status.state})`);
     events?.onFinished();
   }
   tunePolling();
@@ -552,15 +566,19 @@ export async function linkPlayLoad(
   lastPositionSec = startSec;
   lastDurationSec = song.duration ?? 0;
   lastPlaying = null;
+  driveLog(
+    `speaker: ${moveOn ? 'next item' : list ? `list of ${list.ids.length}` : 'one track'} · ${song.title} · ${autoplay ? 'playing' : 'paused'} at ${Math.round(startSec)} s`,
+  );
   if (__DEV__) console.log(`[linkplay] load · ${command.replace(/[?&][ts]=[^&]*/g, '')} · ${autoplay ? 'playing' : 'paused'} at ${startSec.toFixed(1)}s`);
   pendingSeekSec = startSec > 0 ? startSec : null;
   pendingPause = !autoplay;
   tunePolling();
   try {
     await sendWithRetry(host, command, seq);
-  } catch {
+  } catch (e) {
     // A newer load has the speaker now; this one has nothing left to say.
     if (seq !== loadSeq) return false;
+    driveLog(`speaker: no answer to the load (${e instanceof Error ? e.message : String(e)})`);
     loading = false;
     list = null;
     pendingSeekSec = null;
@@ -573,6 +591,7 @@ export async function linkPlayLoad(
     return false;
   }
   if (seq === loadSeq) loadAckedAt = Date.now();
+  driveLog(`speaker: took it in ${Date.now() - loadSentAt} ms`);
   return true;
 }
 
@@ -620,6 +639,7 @@ async function sendWithRetry(host: string, command: string, seq: number): Promis
   try {
     await ask(host, command);
   } catch (e) {
+    driveLog(`speaker: no answer in ${Date.now() - loadSentAt} ms, asking again`);
     await new Promise<void>((resolve) => {
       const stop = everyMs(PLAY_RETRY_MS, () => {
         stop();
