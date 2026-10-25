@@ -9,6 +9,15 @@ Releases before 0.2.1 are only listed on the
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-10-25
+
+### Added
+
+- Prepare the drive, for the car: a button in Settings › Car mode downloads
+  the next songs of the queue now, and a switch has them downloaded on
+  their own as the car connects, on Wi-Fi only, while the car is still on
+  the house network. How many is set there too, shared with ride mode.
+
 ## [1.17.1] - 2026-10-25
 
 ### Added
