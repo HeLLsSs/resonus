@@ -28,6 +28,10 @@
     "Downloads": "Songs saved on the phone, to play with no connection",
     "Offline mode": "The app working with no server: downloads only",
 
+    // ── Shared links ─────────────────────────────────────────────────────────
+    "{n} not found": "Under a shared Spotify, Deezer or Apple Music playlist: how many of its tracks the proxy matched to nothing on YouTube or SoundCloud. Sits after the song count, as in \"12 songs · 3 not found\"",
+    "{found} of {total} songs": "Under a shared Spotify, Deezer or Apple Music playlist the proxy stopped short of: the songs it matched out of the ones the service listed, as in \"12 of 40 songs · 3 not found\". Replaces the plain song count",
+
     // ── Sorting & filtering ──────────────────────────────────────────────────
     "Direction": "Sort sheet: the ascending vs descending toggle. Not a compass direction",
     "A-Z": "Sort option: the order of a list",

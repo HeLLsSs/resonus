@@ -17,6 +17,14 @@ Releases before 0.2.1 are only listed on the
   from their browsers. While the Jam is on, the row is a folder named after
   the code, with the code as a tile to show again and a row that ends it.
   Needs a proxy that draws the code as PNG (`jam/qr?format=png`).
+- Share a Spotify, Deezer or Apple Music track, album or playlist to
+  Resonuls, as a YouTube or SoundCloud link already could: the proxy matches
+  its tracks to YouTube and SoundCloud ones (`navifind/resolve`) and the
+  sheet offers to play them now or next, saying how many it did not find
+  and, where the proxy stopped short of a long list, how many the service
+  listed ("12 of 40 songs"). A Spotify link can be filed into the library
+  too; Deezer and Apple Music ones only play. Needs the Navifind proxy with
+  the service set up.
 - The Jam by voice in the car: "start a Jam" or "lance un jam" said to the
   car lands on the row that opens one, "stop the Jam" on the row that ends
   it, before any song merely called that. With nothing playing the row opens
@@ -32,6 +40,9 @@ Releases before 0.2.1 are only listed on the
   joined and left, what the guests added, how it ended and the commands the
   proxy refused.
 
+- The share sheet says what a press does in a Jam: "Play now, for everybody
+  in the Jam", "Play next in the Jam", and a third row adds the link's songs
+  to the end of the Jam's queue, which is what a passenger with a link means.
 
 ## [1.18.0] - 2026-10-25
 

@@ -1699,6 +1699,42 @@ export async function forgetSpotifyAccount(auth: SubsonicAuth): Promise<void> {
   await request(auth, 'navifind/spotify/account.view', { action: 'forget' });
 }
 
+export interface ResolvedLink {
+  /** The playlist's or album's name, or the track's title. */
+  name: string;
+  /** The tracks the proxy matched to YouTube or SoundCloud ones (`yt_`/`sc_` ids). */
+  songs: Song[];
+  /** How many tracks of the list it found no match for. */
+  unmatched: number;
+  /** How many tracks the service listed, before the proxy's count and time
+   *  caps: more than `songs` and `unmatched` together when it stopped short. */
+  total: number;
+}
+
+/**
+ * Reads a Spotify, Deezer or Apple Music track, album or playlist link as
+ * songs to play now, without filing anything: the proxy looks each track up
+ * on YouTube and SoundCloud and answers with the ones it matched. Fails, with
+ * the proxy's reason, where the link is not a music one or the proxy has no
+ * account set up for that service.
+ */
+export async function resolveSharedLink(auth: SubsonicAuth, url: string, count: number): Promise<ResolvedLink> {
+  const res = await request<{ navifind?: { resolved?: Partial<ResolvedLink> } }>(
+    auth,
+    'navifind/resolve.view',
+    { url, count },
+  );
+  const resolved = res.navifind?.resolved;
+  const songs = (resolved?.songs ?? []).map(withoutSourceSuffix);
+  const unmatched = resolved?.unmatched ?? 0;
+  return {
+    name: resolved?.name ?? '',
+    songs,
+    unmatched,
+    total: resolved?.total ?? songs.length + unmatched,
+  };
+}
+
 /**
  * What an import gave once it was through. The count announced when it was
  * handed over was the source's; this is what actually arrived, and what did
