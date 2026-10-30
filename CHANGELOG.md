@@ -9,6 +9,8 @@ Releases before 0.2.1 are only listed on the
 
 ## [Unreleased]
 
+## [1.19.0] - 2026-10-31
+
 ### Added
 
 - A Jam from the car: a "Start a Jam" row on Android Auto's Home opens one
