@@ -169,6 +169,18 @@ export function playingAgain(state: RetryState): RetryState {
 }
 
 /**
+ * What that press does to the player: resumes it, or loads the track again.
+ * A track the player gave up on (`failure` is what it said about it) is
+ * loaded again, not resumed: the native player sits idle after an error and
+ * ignores play until the track is prepared anew, and it sends no status
+ * while it is not playing, so nothing would have said so. The button went to
+ * pause over silence, and back, and over silence again.
+ */
+export function resumeAction(failure: string | null): 'play' | 'reload' {
+  return failure ? 'reload' : 'play';
+}
+
+/**
  * The track was given up on and the next one is being started in its place,
  * at `now`, which is when the next one's sound starts being counted from.
  * Null when enough have been passed over already: the queue is to stop here.

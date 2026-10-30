@@ -93,6 +93,7 @@ import {
   settled,
   skipping,
   soundHeld,
+  resumeAction,
 } from '@/lib/playbackRetry';
 import { queryClient } from '@/lib/query';
 import { primaryUrl } from '@/lib/serverUrls';
@@ -202,6 +203,7 @@ import {
   useUpnp,
   type RemoteEvents,
 } from './upnp';
+import { transcodedTo } from './remoteTrack';
 import {
   loadUpnpRemoteTrack,
   resetUpnpRemoteSyncState,
@@ -1106,8 +1108,41 @@ function remotePause() {
   else void upnpPause();
 }
 
+/**
+ * Whether a song handed to a speaker from `startSec` has to be asked of the
+ * server from there: a transcode is made as it is sent, so the speaker cannot
+ * seek in it and started the song over, and the bar jumped back to the
+ * beginning. Only where the server can start partway in; elsewhere the seek
+ * is tried as before. The same rule the phone's own player plays by
+ * (`needsOffsetSeek`), without what is about that player's own timeline.
+ */
+async function startsInStream(song: Song, startSec: number): Promise<boolean> {
+  if (startSec <= 0) return false;
+  // Judged on what the speaker is handed, not on what the phone would play:
+  // a downloaded song plays from disk here and from the server's stream
+  // there, cut to the Wi-Fi settings whatever network the phone is on.
+  const format = transcodedTo(song);
+  if (format === undefined) return false;
+  const { maxBitRate } = useSettings.getState();
+  if (format === '' && !(song.bitRate != null && song.bitRate > maxBitRate)) return false;
+  return ensureTranscodeOffsetSupport();
+}
+
 function remoteSeek(sec: number) {
   const kind = remoteKind();
+  if (kind === 'linkplay') {
+    // A transcoded stream is handed over again from the new second rather
+    // than seeked, for the reason `startsInStream` gives. As a seek: the song
+    // is the same song, not a new one to scrobble and record again.
+    const { queue, index, isPlaying } = usePlayerStore.getState();
+    const song = queue[index];
+    if (song) {
+      void startsInStream(song, sec).then((again) =>
+        again ? remoteLoadIndex(index, isPlaying, sec, { seek: true }) : linkPlaySeek(sec),
+      );
+      return;
+    }
+  }
   if (kind === 'jukebox') void jukeboxSeek(sec);
   else if (kind === 'cast') void castSeek(sec);
   else if (kind === 'ha') void haSeek(sec);
@@ -1284,7 +1319,9 @@ function linkPlayFollowing(index: number): { song: Song; index: number }[] {
 let remoteLoadToken = 0;
 
 /** Loads the track at `index` into the remote output and syncs state. */
-async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
+/** `seek`: the same song handed over again from another second, which is a
+ *  seek to everything that counts songs (scrobbling, history, lyrics). */
+async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0, { seek = false } = {}) {
   const state = usePlayerStore.getState();
   const song = state.queue[index];
   if (!song) return;
@@ -1298,7 +1335,7 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
     return;
   }
   const token = ++remoteLoadToken;
-  scrobbledThisTrack = false;
+  if (!seek) scrobbledThisTrack = false;
   // The screen follows the tap now, as it does for the phone (`loadIndex`)
   // and for a new list (`playQueue`). Waiting for the output to answer kept
   // the song before on screen, with nothing turning, for as long as the
@@ -1326,7 +1363,7 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
           : kind === 'ma'
           ? await loadMaQueue(castQueueState(index), autoplay, startSec)
           : kind === 'linkplay'
-            ? await linkPlayLoad(song, autoplay, startSec, linkPlayFollowing(index))
+            ? await linkPlayLoad(song, autoplay, startSec, linkPlayFollowing(index), await startsInStream(song, startSec))
             : kind === 'kodi'
             ? await loadKodiQueue(castQueueState(index), autoplay, startSec)
             : await loadUpnpRemoteTrack(
@@ -1351,7 +1388,7 @@ async function remoteLoadIndex(index: number, autoplay: boolean, startSec = 0) {
     usePlayerStore.setState({ isPlaying: false, isBuffering: false });
     return;
   }
-  onTrackChanged(song);
+  if (!seek) onTrackChanged(song);
 }
 
 /**
@@ -2547,7 +2584,16 @@ function cutCrossfade() {
   // minutes later and landed on whatever was playing by then: the volume put
   // to zero, and if it had been a pause, the pause with it. What an
   // intervention cancels does not get to happen afterwards.
+  //
+  // Except the pause itself. The press happened, the screen said paused, and
+  // a seek or a track change made within the ramp's few hundred milliseconds
+  // was made on what the screen said. Dropped with the ramp, the pause never
+  // reached the player: the speakers went on and the button flipped back on
+  // the next heartbeat. A pause is run through to its end here; a resume cut
+  // short is left where it is, since the volume is put right just below.
+  const fade = pendingFade;
   pendingFade = null;
+  if (fade && fade.to === 0) fade.onDone?.();
   // The sleep fade is also an in-progress ramp: if the user touches anything
   // (pause, seek, track change) it must be released, or it would keep lowering
   // the volume of whatever plays now. The expiry still stands and `onStatus`
@@ -2951,6 +2997,35 @@ function maybeDetectStall(intendPlay: boolean, buffering: boolean, positionSec: 
   }
 }
 
+/**
+ * The clock the stall is measured on, while the player buffers.
+ *
+ * The native player sends its heartbeat only while it plays
+ * (`BaseAudioPlayer.startUpdating`), and a stream that stops arriving is one
+ * status saying "buffering" and then nothing, so the timings above were never
+ * measured against anything: a hung proxy or a dead spot stayed "buffering"
+ * for good, with no probe sent and the downloaded file never taken up. This
+ * ticks for it, and only for as long as the player is stuck.
+ */
+const STALL_TICK_MS = 2000;
+let stallTick: (() => void) | null = null;
+
+function watchStall(buffering: boolean): void {
+  if (buffering && !stallTick) {
+    stallTick = everyMs(STALL_TICK_MS, () => {
+      const st = usePlayerStore.getState();
+      // Stops itself too: a status that ends the wait does not always get
+      // here (an output taken, an error), and a clock for nothing would tick
+      // on in the pocket.
+      if (st.isBuffering && st.isPlaying && !remoteKind()) maybeDetectStall(true, true, st.positionSec);
+      else watchStall(false);
+    });
+  } else if (!buffering && stallTick) {
+    stallTick();
+    stallTick = null;
+  }
+}
+
 // ── When the player cannot play what it was given ────────────────────────────
 // media3 reports it (`error` on the status), and nothing here used to read it:
 // the app kept its playing state, the position stopped moving, and that was the
@@ -3148,6 +3223,7 @@ function onStatus(status: AudioStatus) {
   });
   maybeScrobbleThreshold(positionSec);
   maybeDetectStall(intendPlay, buffering, positionSec);
+  watchStall(buffering);
   rememberHowFar(positionSec);
   // Queue sync with the server.
   if (status.playing) {
@@ -3935,20 +4011,20 @@ export function initRemoteIntegration() {
       }
       adoptCastSession();
     },
-    onDisconnected: (lastPositionSec) => {
+    onDisconnected: (lastPositionSec, wasPlaying = false) => {
       outputListeners.forEach((listener) => listener());
       stopRemoteTick();
       castResumeAwaitingQueue = false;
       // The casting media session is already closed by `upnpDisconnect` and
       // `castDisconnect` (covers silent disconnects too). Here we just return
-      // to the local player.
+      // to the local player, going on as the device was: playing or paused.
       const { queue, index } = usePlayerStore.getState();
       resetUpnpRemoteSyncState();
       if (!queue[index]) return;
       void (async () => {
-        await loadIndex(index, false);
+        const loaded = await loadIndex(index, wasPlaying);
         if (lastPositionSec > 0) seekActive(lastPositionSec);
-        usePlayerStore.setState({ positionSec: lastPositionSec, isPlaying: false });
+        usePlayerStore.setState({ positionSec: lastPositionSec, isPlaying: loaded && wasPlaying });
       })();
     },
     onProgress: (positionSec, durationSec) => {
@@ -4011,7 +4087,7 @@ export function initRemoteIntegration() {
     const { queue, index } = usePlayerStore.getState();
     return { queue, index };
   };
-  initLinkPlay(events, queueOf);
+  initLinkPlay(events, queueOf, startsInStream);
   initGoogleCast(events, queueOf);
   initHomeAssistant(events, queueOf);
   initMusicAssistant(events, queueOf);
@@ -4605,6 +4681,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // gave up on: without this, the button went quietly dead on a song that
       // had failed twice, where it used to say so again (see `playingAgain`).
       retries = playingAgain(retries);
+      // A track the player gave up on is loaded again rather than resumed
+      // (see `resumeAction` for why a resume would be ignored).
+      if (resumeAction(get().playbackError) === 'reload') {
+        void loadIndex(get().index, true);
+        return;
+      }
       const ramp = canFade();
       // Start silent and ramp up: fade-in on resume. Backgrounded it starts at
       // its own volume instead, because nothing would raise it afterwards.

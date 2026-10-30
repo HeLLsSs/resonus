@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1534 of them.
+Every string the app can show, under the screen it shows up on. 1551 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -28,13 +28,17 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `{found} of {total} songs` | Under a shared Spotify, Deezer or Apple Music playlist the proxy stopped short of: the songs it matched out of the ones the service listed, as in "12 of 40 songs · 3 not found". Replaces the plain song count |
 | `{n} minutes` | A value of the sleep timer, in minutes from now |
+| `{n} not found` | Under a shared Spotify, Deezer or Apple Music playlist: how many of its tracks the proxy matched to nothing on YouTube or SoundCloud. Sits after the song count, as in "12 songs · 3 not found" |
 | `{n} songs, {size}, copied into a folder of their own.` | The line under that title |
 | `1 day` | How long a shared link lasts, counted from the moment it is made |
 | `1 hour` | How long a shared link lasts, counted from the moment it is made. Not a time of day |
 | `1 month` | How long a shared link lasts, counted from the moment it is made |
 | `1 week` | How long a shared link lasts, counted from the moment it is made |
 | `Add to my library` |  |
+| `Add to the Jam` |  |
+| `Added to the Jam` |  |
 | `Allow downloads` | Whether whoever gets the link can download the music, not only listen to it |
 | `Android may stop playback in the background, interrupt downloads or delay the sleep timer. Allowing unrestricted battery use fixes it.` |  |
 | `Artist` | In search results, the little word under a result saying what kind of thing it is |
@@ -74,12 +78,15 @@ you are actually typing into, which is easier than reading it here.
 | `Go to artist` | Leave this sheet and open the artist |
 | `Mix started` | The toast that says the app is now picking the songs |
 | `Moods` | Mood tags the server has on the song: mellow, energetic… |
+| `No song of that link was found` |  |
 | `Nothing to fetch at that link` |  |
-| `Only YouTube and SoundCloud links can be opened here` |  |
+| `Only YouTube, SoundCloud, Spotify, Deezer and Apple Music links can be opened here` |  |
 | `Open settings` | Its confirm button: goes to Android's own settings, not the app's |
 | `Pick a date…` | Opens the calendar to choose the day the link stops working |
 | `Pin to top` | Keep this at the top of its list, above everything else. `Unpin` undoes it |
+| `Play next in the Jam` |  |
 | `Play now` |  |
+| `Play now, for everybody in the Jam` |  |
 | `Playback stopped` | The mini player when there is nothing playing any more |
 | `Plays` | How many times the song has been played |
 | `Rate` | Verb: give it stars. Used for a song and for an artist. Not "bitrate" |
@@ -96,7 +103,10 @@ you are actually typing into, which is easier than reading it here.
 | `Sending to another app isn't available on this device` | Toast: this phone has nothing that takes a shared file |
 | `Server didn't allow downloads` | Warning after sharing: the link was made and works, but the call that turns downloading on did not go through |
 | `Share “{name}”` | The sheet's title, with what is being shared |
+| `Shared from Apple Music` |  |
+| `Shared from Deezer` |  |
 | `Shared from SoundCloud` |  |
+| `Shared from Spotify` |  |
 | `Shared from YouTube` |  |
 | `Shared links need the Navifind proxy: turn it on in Settings › Navifind` |  |
 | `Size` | The size of the quick grid tiles |
@@ -419,6 +429,14 @@ you are actually typing into, which is easier than reading it here.
 | `Sign in on your phone` |  |
 | `Unknown title` | Fallback when the file and the server have no title |
 
+## in carJam
+
+| String | What it is |
+| --- | --- |
+| `Passengers scan the code and add songs` |  |
+| `Play something first: the Jam shares what is playing` |  |
+| `Tap to show it big on the screen` |  |
+
 ## in commonAccountAlert
 
 | String | What it is |
@@ -485,6 +503,7 @@ you are actually typing into, which is easier than reading it here.
 | `Guests can add songs` |  |
 | `Host` |  |
 | `Jam needs a server account` |  |
+| `Jam of {date}` |  |
 | `Jam volume` |  |
 | `Jams under way` |  |
 | `Join` |  |
@@ -656,6 +675,7 @@ you are actually typing into, which is easier than reading it here.
 | `in the group` |  |
 | `Jam {code}` |  |
 | `Jam needs a server account` |  |
+| `Jam of {date}` |  |
 | `Join {name}'s Jam` |  |
 | `Keep pitch` |  |
 | `Kodi` |  |
@@ -754,6 +774,7 @@ you are actually typing into, which is easier than reading it here.
 | `From YouTube` |  |
 | `Get the server's queue` | Queue screen action: replace what is playing here with the queue the server has, which is the one left on another player |
 | `Jam needs a server account` |  |
+| `Jam of {date}` |  |
 | `Next from {name}` | Heading on the queue screen: what is coming, and where it comes from. `{name}` is an album, a playlist or a mix |
 | `Next in queue` | Queue screen header: the track that plays next |
 | `None of these songs can be saved to a playlist` |  |
@@ -806,6 +827,9 @@ you are actually typing into, which is easier than reading it here.
 | --- | --- |
 | `{n} songs left in the queue` |  |
 | `{n} songs will be downloaded over mobile data.` |  |
+| `{name} added {n} songs` |  |
+| `{name} added {title}` |  |
+| `A guest` |  |
 | `battery at {n} %` |  |
 | `Battery at {n} %` | Read out loud in the helmet when the phone's battery reaches 20, 10 and 5 %. `{n}` is the level |
 | `battery at {n} %, charging` |  |
@@ -1012,6 +1036,9 @@ you are actually typing into, which is easier than reading it here.
 | String | What it is |
 | --- | --- |
 | `{n} songs will be downloaded over mobile data.` |  |
+| `{name} added {n} songs` |  |
+| `{name} added {title}` |  |
+| `A guest` |  |
 | `Allow Bluetooth` |  |
 | `Android needs permission to tell which device connected.` | The line under “Allow Bluetooth”, explaining it |
 | `Announce songs` | Each new song's title and artist read out loud by the phone |
@@ -1669,6 +1696,9 @@ you are actually typing into, which is easier than reading it here.
 
 | String | What it is |
 | --- | --- |
+| `{name} added {n} songs` |  |
+| `{name} added {title}` |  |
+| `A guest` |  |
 | `Allow Bluetooth` |  |
 | `Android needs permission to tell which device connected.` | The line under “Allow Bluetooth”, explaining it |
 | `Announce songs` | Each new song's title and artist read out loud by the phone |

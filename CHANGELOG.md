@@ -44,6 +44,43 @@ Releases before 0.2.1 are only listed on the
   in the Jam", "Play next in the Jam", and a third row adds the link's songs
   to the end of the Jam's queue, which is what a passenger with a link means.
 
+### Fixed
+
+- Play after a failure plays again. A song the player had given up on, or
+  every song while the proxy could not reach YouTube, left the play button
+  flipping between play and pause over silence: the native player sits idle
+  after an error and ignores play until the track is loaded anew, which the
+  button now does.
+- A navigation prompt lowered the music by half of what the last prompt had
+  left, so a drive full of prompts ended in a whisper until the next song.
+  The level comes back to what it was, every time.
+- A seek or a track change made within the short fade of a pause dropped
+  the pause: the speakers went on while the button said paused, and the
+  button flipped back a moment later. The pause now goes through.
+- A stream that stops arriving is noticed. The player sends no heartbeat
+  while it buffers, so a stall was never measured: the server probe and the
+  fall back to the downloaded file now run on a clock of their own.
+- A WiiM that lets a play or a pause go by no longer leaves the button
+  saying the opposite of what the speaker does: the next status the speaker
+  gives puts the button right. And play on a speaker that had stopped hands
+  it the track again where it was, since a stopped speaker ignores resume.
+- Handing a WiiM a song while it still answered for the one before leaked
+  the old song's position into the new one and sent the seek to the wrong
+  stream: a second of the previous song's time on the bar after every skip,
+  and a paused load that started playing. What the speaker says before it
+  has taken the new song is now left aside.
+- Coming back from a speaker to the phone kept the music paused, including
+  the automatic return when the Wi-Fi is left behind. The phone now picks
+  up playing if the speaker was.
+- A transcoded song handed to a WiiM mid-song started over, the bar jumping
+  back to the beginning: a transcode is made as it is sent and the speaker
+  cannot seek in it. The song is now asked of the server from the right
+  second, where the server knows how, and a seek on the speaker does the
+  same.
+- Opening the app in ride mode no longer lands on a near-black screen: the
+  ride screen dims after a minute untouched, and it stayed dimmed while the
+  phone was away. It comes back to full brightness whenever the app does.
+
 ## [1.18.0] - 2026-10-25
 
 ### Added

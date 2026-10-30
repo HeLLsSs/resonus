@@ -19,6 +19,7 @@ import {
   skipping,
   SOUND_HELD_MS,
   soundHeld,
+  resumeAction,
 } from '@/lib/playbackRetry';
 
 /** A failure, with the reload it asks for carried through to its end. */
@@ -270,5 +271,15 @@ describe('settled', () => {
     assert.equal(b.busy, true);
     assert.equal(settled(b, 'a').busy, true);
     assert.equal(onFailure(settled(b, 'a'), 'b', 2001).act, 'wait');
+  });
+});
+
+describe('resumeAction', () => {
+  it('resumes a track that played', () => {
+    assert.equal(resumeAction(null), 'play');
+  });
+
+  it('loads again a track the player gave up on, which ignores a resume', () => {
+    assert.equal(resumeAction("Couldn't play the song"), 'reload');
   });
 });

@@ -96,11 +96,11 @@ function throughRelay(url: string | undefined): string | undefined {
  * serve it: an account, and a connection to reach it through. Bare: this is
  * the URL the server answers, whether or not it wants headers with it.
  */
-function bareServerStreamUrl(song: Song): string | undefined {
+function bareServerStreamUrl(song: Song, startSec = 0): string | undefined {
   const { auth, offline } = useAuthStore.getState();
   if (!auth || offline || song.url) return undefined;
   const settings = useSettings.getState();
-  return streamUrl(auth, song.id, settings.maxBitRate, 0, settings.streamFormat);
+  return streamUrl(auth, song.id, settings.maxBitRate, startSec, settings.streamFormat);
 }
 
 /** The same, as MP3 (see `mp3StreamUrl`). */
@@ -125,9 +125,9 @@ function bareMp3StreamUrl(song: Song): string | undefined {
  * stay awake to answer. Unless the server wants headers: then the phone is
  * awake either way, and the download is served straight off it instead.
  */
-function serverStreamUrl(song: Song): string | undefined {
+function serverStreamUrl(song: Song, startSec = 0): string | undefined {
   if (servedByPhone(song)) return undefined;
-  return throughRelay(bareServerStreamUrl(song));
+  return throughRelay(bareServerStreamUrl(song, startSec));
 }
 
 /**
@@ -157,10 +157,15 @@ function servedByPhone(song: Song): boolean {
  * uncastable track was not one silent track: the UPnP queue payload is all or
  * nothing (see `buildUpnpQueuePayload`), so a single downloaded song in the
  * queue was a Sonos that played none of it.
+ *
+ * `startSec` asks the server for the song from that second (OpenSubsonic
+ * `timeOffset`), for a transcoded stream the renderer could not seek in: a
+ * transcode is made as it is sent and has no length to seek against, so a
+ * speaker handed one mid-song and told to seek started it over.
  */
-export function remoteTrackUrl(song: Song): string | undefined {
+export function remoteTrackUrl(song: Song, startSec = 0): string | undefined {
   if (song.url) return song.url;
-  return serverStreamUrl(song) ?? localFileUrl(song.localUri);
+  return serverStreamUrl(song, startSec) ?? localFileUrl(song.localUri);
 }
 
 /** The same song asked for as MP3, or undefined when the server isn't the one

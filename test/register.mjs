@@ -56,6 +56,7 @@ const STUBS = new Map([
   ['@/store/equalizer', 'store-hydrated.ts'],
   ['@/store/pins', 'store-hydrated.ts'],
   ['@/store/player', 'store-player.ts'],
+  ['@/store/remoteTrack', 'store-remoteTrack.ts'],
   ['@/store/settings', 'store-settings.ts'],
   ['@/store/smartPlaylists', 'store-hydrated.ts'],
   ['@/store/sortPrefs', 'store-hydrated.ts'],

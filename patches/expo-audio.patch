@@ -29,7 +29,7 @@ index 36a19f2d9c4a979a940ab681a1fb844ce45f7c75..3509de4747f3ebdda1a014f05fb02f07
 +  <uses-permission android:name="android.permission.WAKE_LOCK" />
  </manifest>
 diff --git a/android/src/main/java/expo/modules/audio/AudioModule.kt b/android/src/main/java/expo/modules/audio/AudioModule.kt
-index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da7685b3b2de 100644
+index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..40905ac0fb84c024a0af5857de9ff9dcfe783829 100644
 --- a/android/src/main/java/expo/modules/audio/AudioModule.kt
 +++ b/android/src/main/java/expo/modules/audio/AudioModule.kt
 @@ -10,6 +10,8 @@ import android.media.AudioFocusRequest
@@ -76,7 +76,27 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
      appContext.mainQueue.launch {
        when (focusChange) {
          AudioManager.AUDIOFOCUS_LOSS -> {
-@@ -140,22 +149,40 @@ class AudioModule : Module() {
+@@ -98,10 +107,16 @@ class AudioModule : Module() {
+         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+           if (interruptionMode == InterruptionMode.DUCK_OTHERS) {
+             allPlayables.forEach { playable ->
+-              if (playable.previousVolume != playable.volume) {
+-                playable.previousVolume = playable.volume
++              // Halved from the level last asked for, straight on the player.
++              // Through `setVolume` the halved level became `previousVolume`,
++              // so each prompt halved what the one before had left (a half, a
++              // quarter, an eighth, until the next track set it afresh) and
++              // `AUDIOFOCUS_GAIN` brought back only the last halving.
++              // `previousVolume` stays what the app asked for, which is what
++              // the gain restores.
++              if (!playable.isMuted) {
++                playable.player.volume = playable.previousVolume * 0.5f
+               }
+-              playable.setVolume(playable.previousVolume * 0.5f)
+             }
+           } else {
+             allPlayables.forEach { playable ->
+@@ -140,22 +155,40 @@ class AudioModule : Module() {
      return playsInSilentMode || audioManager.ringerMode == AudioManager.RINGER_MODE_NORMAL
    }
  
@@ -125,7 +145,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
              .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
              .build()
          )
-@@ -168,14 +195,10 @@ class AudioModule : Module() {
+@@ -168,14 +201,10 @@ class AudioModule : Module() {
        }
      } else {
        @Suppress("DEPRECATION")
@@ -142,7 +162,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
      if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
        focusAcquired = true
      } else {
-@@ -183,6 +206,28 @@ class AudioModule : Module() {
+@@ -183,6 +212,28 @@ class AudioModule : Module() {
      }
    }
  
@@ -171,7 +191,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
    private fun releaseAudioFocus() {
      if (!focusAcquired) {
        return
-@@ -363,7 +408,17 @@ class AudioModule : Module() {
+@@ -363,7 +414,17 @@ class AudioModule : Module() {
              bufferDurationMs
            )
            player.onPlaybackStateChange = { isPlaying ->
@@ -190,7 +210,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
                releaseAudioFocus()
              }
            }
-@@ -376,6 +431,15 @@ class AudioModule : Module() {
+@@ -376,6 +437,15 @@ class AudioModule : Module() {
          player.id
        }
  
@@ -206,7 +226,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
        Property("isBuffering") { player ->
          runOnMain {
            player.ref.playbackState == Player.STATE_BUFFERING
-@@ -438,6 +502,20 @@ class AudioModule : Module() {
+@@ -438,6 +508,20 @@ class AudioModule : Module() {
          player.preservesPitch = preservesPitch
        }
  
@@ -227,7 +247,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
        Property("currentTime") { player ->
          runOnMain {
            player.currentTime
-@@ -507,6 +585,27 @@ class AudioModule : Module() {
+@@ -507,6 +591,27 @@ class AudioModule : Module() {
          }
        }
  
@@ -255,7 +275,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
        Function("setActiveForLockScreen") { ref: AudioPlayer, active: Boolean, metadata: Metadata?, options: AudioLockScreenOptions? ->
          runOnMain {
            ref.setActiveForLockScreen(active, metadata, options)
-@@ -525,6 +624,14 @@ class AudioModule : Module() {
+@@ -525,6 +630,14 @@ class AudioModule : Module() {
          }
        }
  
@@ -270,7 +290,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
        Function("setAudioSamplingEnabled") { player: AudioPlayer, enabled: Boolean ->
          runOnMain {
            player.setSamplingEnabled(enabled)
-@@ -685,7 +792,17 @@ class AudioModule : Module() {
+@@ -685,7 +798,17 @@ class AudioModule : Module() {
            }
            playlist.loadInitialPlaylist()
            playlist.onPlaybackStateChange = { isPlaying ->
@@ -289,7 +309,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
                releaseAudioFocus()
              }
            }
-@@ -860,13 +977,29 @@ class AudioModule : Module() {
+@@ -860,13 +983,29 @@ class AudioModule : Module() {
  
    private fun createMediaItem(source: AudioSource?): MediaSource? = source?.uri?.let { uriString ->
      val uri = uriString.toUri()
@@ -320,7 +340,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
  
      val preloadedBytes = AudioPreloadManager.get(uriString)
      val factory: DataSource.Factory = if (preloadedBytes != null) {
-@@ -914,10 +1047,32 @@ class AudioModule : Module() {
+@@ -914,10 +1053,32 @@ class AudioModule : Module() {
      }
    }
  
@@ -354,7 +374,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
    }
  
    private fun retrieveStreamType(uri: Uri): Int = Util.inferContentType(uri)
-@@ -931,11 +1086,37 @@ class AudioModule : Module() {
+@@ -931,11 +1092,37 @@ class AudioModule : Module() {
        CONTENT_TYPE_SS -> SsMediaSource.Factory(factory)
        CONTENT_TYPE_DASH -> DashMediaSource.Factory(factory)
        CONTENT_TYPE_HLS -> HlsMediaSource.Factory(factory)
@@ -393,7 +413,7 @@ index 992239ba7631ce0c97c0b41c5fbf61cc842386fe..5bac9bcc15d2e3fdbc69da2a3451da76
    private fun <T> runOnMain(block: () -> T): T =
      runBlocking(appContext.mainQueue.coroutineContext) { block() }
  
-@@ -948,5 +1129,6 @@ class AudioModule : Module() {
+@@ -948,5 +1135,6 @@ class AudioModule : Module() {
  
    companion object {
      val TAG: String = AudioModule::class.java.simpleName

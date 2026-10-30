@@ -28,7 +28,6 @@ import { getItem, setItem } from '@/lib/storage';
 import { isJamActive } from '@/store/jam';
 import { linkPlayConnect, useLinkPlay } from '@/store/linkplay';
 import { useNetworkType } from '@/store/networkType';
-import { applyTransport } from '@/lib/transport';
 import { leaveRemoteOutputs, remoteKind, usePlayerStore } from '@/store/player';
 import { useRideMode } from '@/store/rideMode';
 import { useSettings } from '@/store/settings';
@@ -89,12 +88,11 @@ async function switchTo(device: LinkPlayDevice): Promise<void> {
   if (!(await playOn(device))) return;
   useToast.getState().show(tg('Now playing at home on {name}', { name: device.name }), {
     label: tg('Undo'),
-    // What "This phone" in the output sheet does, if the music is still there.
-    // Undo puts things back as they were, and they were playing: the return
-    // to the phone lands paused, so it is set going again.
+    // What "This phone" in the output sheet does, if the music is still there:
+    // the music comes back to the phone as the speaker had it, playing.
     run: () => {
       if (useLinkPlay.getState().host !== device.host) return;
-      void leaveRemoteOutputs().then(() => applyTransport('resume'));
+      void leaveRemoteOutputs();
     },
   });
 }

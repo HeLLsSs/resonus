@@ -22,7 +22,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -185,7 +185,21 @@ export default function RideScreen() {
   }, [dimmed]);
   useEffect(() => {
     armDim();
+    // Back in front, the screen is there to be read. A minute away, in a
+    // pocket or behind another app, had let the timer dim it, and the first
+    // thing seen on opening the app was a black screen to be found by touch.
+    // Away, the timer is stopped: the brightness is the window's and nothing
+    // of it shows from a pocket.
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        armDim();
+        setDimmed(false);
+      } else if (dimTimer.current) {
+        clearTimeout(dimTimer.current);
+      }
+    });
     return () => {
+      appState.remove();
       if (dimTimer.current) clearTimeout(dimTimer.current);
       setScreenBrightness(-1);
     };

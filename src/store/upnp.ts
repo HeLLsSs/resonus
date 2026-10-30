@@ -26,8 +26,8 @@ import {
 export interface RemoteEvents {
   /** Session started: transfer the current track to the renderer. */
   onConnected: () => void;
-  /** Session ended: return to the local player at this position. */
-  onDisconnected: (lastPositionSec: number) => void;
+  /** Session ended: return to the local player at this position, playing if the device was. */
+  onDisconnected: (lastPositionSec: number, wasPlaying?: boolean) => void;
   /** Renderer advanced to a different track in its queue. */
   onTrackChanged: (index: number, positionSec: number, durationSec: number) => void;
   onProgress: (positionSec: number, durationSec: number) => void;

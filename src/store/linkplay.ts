@@ -121,6 +121,11 @@ let pollMs = POLL_MS;
 let failures = 0;
 let lastPositionSec = 0;
 let lastDurationSec = 0;
+/**
+ * What the player shows: the speaker's last word, or the play or pause it
+ * was last asked for. A status that disagrees once the speaker has had its
+ * chance to obey puts the player right (see `onStatus`).
+ */
 let lastPlaying: boolean | null = null;
 /** We have heard the speaker playing this track: an end after it is a real one. */
 let wasPlaying = false;
@@ -128,16 +133,17 @@ let finishedFired = false;
 /** A load is in flight, or just landed: what the speaker says is the old track's. */
 let loading = false;
 /**
- * When the speaker took the last track handed to it. A status asked before
- * then is about the track before, even one that says "play": a poll in
- * flight as the track was handed over came back as the new one playing, and
- * the seek waiting for that moment was sent while the speaker was still
- * fetching, and lost; a "stop" after it read as the new track ending, and
- * moved the queue on once more.
+ * When the last track was handed over, and when the speaker took it. Until
+ * it has, and for a status asked before it had, the speaker describes the
+ * track before, even when it says "play": a poll in flight as the track was
+ * handed over came back as the new one playing, and the seek waiting for
+ * that moment was sent while the speaker was still fetching, and lost; a
+ * "stop" after it read as the new track ending, and moved the queue on once
+ * more.
  */
-let loadAckedAt = 0;
-/** When the last track was handed over, and how long its silence may last. */
 let loadSentAt = 0;
+let loadAckedAt = 0;
+/** How long the silence after the last load may last (see `LOAD_QUIET_MS`). */
 let quietLimitMs = LOAD_QUIET_MS;
 /** Counts the loads, so one still being retried can tell a newer one has started. */
 let loadSeq = 0;
@@ -149,6 +155,21 @@ let pausedByUs = false;
  */
 let pendingSeekSec: number | null = null;
 let pendingPause = false;
+/**
+ * Where the stream handed to the speaker starts in the song, when it was
+ * asked of the server from partway in (`startInStream`): the speaker counts
+ * from the start of what it was handed, and its count is put back into the
+ * song's time here. Zero for a stream that begins at the beginning.
+ */
+let streamOffsetSec = 0;
+let startsInStream: (song: Song, startSec: number) => Promise<boolean> = async () => false;
+/**
+ * Plays and pauses still on their way, and when the speaker took the last
+ * one: a status asked before then says nothing about whether it was obeyed,
+ * and the player is not put back on its word (see `onStatus`).
+ */
+let transportPending = 0;
+let transportAckedAt = 0;
 /** The volume we last sent (0..1) and when, to tell its echo from a real change. */
 let sentVolume: { value: number; at: number } | null = null;
 const VOLUME_ECHO_MS = 1_500;
@@ -158,9 +179,17 @@ export function isLinkPlayConnected(): boolean {
 }
 
 /** Registers player events. Call only once (from the player). Also reads back the addresses typed in. */
-export function initLinkPlay(ev: RemoteEvents, queue: () => { queue: Song[]; index: number }): void {
+export function initLinkPlay(
+  ev: RemoteEvents,
+  queue: () => { queue: Song[]; index: number },
+  /** Whether a song handed over from a second has to be asked of the server
+   *  from there (see `startInStream` on `linkPlayLoad`): the player's rule,
+   *  lent here for the one load this store makes on its own. */
+  startsIn: (song: Song, startSec: number) => Promise<boolean> = async () => false,
+): void {
   events = ev;
   queueOf = queue;
+  startsInStream = startsIn;
   void hydrateManual();
   void hydrateSeen();
   // In a browser the speakers are reached through the proxy, when there is
@@ -346,9 +375,12 @@ export async function linkPlayDisconnect(silent = false): Promise<void> {
   void stopLocalHttp();
   useLinkPlay.setState({ connected: false, host: null, slaves: [] });
   const resumeAtSec = lastPositionSec;
+  // What the player shows, or, before the speaker has answered for this
+  // track, what it was asked for: the phone goes on the same way.
+  const playing = lastPlaying ?? !pausedByUs;
   resetTrackState();
   sentVolume = null;
-  if (!silent) events?.onDisconnected(resumeAtSec);
+  if (!silent) events?.onDisconnected(resumeAtSec, playing);
   if (host) await ask(host, cmd.stop).catch(() => undefined);
 }
 
@@ -356,6 +388,7 @@ function resetTrackState(): void {
   failures = 0;
   lastPositionSec = 0;
   lastDurationSec = 0;
+  streamOffsetSec = 0;
   lastPlaying = null;
   wasPlaying = false;
   finishedFired = false;
@@ -417,11 +450,12 @@ function onStatus(status: LinkPlayStatus): void {
     driveLog(`speaker: a poll took ${Date.now() - status.askedAt} ms`);
   }
   if (loading) {
-    if (status.askedAt !== undefined && status.askedAt < loadAckedAt) return;
-    // The speaker still describes the track before, until it is heard
-    // playing this one, or has said nothing for long enough to be told.
-    if (!playing) {
-      if (Date.now() - loadSentAt >= quietLimitMs) {
+    // Not taken yet, or asked before it was: about the track before, whatever
+    // it says (see `loadSentAt`). The speaker is heard once it is playing
+    // this one, or has said nothing for long enough to be told.
+    const stale = loadAckedAt < loadSentAt || (status.askedAt !== undefined && status.askedAt < loadAckedAt);
+    if (stale || !playing) {
+      if (!playing && Date.now() - loadSentAt >= quietLimitMs) {
         loading = false;
         driveLog(`speaker: silent for ${Math.round((Date.now() - loadSentAt) / 1000)} s after the load, says ${status.state}`);
         if (__DEV__) console.log(`[linkplay] load fell flat · speaker says ${status.state}`);
@@ -449,6 +483,7 @@ function onStatus(status: LinkPlayStatus): void {
     pausedByUs = false;
     pendingSeekSec = null;
     pendingPause = false;
+    streamOffsetSec = 0;
     lastPositionSec = status.positionSec;
     lastDurationSec = status.durationSec;
     const follows = id !== undefined && index !== undefined && queueOf().queue[index]?.id === id;
@@ -464,8 +499,10 @@ function onStatus(status: LinkPlayStatus): void {
     }
   }
   if (__DEV__ && lastPlaying !== playing) console.log(`[linkplay] ${status.state} at ${status.positionSec.toFixed(1)}s`);
-  if (status.durationSec > 0) lastDurationSec = status.durationSec;
-  if (playing || status.positionSec > 0) lastPositionSec = status.positionSec;
+  // Of a stream started partway in, the speaker knows the remainder and
+  // counts from its start: the song's length and time are the known ones.
+  if (status.durationSec > 0 && streamOffsetSec === 0) lastDurationSec = status.durationSec;
+  if (playing || status.positionSec > 0) lastPositionSec = streamOffsetSec + status.positionSec;
   if (playing) {
     wasPlaying = true;
     finishedFired = false;
@@ -473,7 +510,12 @@ function onStatus(status: LinkPlayStatus): void {
     stopPolls = 0;
   }
   events?.onProgress(lastPositionSec, lastDurationSec);
-  if (lastPlaying !== playing || buffering) {
+  // Asked once the speaker had taken the last play or pause, a status that
+  // disagrees with the player is the speaker having ignored it (a stall of
+  // its API, a resume while stopped), and the player follows the speaker.
+  const afterTransport =
+    transportPending === 0 && (status.askedAt === undefined || status.askedAt >= transportAckedAt);
+  if (afterTransport && (lastPlaying !== playing || buffering)) {
     lastPlaying = playing;
     events?.onPlayingChanged(playing, buffering);
   }
@@ -529,6 +571,15 @@ export async function linkPlayLoad(
   autoplay: boolean,
   startSec = 0,
   following: { song: Song; index: number }[] = [],
+  /**
+   * Ask the server for the song from `startSec` rather than seek the speaker
+   * there: for a transcoded stream, which the speaker cannot seek in (it is
+   * made as it is sent and has no length), and only where the server knows
+   * how (`timeOffset`). The caller decides, since it knows the song and the
+   * server; the speaker then plays what it was handed from its own zero, and
+   * `streamOffsetSec` puts the song's time back on what it reports.
+   */
+  startInStream = false,
 ): Promise<boolean> {
   const { host } = useLinkPlay.getState();
   if (!host || !isLinkPlayConnected()) return false;
@@ -536,13 +587,16 @@ export async function linkPlayLoad(
   const held = list;
   const moveOn =
     held !== null && following.length > 0 && autoplay && startSec === 0 && held.ids[held.pos + 1] === song.id;
+  let offset = startInStream && startSec > 0 ? startSec : 0;
   let command: string;
   if (moveOn) {
     held.pos++;
     command = cmd.next;
   } else {
     list = null;
-    const items = following.length > 0 ? await listFor(song, following) : null;
+    // A stream started partway in is handed on its own: a list is of whole
+    // songs, and the next load, from the beginning, hands one again.
+    const items = following.length > 0 && offset === 0 ? await listFor(song, following) : null;
     // Publishing the list took a moment, and a newer load has started: its
     // command must be the last the speaker hears, so this one is not sent.
     if (seq !== loadSeq) return false;
@@ -551,11 +605,15 @@ export async function linkPlayLoad(
       list = { ids: items.ids, indices: items.indices, pos: 0 };
     } else {
       await ensureLocalFilesServed([song]);
-      const url = remoteTrackUrl(song);
+      const url = remoteTrackUrl(song, offset);
       if (!url) return false;
+      // A file served off the phone cannot start partway in: handed from the
+      // beginning and seeked, as any song the server does not transcode.
+      if (offset > 0 && url === remoteTrackUrl(song)) offset = 0;
       command = cmd.play(url);
     }
   }
+  streamOffsetSec = offset;
   stopPolls = 0;
   loading = true;
   loadSentAt = Date.now();
@@ -570,7 +628,7 @@ export async function linkPlayLoad(
     `speaker: ${moveOn ? 'next item' : list ? `list of ${list.ids.length}` : 'one track'} · ${song.title} · ${autoplay ? 'playing' : 'paused'} at ${Math.round(startSec)} s`,
   );
   if (__DEV__) console.log(`[linkplay] load · ${command.replace(/[?&][ts]=[^&]*/g, '')} · ${autoplay ? 'playing' : 'paused'} at ${startSec.toFixed(1)}s`);
-  pendingSeekSec = startSec > 0 ? startSec : null;
+  pendingSeekSec = startSec > 0 && offset === 0 ? startSec : null;
   pendingPause = !autoplay;
   tunePolling();
   try {
@@ -656,14 +714,33 @@ export async function linkPlayPlay(): Promise<void> {
   if (!host) return;
   pausedByUs = false;
   pendingPause = false;
-  await ask(host, cmd.resume).catch(() => undefined);
+  // A speaker heard stopped (its stream dropped, or the track ended) ignores
+  // a resume: it is handed the track again, where it was, or from the start
+  // when it had ended. A paused speaker takes the resume, as does one that
+  // nothing can be handed to, so that the next poll says how it went.
+  const { queue, index } = queueOf();
+  const song = queue[index];
+  if (stopPolls > 0 && song) {
+    const from = finishedFired ? 0 : lastPositionSec;
+    if (await linkPlayLoad(song, true, from, [], await startsInStream(song, from))) return;
+  }
+  await tellToPlay(host, true);
 }
 
 export async function linkPlayPause(): Promise<void> {
   const { host } = useLinkPlay.getState();
   if (!host) return;
   pausedByUs = true;
-  await ask(host, cmd.pause).catch(() => undefined);
+  await tellToPlay(host, false);
+}
+
+/** Resume or pause: what the player shows from now (see `lastPlaying`), and when the speaker took it. */
+async function tellToPlay(host: string, playing: boolean): Promise<void> {
+  lastPlaying = playing;
+  transportPending++;
+  await ask(host, playing ? cmd.resume : cmd.pause).catch(() => undefined);
+  transportPending--;
+  transportAckedAt = Date.now();
 }
 
 export async function linkPlaySeek(sec: number): Promise<void> {
@@ -718,7 +795,9 @@ export async function linkPlayJoin(host: string): Promise<boolean> {
   // seek does, as the leader starts its stream over for the whole group.
   // So the leader is moved to where it is, at the cost of a skip of up to
   // a poll, and every speaker in the group is heard.
-  if (joined && lastPlaying && !loading) {
+  // Not for a stream started partway in: the leader cannot seek in it, and
+  // the group picks it up as the stream is.
+  if (joined && lastPlaying && !loading && streamOffsetSec === 0) {
     await ask(leader, cmd.seek(lastPositionSec)).catch(() => undefined);
   }
   return joined;
