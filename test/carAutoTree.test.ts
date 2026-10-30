@@ -13,6 +13,7 @@ import {
   resumeFraction,
   searchRows,
   shelfId,
+  spokenJam,
   spokenShuffle,
   tabLayout,
 } from '@/lib/carAutoLayout';
@@ -190,6 +191,26 @@ describe('spokenShuffle', () => {
   it('leaves a shuffle of something named, and a thing merely called shuffle, to the search', () => {
     for (const said of ['shuffle Radiohead', 'Shuffle Along', 'youtube', 'Moon River', '']) {
       assert.equal(spokenShuffle(said), null, said);
+    }
+  });
+});
+
+describe('spokenJam', () => {
+  it('hears a Jam to open in either language, with or without "play"', () => {
+    for (const said of ['start a jam', 'Jam', 'lance un jam', 'démarre un jam', 'ouvre un jam', 'play start a jam']) {
+      assert.equal(spokenJam(said), 'start', said);
+    }
+  });
+
+  it('hears the Jam under way to end', () => {
+    for (const said of ['stop the jam', 'end the jam', 'arrête le jam', 'termine le jam', 'play stop the jam']) {
+      assert.equal(spokenJam(said), 'end', said);
+    }
+  });
+
+  it('leaves a thing merely called jam to the search', () => {
+    for (const said of ['Pearl Jam', 'jam session Radiohead', 'Space Jam', 'shuffle', '']) {
+      assert.equal(spokenJam(said), null, said);
     }
   });
 });

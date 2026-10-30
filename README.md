@@ -139,6 +139,11 @@ appear when it is switched off.
   phone hands it to the speaker and keeps it within a few seconds.
 - **The Jam in the house is a tap away**: the sessions under way on the
   server are listed on the Jam screen and named on the output sheet's row.
+- **A Jam leaves a trace.** When the Jam this phone played ends, its queue
+  goes among the past queues as "Jam of <date>", so an evening of songs the
+  guests picked one by one can be played again. In car mode and ride mode,
+  each song a guest adds is read out in the voice the songs are, a burst of
+  them as one count; the road log in Diagnostics keeps the Jam's life too.
 - `resonuls://jam/<code>` joins that session from a link, and so does the
   page's own `https://<proxy>/jam/<code>` once the proxy publishes the app's
   signing certificate under `/.well-known/assetlinks.json` (Android app
@@ -250,8 +255,15 @@ appear when it is switched off.
   phone's Home does the same.
 - **"For the road"** on the car's Home: the downloaded songs of the queue,
   in order from the one playing, for the stretch with no network.
-- **The die by voice**: "YouTube shuffle" or "shuffle" said to the car lands
-  on the die rows before any song merely called that.
+- **A Jam from the car**: a row of Home opens one in guest mode and puts its
+  QR code on the playback screen for two minutes, in place of the cover, so
+  the passengers scan it and add songs from their browsers. While it is on,
+  the row is a folder named after the code, with the code to show again and
+  the way out. It wants something playing first: the Jam shares what is
+  playing, and the car has no screen to put the code on until then.
+- **The die and the Jam by voice**: "YouTube shuffle" or "shuffle" said to
+  the car lands on the die rows, "start a Jam" and "stop the Jam" on the
+  Jam's, before any song merely called that.
 - **The queue screen says where the queue came from** — the album, the
   playlist, "For you" — rather than heading a list of songs with nothing.
 - Pictures reach the car at all. It will not go and fetch one from a remote

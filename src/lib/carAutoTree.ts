@@ -46,12 +46,14 @@ import { useQueueHistory, type PastQueue } from '@/store/queueHistory';
 import { useSettings } from '@/store/settings';
 import { useSmartPlaylists } from '@/store/smartPlaylists';
 import { setNodes, type CarNode, type CarTree } from './carAuto';
+import { handleJamTap, isJamTap, JAM_ID, jamFolderRows, jamHomeRow, jamSpokenRow } from './carJam';
 import {
   drawerLayout,
   overflowsHome,
   resumeFraction,
   searchRows,
   shelfId,
+  spokenJam,
   spokenShuffle,
   tabLayout,
 } from './carAutoLayout';
@@ -1219,6 +1221,10 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
   // is read, not scrolled, and the Library has the rest.
   const resume = resumeNode();
   const road = roadSongs().length;
+  // A Jam for the car, after the rows that play: it is the one row here that
+  // does not. A session under way is a folder with the code inside (`carJam`).
+  const jam = jamHomeRow();
+  tree[JAM_ID] = jamFolderRows();
   tree['tab:home'] = tabLayout([
     {
       heading: tg('Continue listening'),
@@ -1258,6 +1264,7 @@ export async function buildBrowseTree(deep = true): Promise<CarTree> {
               },
             ]
           : []),
+        ...(jam ? [jam] : []),
       ],
     },
     { heading: tg('Made for you'), nodes: mixes.map((m) => mixNode(into, m)), max: HOME_MIXES },
@@ -1432,19 +1439,27 @@ export async function carSearch(query: string, local: CarNode[]): Promise<CarNod
     artist: tg('Artists'),
     playlist: tg('Playlists'),
   });
-  // "Shuffle", "aléatoire YouTube": the die named goes first, above whatever
-  // carries the word in its title (`spokenShuffle`). YouTube's with no
-  // account to read is the library's die instead.
-  const die = spokenShuffle(query);
-  const lead =
-    die === 'discover'
-      ? diceModeRow('discover')
-      : die === 'youtube' && youtubeReachable()
-        ? youtubeDiceRow()
-        : die
-          ? shuffleRow()
-          : null;
+  // "Shuffle", "start a Jam": the row named goes first, above whatever
+  // carries the word in its title.
+  const lead = spokenRow(query);
   return lead ? [lead, ...rows.filter((n) => n.id !== lead.id)] : rows;
+}
+
+/**
+ * The row a spoken request names rather than a thing to find: a die
+ * ("shuffle", "lecture aléatoire", "aléatoire YouTube") or the Jam ("start a
+ * Jam", "stop the Jam"). Searched for, the words would play whatever song
+ * carries them in its title. YouTube's die asked for with no account to read
+ * is the library's instead, which beats silence; a Jam asked for where there
+ * is none to open or end is nothing, and the search has the words.
+ */
+function spokenRow(query: string): CarNode | null {
+  const jam = spokenJam(query);
+  if (jam) return jamSpokenRow(jam);
+  const die = spokenShuffle(query);
+  if (die === 'discover') return diceModeRow('discover');
+  if (die === 'youtube' && youtubeReachable()) return youtubeDiceRow();
+  return die ? shuffleRow() : null;
 }
 
 // ── Playback resolution on car tap ───────────────────────────────────────────
@@ -1553,13 +1568,9 @@ const SPOKEN_SONGS = 50;
  * kind of music. Offline the same search runs over what is on the phone.
  */
 async function playSpoken(query: string): Promise<void> {
-  // The die named rather than a thing to find: "shuffle", "lecture
-  // aléatoire", "aléatoire YouTube". Searched for, the words would play
-  // whatever song carries them in its title. YouTube's die asked for with no
-  // account to read is the library's instead, which beats silence.
-  const die = spokenShuffle(query);
-  if (die === 'discover') return handleBrowsePlay(`${DICE_PREFIX}discover`);
-  if (die) return handleBrowsePlay(die === 'youtube' && youtubeReachable() ? YOUTUBE_DICE_ID : SHUFFLE_ID);
+  // A die or the Jam named rather than a thing to find (`spokenRow`).
+  const named = spokenRow(query);
+  if (named) return handleBrowsePlay(named.id);
   const store = usePlayerStore.getState();
   const said = fold(query);
   if (!said) return;
@@ -1628,6 +1639,13 @@ export async function handleBrowsePlay(mediaId: string, parentId?: string): Prom
   // behind is written on its own behind the music (`forYouMix`).
   if (mediaId === FOR_YOU_ID) {
     await playForYou().catch(() => {});
+    return;
+  }
+
+  // The Jam rows: a session opened, its code put up, or the session left.
+  // Whatever is playing goes on playing.
+  if (isJamTap(mediaId)) {
+    await handleJamTap(mediaId);
     return;
   }
 

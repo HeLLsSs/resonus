@@ -9,6 +9,30 @@ Releases before 0.2.1 are only listed on the
 
 ## [Unreleased]
 
+### Added
+
+- A Jam from the car: a "Start a Jam" row on Android Auto's Home opens one
+  in guest mode and puts its QR code up in place of the cover for two
+  minutes, so the passengers scan it from the car's screen and add songs
+  from their browsers. While the Jam is on, the row is a folder named after
+  the code, with the code as a tile to show again and a row that ends it.
+  Needs a proxy that draws the code as PNG (`jam/qr?format=png`).
+- The Jam by voice in the car: "start a Jam" or "lance un jam" said to the
+  car lands on the row that opens one, "stop the Jam" on the row that ends
+  it, before any song merely called that. With nothing playing the row opens
+  none and says why: the Jam shares what is playing.
+- The passengers' additions read out: in car mode and ride mode, a song a
+  guest adds to the Jam is announced in the voice the songs are, after what
+  is being said, and several arriving together are one line with a count.
+  Nothing is said on the phone alone.
+- A Jam leaves a trace: when the Jam this phone played ends, its queue is
+  kept among the past queues as "Jam of <date>", unless it is under two
+  songs or already there.
+- The road log follows the Jam: opened, and from the car or the phone, who
+  joined and left, what the guests added, how it ended and the commands the
+  proxy refused.
+
+
 ## [1.18.0] - 2026-10-25
 
 ### Added

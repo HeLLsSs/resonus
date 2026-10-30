@@ -1532,7 +1532,11 @@ function rememberQueue() {
       ? tg('Favorites')
       : st.source === SOURCE_HISTORY
         ? tg('History')
-        : st.source;
+        : st.source === tg('Jam')
+          // The session's queue was kept under its date when the session
+          // ended (`store/jam`); a bare "Jam" over it would say less.
+          ? null
+          : st.source;
   void useQueueHistory.getState().push(st.queue, st.index, name);
 }
 

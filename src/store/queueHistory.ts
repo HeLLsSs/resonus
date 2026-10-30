@@ -45,6 +45,11 @@ export const MAX_QUEUE_SONGS = 500;
 
 const scope = profileScopeGuard();
 
+/** The day, short, as a queue with no name to go by is called after it. */
+export function dayOf(at: number): string {
+  return new Date(at).toLocaleDateString(useSettings.getState().language, { day: 'numeric', month: 'short' });
+}
+
 interface QueueHistoryState {
   queues: PastQueue[];
   /** Keeps the queue being replaced. `sourceName` is what it was started from,
@@ -73,17 +78,14 @@ export const useQueueHistory = create<QueueHistoryState>((set, get) => {
       await get().hydrate();
       const songIds = queue.slice(0, MAX_QUEUE_SONGS).map((s) => s.id);
       const at = Date.now();
-      const title =
-        sourceName ??
-        tg('Queue of {date}', {
-          date: new Date(at).toLocaleDateString(useSettings.getState().language, {
-            day: 'numeric',
-            month: 'short',
-          }),
-        });
       // The same list again (an album started over) moves up rather than
-      // filling the ten rows with itself.
-      const rest = get().queues.filter((q) => !sameIds(q.songIds, songIds));
+      // filling the ten rows with itself. Pushed again with no name of its
+      // own, it keeps the one it had: a Jam's queue, kept as "Jam of …" when
+      // the session ended, is pushed once more by whatever replaces it in the
+      // player, and was coming back as a "Queue of …" in the dated row's place.
+      const again = get().queues.find((q) => sameIds(q.songIds, songIds));
+      const title = sourceName ?? again?.title ?? tg('Queue of {date}', { date: dayOf(at) });
+      const rest = get().queues.filter((q) => q !== again);
       const entry: PastQueue = {
         id: `q_${at.toString(36)}${Math.random().toString(36).slice(2, 6)}`,
         at,

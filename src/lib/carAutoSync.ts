@@ -40,6 +40,7 @@ import {
   knownCarCover,
   warmCarCover,
 } from '@/lib/carAutoTree';
+import { hideJamQrOnCar, jamQrOnCar, onJamQrOnCar } from '@/lib/carJam';
 import { bump } from '@/lib/perfLog';
 import { queryClient } from '@/lib/query';
 import { waitFor, whenProfileReady } from '@/lib/storeWait';
@@ -47,6 +48,7 @@ import { applyTransport } from '@/lib/transport';
 import { useAuthStore } from '@/store/auth';
 import { useSettings } from '@/store/settings';
 import { useDownloads } from '@/store/downloads';
+import { useJam } from '@/store/jam';
 import { useLastPlayed } from '@/store/lastPlayed';
 import { usePins } from '@/store/pins';
 import { usePlayerStore, type StreamInfo } from '@/store/player';
@@ -278,10 +280,19 @@ export function startCarAutoSync(): void {
     const { queue, index, streamInfo } = usePlayerStore.getState();
     const current = queue[index] ?? null;
     const track = current ? toCarTrack(current, current.url ? streamInfo : null, favoriteIds()) : null;
+    // The Jam's QR code in place of the cover, for the while after it was
+    // asked for from the car (`carJam`): the playback screen is the one
+    // picture on the head unit big enough to scan. Until the code is on the
+    // phone the cover stays up, rather than a blank where it was.
+    const qr = track ? jamQrOnCar() : undefined;
+    const qrFile = qr ? knownCarCover(qr) : undefined;
+    if (track && qrFile) track.artworkUrl = qrFile;
     setNowPlaying(track);
-    if (!current || track?.artworkUrl) return;
+    if (!current) return;
     // Told again once the picture is on the phone, if it is still the song.
-    void warmCarCover(carCoverUrl(songCoverUrl(current, COVER.card))).then((ready) => {
+    const wanted = qr && !qrFile ? qr : track?.artworkUrl ? null : carCoverUrl(songCoverUrl(current, COVER.card));
+    if (!wanted) return;
+    void warmCarCover(wanted).then((ready) => {
       const now = usePlayerStore.getState();
       if (ready && now.queue[now.index] === current) pushNowPlaying();
     });
@@ -333,6 +344,27 @@ export function startCarAutoSync(): void {
     pushQueue();
     pushState();
   }
+
+  // The Jam row of Home and its folder follow the session: one opened or
+  // over, somebody joining or leaving. The cover follows the code too, since a
+  // session over takes its QR code off the playback screen.
+  useJam.subscribe((state, prev) => {
+    const code = state.session?.code;
+    if (code !== prev.session?.code) {
+      if (!state.session) hideJamQrOnCar();
+      pushNowPlaying();
+    }
+    // The folder's last row says "end" to the host and "leave" to the rest,
+    // so the session falling to this phone redraws it too.
+    if (
+      code !== prev.session?.code ||
+      state.session?.members.length !== prev.session?.members.length ||
+      state.session?.hostId !== prev.session?.hostId
+    ) {
+      rebuild(false);
+    }
+  });
+  onJamQrOnCar(pushNowPlaying);
 
   // A song favourited on the phone, or from the car a moment ago: the heart
   // the car draws comes from this list, so it is redrawn whenever the list is.

@@ -21,6 +21,7 @@ import { create } from 'zustand';
 
 import { type Song } from '@/api/subsonic';
 import { tg } from '@/i18n';
+import { driveLog } from '@/lib/driveLog';
 import {
   bestOffset,
   cleanCode,
@@ -31,6 +32,7 @@ import {
   JamError,
   type JamCommand,
   type JamSession,
+  type JamSong,
   type JamView,
   joinJam,
   jamCommand,
@@ -40,6 +42,7 @@ import {
 } from '@/lib/jam';
 import { everyMs } from '@/lib/ticker';
 import { useAuthStore } from '@/store/auth';
+import { dayOf, type PastQueue, useQueueHistory } from '@/store/queueHistory';
 import { useToast } from '@/store/toast';
 
 /** How often the player is measured against the session. */
@@ -234,6 +237,65 @@ export function jamMemberName(id: string): string {
   return useJam.getState().session?.members.find((m) => m.id === id)?.name ?? '';
 }
 
+/** A song a guest put in the queue, as the voice in the car tells it (`lib/jamVoice.ts`). */
+export interface GuestAddition {
+  /** The guest's name, or empty for one who has left since. */
+  name: string;
+  title: string;
+}
+
+/**
+ * The songs `next` holds that `prev` did not, added by somebody other than
+ * `me`. A song is told by what it is and who added it when, and counted, so
+ * the same song put in twice is two additions and a queue that lost one copy
+ * is not taken for one that gained the other.
+ */
+export function guestAdditions(prev: JamSong[], next: JamSong[], me: string): { by: string; title: string }[] {
+  const key = (s: JamSong) => `${s.id}|${s.addedBy ?? ''}|${s.addedAt ?? ''}`;
+  const had = new Map<string, number>();
+  for (const s of prev) had.set(key(s), (had.get(key(s)) ?? 0) + 1);
+  const out: { by: string; title: string }[] = [];
+  for (const s of next) {
+    const left = had.get(key(s)) ?? 0;
+    if (left > 0) had.set(key(s), left - 1);
+    else if (s.addedBy && s.addedBy !== me) out.push({ by: s.addedBy, title: s.title });
+  }
+  return out;
+}
+
+let onAdded: ((additions: GuestAddition[]) => void) | null = null;
+
+/** Registers who is told of the songs guests add: the voice in the car. Call once. */
+export function onGuestAdditions(cb: (additions: GuestAddition[]) => void): void {
+  onAdded = cb;
+}
+
+/**
+ * What a Jam that has just ended leaves among the past queues
+ * (`store/queueHistory`), or null for one not worth a row: under two songs,
+ * or a list the history already holds, which an album started over as a Jam
+ * and left alone would be. Named after the day it ended, as a queue with no
+ * source is: a Jam has no album to be called after, and an hour of songs the
+ * passengers picked one by one is the thing past queues exist to keep.
+ */
+export function jamTrace(
+  session: JamSession,
+  kept: Pick<PastQueue, 'songIds'>[],
+  at = Date.now(),
+): { title: string; songs: Song[]; index: number } | null {
+  const { songs } = splitQueue(session.queue);
+  const ids = songs.map((s) => s.id).join(' ');
+  if (songs.length < 2 || kept.some((q) => q.songIds.join(' ') === ids)) return null;
+  return { title: tg('Jam of {date}', { date: dayOf(at) }), songs, index: session.index };
+}
+
+async function keepJamTrace(session: JamSession): Promise<void> {
+  const history = useQueueHistory.getState();
+  await history.hydrate();
+  const trace = jamTrace(session, useQueueHistory.getState().queues);
+  if (trace) await history.push(trace.songs, trace.index, trace.title);
+}
+
 function auth() {
   const a = useAuthStore.getState().auth;
   if (!a) throw new JamError('refused', tg('Jam needs a server account'));
@@ -264,9 +326,13 @@ async function syncClock(): Promise<void> {
  * others hear it from there rather than from silence.
  *
  * With `guests`, in guest mode (see `setJamGuestMode`): played here, and
- * the others only add songs.
+ * the others only add songs. `from` is for the road log: the car's Home row
+ * or the phone's screens.
  */
-export async function startJam({ guests = false }: { guests?: boolean } = {}): Promise<void> {
+export async function startJam({
+  guests = false,
+  from = 'phone',
+}: { guests?: boolean; from?: 'car' | 'phone' } = {}): Promise<void> {
   if (isJamActive()) return;
   useJam.setState({ busy: true });
   try {
@@ -297,6 +363,7 @@ export async function startJam({ guests = false }: { guests?: boolean } = {}): P
       view = await jamCommand(auth(), view.token, { type: 'volume', level: toProxyLevel(level) });
     }
     enter(view, level);
+    driveLog(`jam: opened ${view.session.code} from the ${from}${guests ? ', guests' : ''}`);
     // After entering, so a proxy from before guest mode refuses it with a
     // toast rather than leaving a session opened and never joined.
     if (guests) await setJamGuestMode(true);
@@ -328,6 +395,7 @@ export async function joinJamByCode(rawCode: string): Promise<void> {
   try {
     const [, view] = await Promise.all([syncClock(), joinJam(auth(), code, auth().username)]);
     enter(view);
+    driveLog(`jam: joined ${code}`);
   } finally {
     useJam.setState({ busy: false });
   }
@@ -337,7 +405,7 @@ export async function joinJamByCode(rawCode: string): Promise<void> {
 export async function leaveJam(): Promise<void> {
   const had = token;
   const a = useAuthStore.getState().auth;
-  stop();
+  stop('left');
   if (had && a) await jamCommand(a, had, { type: 'leave' }).catch(() => {});
 }
 
@@ -345,7 +413,7 @@ export async function leaveJam(): Promise<void> {
 export async function endJam(): Promise<void> {
   const had = token;
   const a = useAuthStore.getState().auth;
-  stop();
+  stop('ended');
   if (had && a) await jamCommand(a, had, { type: 'end' }).catch(() => {});
 }
 
@@ -358,8 +426,9 @@ export async function jamSend(command: JamCommand): Promise<void> {
   try {
     take(await jamCommand(auth(), token, command));
   } catch (e) {
+    driveLog(`jam: ${command.type} failed (${e instanceof JamError ? e.kind : 'error'})`);
     if (e instanceof JamError && e.kind === 'gone') {
-      stop();
+      stop('gone');
       useToast.getState().show(tg('The Jam has ended'));
     } else if (e instanceof JamError && e.kind === 'refused') {
       useToast.getState().show(e.message);
@@ -371,7 +440,7 @@ export async function jamSend(command: JamCommand): Promise<void> {
 
 /** `ownLevel`: the level this device is at, when the session was just opened at it. */
 function enter(view: JamView, ownLevel?: number): void {
-  stop();
+  stop('left');
   const gen = ++generation;
   token = view.token;
   knownLevel = ownLevel ?? -1;
@@ -386,7 +455,9 @@ function enter(view: JamView, ownLevel?: number): void {
   // leaving it.
   const profile = useAuthStore.getState().auth;
   unsubAuth = useAuthStore.subscribe((s) => {
-    if (s.auth?.serverUrl !== profile?.serverUrl || s.auth?.username !== profile?.username) stop();
+    if (s.auth?.serverUrl !== profile?.serverUrl || s.auth?.username !== profile?.username) {
+      stop(PROFILE_CHANGED);
+    }
   });
   void poll(gen);
   let beats = 0;
@@ -409,7 +480,12 @@ function enter(view: JamView, ownLevel?: number): void {
   });
 }
 
-function stop(): void {
+/** `reason` is for the road log: how the session ended for this phone. */
+/** The one end of a session that keeps no trace: by the time it is known,
+ *  the queue history is the next profile's, and the songs were this one's. */
+const PROFILE_CHANGED = 'left, profile changed';
+
+function stop(reason: string): void {
   ++generation;
   token = '';
   pollAbort?.abort();
@@ -431,6 +507,11 @@ function stop(): void {
   if (levelBefore !== null && !useJam.getState().listenHere) device?.apply(levelBefore);
   levelBefore = null;
   hooks?.silence(false);
+  const { session, me } = useJam.getState();
+  if (session) driveLog(`jam: ${reason} (${session.code})`);
+  // What the session played is kept where a replaced queue is, on the phone
+  // that played it: the passengers' picks are gone with the session otherwise.
+  if (session && session.hostId === me && reason !== PROFILE_CHANGED) void keepJamTrace(session);
   useJam.setState({ session: null, me: '', addedBy: [] });
   hooks?.armed();
 }
@@ -448,6 +529,21 @@ function take(view: JamView): void {
   // out of the phone that left, and somebody has to play it now.
   if (before.session && before.session.hostId !== view.me && view.session.hostId === view.me && !before.listenHere) {
     setJamListenHere(true);
+  }
+  // The road log, and the voice in the car, hear who came and went and what
+  // the guests put in. Not off the first view of a session: everybody in it
+  // would "join" at once, ourselves included.
+  if (before.session) {
+    const was = new Set(before.session.members.map((m) => m.id));
+    const now = new Set(view.session.members.map((m) => m.id));
+    for (const m of view.session.members) if (!was.has(m.id)) driveLog(`jam: ${m.name} joined`);
+    for (const m of before.session.members) if (!now.has(m.id)) driveLog(`jam: ${m.name} left`);
+    const added = guestAdditions(before.session.queue, view.session.queue, view.me).map(({ by, title }) => ({
+      name: jamMemberName(by),
+      title,
+    }));
+    for (const a of added) driveLog(`jam: ${a.name || 'a guest'} added ${a.title}`);
+    if (added.length > 0) onAdded?.(added);
   }
   void hooks?.follow(songs, view.session.index, view.session.playing, positionAt(view.session));
   // The session's volume, on every device in it: on the one that plays it
@@ -476,7 +572,7 @@ async function poll(gen: number): Promise<void> {
     } catch (e) {
       if (gen !== generation) return;
       if (e instanceof JamError && e.kind !== 'network') {
-        stop();
+        stop(e.kind);
         useToast.getState().show(e.kind === 'gone' ? tg('The Jam has ended') : tg('Could not reach the Jam'));
         return;
       }

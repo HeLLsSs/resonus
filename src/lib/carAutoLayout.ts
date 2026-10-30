@@ -214,6 +214,31 @@ export function spokenShuffle(query: string): 'youtube' | 'library' | 'discover'
   return words.includes('youtube') ? 'youtube' : 'library';
 }
 
+/** The words that open a Jam and the ones that end it, in either language. */
+const JAM_START_WORDS = new Set(['start', 'open', 'lance', 'lancer', 'demarre', 'demarrer', 'ouvre', 'ouvrir']);
+const JAM_END_WORDS = new Set(['stop', 'end', 'arrete', 'arreter', 'termine', 'terminer', 'ferme', 'fermer']);
+/** Filler of the Jam's phrases only: "a shuffle" is nothing anybody says. */
+const JAM_FILLER = new Set(['a', 'un']);
+
+/**
+ * Whether what was said asks for a Jam rather than a thing to find: "start a
+ * jam", "jam", "lance un jam", "démarre un jam", with or without "play", ask
+ * for one to open; "stop the jam", "termine le jam" ask for the one under way
+ * to end. A search of the library would answer those with whatever has the
+ * word in its name, Pearl Jam first. Words left over that are neither ("jam
+ * session Radiohead") are a request of their own and go to the search.
+ * Whether a Jam can be opened or ended right now is for `carJam` to say.
+ */
+export function spokenJam(query: string): 'start' | 'end' | null {
+  const words = fold(query)
+    .split(' ')
+    .filter((w) => w && !SPOKEN_FILLER.has(w) && !JAM_FILLER.has(w));
+  if (!words.includes('jam')) return null;
+  const rest = words.filter((w) => w !== 'jam');
+  if (rest.every((w) => JAM_START_WORDS.has(w))) return 'start';
+  return rest.every((w) => JAM_END_WORDS.has(w)) ? 'end' : null;
+}
+
 // ── The YouTube tab ──────────────────────────────────────────────────────────
 
 /** Long enough to tell two shelves apart, short enough that a tab of twenty of

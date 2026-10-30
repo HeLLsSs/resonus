@@ -33,6 +33,7 @@ import { getStarred } from '@/api/data';
 import { tg } from '@/i18n';
 import { driveLog, driveLogWithAudio } from '@/lib/driveLog';
 import { playForYou } from '@/lib/forYouMix';
+import { startJamVoice } from '@/lib/jamVoice';
 import { playShuffle } from '@/lib/playShuffle';
 import {
   announcement,
@@ -504,6 +505,7 @@ export function startRideSync(): void {
   AppState.addEventListener('change', syncOverlay);
   onSpeed(speedRead);
   startAutoPrepare();
+  startJamVoice();
   // A switch flipped in the settings while ride mode is on, or ride mode
   // itself turned on and off, which the speed follows. A change of
   // size takes the pill down: the size is read as it is made, and it is

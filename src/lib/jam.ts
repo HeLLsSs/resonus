@@ -178,9 +178,11 @@ export function jamPageUrl(serverUrl: string, code: string): string {
   return `${serverUrl}/jam/${code}`;
 }
 
-/** The QR code of that page, drawn by the proxy. */
-export function jamQrUrl(serverUrl: string, code: string): string {
-  return `${serverUrl}/rest/navifind/jam/qr?code=${code}`;
+/** The QR code of that page, drawn by the proxy: an SVG for a screen of the
+ *  app's own, a PNG where only a bitmap will do (a car's head unit). */
+export function jamQrUrl(serverUrl: string, code: string, format: 'svg' | 'png' = 'svg'): string {
+  const url = `${serverUrl}/rest/navifind/jam/qr?code=${code}`;
+  return format === 'png' ? `${url}&format=png` : url;
 }
 
 // ── Requests ──────────────────────────────────────────────────────────────

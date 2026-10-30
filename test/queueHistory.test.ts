@@ -63,6 +63,15 @@ describe('useQueueHistory', () => {
     );
   });
 
+  it('keeps the name a list had when it comes back with none of its own', async () => {
+    await useQueueHistory.getState().push(songs('a', 'b'), 0, 'Jam of 30 Oct');
+    await useQueueHistory.getState().push(songs('a', 'b'), 1, null);
+    assert.deepEqual(
+      useQueueHistory.getState().queues.map((q) => q.title),
+      ['Jam of 30 Oct'],
+    );
+  });
+
   it(`keeps the last ${MAX_PAST_QUEUES} only`, async () => {
     for (let i = 0; i < MAX_PAST_QUEUES + 2; i++) {
       await useQueueHistory.getState().push(songs(`s${i}`, `t${i}`), 0, `Queue ${i}`);

@@ -2,13 +2,23 @@
  * The Jam's one volume and who plays it: the phone that opened the session
  * plays, a phone that joined is silent, and a volume moved on any of them
  * reaches the session once, not on every step, and not when it is only the
- * session's own volume landing.
+ * session's own volume landing. Then what a session tells of itself as it
+ * goes: the songs the guests put in, and the queue it leaves behind.
  */
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 
-import type { JamSession } from '@/lib/jam';
-import { jamReportVolume, joinJamByCode, leaveJam, setJamVolumeDevice, startJam, useJam } from '@/store/jam';
+import type { JamSession, JamSong } from '@/lib/jam';
+import {
+  guestAdditions,
+  jamReportVolume,
+  jamTrace,
+  joinJamByCode,
+  leaveJam,
+  setJamVolumeDevice,
+  startJam,
+  useJam,
+} from '@/store/jam';
 
 import { http } from './stubs/expo-fetch';
 import { serverProfile, useAuthStore } from './stubs/store-auth';
@@ -144,5 +154,49 @@ describe('who plays, and how loud', () => {
     assert.deepEqual(commands(), [{ type: 'volume', level: 0.7 }], 'at once');
     await settle(400);
     assert.deepEqual(commands(), [{ type: 'volume', level: 0.7 }, { type: 'volume', level: 0.9 }]);
+  });
+});
+
+/** A song of the session's queue: who put it in and when. */
+function song(id: string, addedBy?: string, addedAt?: number): JamSong {
+  return { id, title: id.toUpperCase(), addedBy, addedAt };
+}
+
+describe('guestAdditions', () => {
+  it('names the songs that arrived and who put them in, leaving our own out', () => {
+    const prev = [song('a', 'h')];
+    const next = [song('a', 'h'), song('b', 'g', 1), song('c', 'h')];
+    assert.deepEqual(guestAdditions(prev, next, 'h'), [{ by: 'g', title: 'B' }]);
+  });
+
+  it('counts the same song put in twice as two, and a copy taken out as none', () => {
+    const twice = [song('a', 'g', 1), song('a', 'g', 1)];
+    assert.deepEqual(
+      [guestAdditions(twice.slice(1), twice, 'h').length, guestAdditions(twice, twice.slice(1), 'h')],
+      [1, []],
+    );
+  });
+
+  it('hears nothing in a queue that only moved around', () => {
+    const queue = [song('a', 'g', 1), song('b', 'g', 2)];
+    assert.deepEqual(guestAdditions(queue, [...queue].reverse(), 'h'), []);
+  });
+});
+
+describe('jamTrace', () => {
+  it('keeps the queue under the day the Jam ended, the cursor with it', () => {
+    const trace = jamTrace(session({ queue: [song('a', 'h'), song('b', 'g', 1)], index: 1 }), [], T0);
+    assert.deepEqual(
+      [trace?.title, trace?.songs.map((s) => s.id), trace?.index],
+      ['Jam of Nov 14', ['a', 'b'], 1],
+    );
+  });
+
+  it('leaves a Jam of one song, and one the past queues already hold, with no row', () => {
+    const two = [song('a', 'h'), song('b', 'g', 1)];
+    assert.deepEqual(
+      [jamTrace(session({ queue: two.slice(0, 1) }), []), jamTrace(session({ queue: two }), [{ songIds: ['a', 'b'] }])],
+      [null, null],
+    );
   });
 });

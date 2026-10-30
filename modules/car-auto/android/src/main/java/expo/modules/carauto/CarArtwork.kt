@@ -53,7 +53,7 @@ internal object CarArtwork {
    * Written out one by one, and this is the only reason the icons survive a
    * release build. Nothing else refers to them: JS writes `res://ic_car_home`
    * into the tree as a string, so with the name resolved at runtime the
-   * resource shrinker found no reference to any of them and took all fourteen
+   * resource shrinker found no reference to any of them and took every one of them
    * out of the APK. The car then drew every tab and every shelf row blank,
    * while the debug build the tree was written against looked right.
    *
@@ -70,6 +70,7 @@ internal object CarArtwork {
     "ic_car_foryou" to R.drawable.ic_car_foryou,
     "ic_car_genres" to R.drawable.ic_car_genres,
     "ic_car_home" to R.drawable.ic_car_home,
+    "ic_car_jam" to R.drawable.ic_car_jam,
     "ic_car_library" to R.drawable.ic_car_library,
     "ic_car_play" to R.drawable.ic_car_play,
     "ic_car_playlists" to R.drawable.ic_car_playlists,
@@ -77,6 +78,7 @@ internal object CarArtwork {
     "ic_car_recent" to R.drawable.ic_car_recent,
     "ic_car_shuffle" to R.drawable.ic_car_shuffle,
     "ic_car_smart_playlists" to R.drawable.ic_car_smart_playlists,
+    "ic_car_stop" to R.drawable.ic_car_stop,
     "ic_car_youtube" to R.drawable.ic_car_youtube,
   )
 
