@@ -67,6 +67,9 @@ jobs:
           RESONUS_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x android/gradlew
+          # R8 runs out of heap at Gradle's 2 GB default (the runner has 16):
+          # the last line of gradle.properties wins.
+          printf '\norg.gradle.jvmargs=-Xmx8g -XX:MaxMetaspaceSize=1g\n' >> android/gradle.properties
           cd android && ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=armeabi-v7a,arm64-v8a
 
       - name: Name it after the commit
