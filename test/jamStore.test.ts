@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import type { JamSession, JamSong } from '@/lib/jam';
 import {
   guestAdditions,
+  isJamActive,
   jamReportVolume,
   jamTrace,
   joinJamByCode,
@@ -161,6 +162,44 @@ describe('who plays, and how loud', () => {
 function song(id: string, addedBy?: string, addedAt?: number): JamSong {
   return { id, title: id.toUpperCase(), addedBy, addedAt };
 }
+
+describe('which profile the session belongs to', () => {
+  const home = serverProfile({ serverUrl: 'http://192.168.1.10:4533', urls: ['http://192.168.1.10:4533', 'https://music.example'] });
+
+  beforeEach(() => {
+    http.reset();
+    useAuthStore.setState({ auth: home, hydrating: false });
+  });
+
+  afterEach(async () => {
+    await leaveJam();
+  });
+
+  it('stays in the Jam when the app swaps to another address of the same account', async () => {
+    proxy('h');
+    await startJam();
+    // Leaving home: `store/autoUrl` makes the domain the active address.
+    useAuthStore.setState({ auth: { ...home, serverUrl: 'https://music.example' } });
+    assert.equal(isJamActive(), true);
+  });
+
+  it('leaves it for another account', async () => {
+    proxy('h');
+    await startJam();
+    useAuthStore.setState({ auth: serverProfile({ username: 'lea' }) });
+    assert.equal(isJamActive(), false);
+  });
+
+  it('takes the session an account was already in as it is, without overwriting it', async () => {
+    http.answer = (url) => {
+      if (url.includes('/jam/state')) return { status: -1 };
+      if (url.includes('/jam/time')) return { status: 200, body: { now: T0 } };
+      return { status: 200, body: { now: T0, me: 'h', token: 'tk', resumed: true, session: session() } };
+    };
+    await startJam();
+    assert.deepEqual([isJamActive(), commands()], [true, []]);
+  });
+});
 
 describe('guestAdditions', () => {
   it('names the songs that arrived and who put them in, leaving our own out', () => {

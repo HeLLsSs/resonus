@@ -338,6 +338,14 @@ export async function startJam({
   try {
     // The clock is measured while the session opens: neither waits for the other.
     let [, view] = await Promise.all([syncClock(), createJam(auth(), auth().username)]);
+    // This account was already in one (another device of it, or this app
+    // before a restart): that one is taken as it is, its queue and its level
+    // left alone, rather than overwritten with what plays here.
+    if (view.resumed) {
+      enter(view);
+      driveLog(`jam: back in ${view.session.code} from the ${from}`);
+      return;
+    }
     const here = hooks?.snapshot();
     if (here && here.songs.length > 0) {
       // A queue longer than the session holds is cut around the song playing:
@@ -452,12 +460,14 @@ function enter(view: JamView, ownLevel?: number): void {
   take(view);
   // A profile that goes away takes its session with it: the token was the
   // profile's, and steering a session it can no longer reach is worse than
-  // leaving it.
+  // leaving it. The same account through another of its addresses (home's
+  // and the domain, swapped by `store/autoUrl` as the network changes) is
+  // the same proxy and the same session: it used to end the Jam, silently.
   const profile = useAuthStore.getState().auth;
+  const urls = profile ? (profile.urls ?? [profile.serverUrl]) : [];
   unsubAuth = useAuthStore.subscribe((s) => {
-    if (s.auth?.serverUrl !== profile?.serverUrl || s.auth?.username !== profile?.username) {
-      stop(PROFILE_CHANGED);
-    }
+    const same = !!s.auth && s.auth.username === profile?.username && (s.auth.urls ?? [s.auth.serverUrl]).some((u) => urls.includes(u));
+    if (!same) stop(PROFILE_CHANGED);
   });
   void poll(gen);
   let beats = 0;

@@ -64,6 +64,9 @@ export interface JamView {
   me: string;
   token: string;
   session: JamSession;
+  /** From `createJam`: this account was already in a session, and this is
+   *  it, as it stands. An account has one place (the proxy's `JamStore`). */
+  resumed?: boolean;
 }
 
 export type JamCommand =
@@ -239,18 +242,19 @@ export async function clockSample(auth: Pick<SubsonicAuth, 'serverUrl' | 'header
   return { sentAt, receivedAt: Date.now(), serverNow: now };
 }
 
+/** The profile's credentials, as the proxy reads them (`u` and `p`, or `t` and `s`). */
+function credentials(auth: SubsonicAuth): Record<string, string> {
+  if (auth.password !== undefined) return { u: auth.username, p: auth.password };
+  return { u: auth.username, t: auth.token, s: auth.salt };
+}
+
 /**
  * Opens a session, with the profile's own credentials: the proxy lets a
  * Navidrome user open one, and only that. The name is what the others see.
+ * An account already in a session gets that one back (`resumed`).
  */
 export function createJam(auth: SubsonicAuth, name: string): Promise<JamView> {
-  const form: Record<string, string> = { u: auth.username, name };
-  if (auth.password !== undefined) form.p = auth.password;
-  else {
-    form.t = auth.token;
-    form.s = auth.salt;
-  }
-  return call<JamView>(auth, '/create', { form });
+  return call<JamView>(auth, '/create', { form: { ...credentials(auth), name } });
 }
 
 /** A session under way on the server, as the list names it. */
@@ -265,18 +269,20 @@ export interface OpenJam {
 
 /** The sessions under way on this server, newest first. Asked with the profile's credentials. */
 export async function listJams(auth: SubsonicAuth): Promise<OpenJam[]> {
-  const params = new URLSearchParams({ u: auth.username });
-  if (auth.password !== undefined) params.set('p', auth.password);
-  else {
-    params.set('t', auth.token);
-    params.set('s', auth.salt);
-  }
+  const params = new URLSearchParams(credentials(auth));
   const { jams } = await call<{ jams: OpenJam[] }>(auth, `/list?${params.toString()}`);
   return jams;
 }
 
-export function joinJam(auth: Pick<SubsonicAuth, 'serverUrl' | 'headers'>, code: string, name: string): Promise<JamView> {
-  return call<JamView>(auth, '/join', { json: { code, name } });
+/**
+ * Joins with the profile's credentials, in the query since the body is JSON:
+ * an account has one place, so joining again (another device, the app started
+ * over) gives that place back rather than a second one, and joining another
+ * session leaves the first.
+ */
+export function joinJam(auth: SubsonicAuth, code: string, name: string): Promise<JamView> {
+  const params = new URLSearchParams(credentials(auth));
+  return call<JamView>(auth, `/join?${params.toString()}`, { json: { code, name } });
 }
 
 /**

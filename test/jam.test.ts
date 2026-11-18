@@ -133,7 +133,7 @@ describe('requests', () => {
     assert.equal(call.url, 'http://proxy.test/rest/navifind/jam/create');
     assert.equal(call.method, 'POST');
     assert.equal(call.headers['Content-Type'], 'application/x-www-form-urlencoded');
-    assert.equal(call.rawBody, 'u=gaetan&name=Ga%C3%ABtan&t=tok&s=salt');
+    assert.equal(call.rawBody, 'u=gaetan&t=tok&s=salt&name=Ga%C3%ABtan');
   });
 
   it('sends the password itself for a profile that signs in with one', async () => {
@@ -141,16 +141,16 @@ describe('requests', () => {
 
     await createJam({ ...auth, password: 'pw' }, 'Gaëtan');
 
-    assert.equal(http.calls[0].rawBody, 'u=gaetan&name=Ga%C3%ABtan&p=pw');
+    assert.equal(http.calls[0].rawBody, 'u=gaetan&p=pw&name=Ga%C3%ABtan');
   });
 
-  it('joins by code and name, with no credentials at all', async () => {
+  it('joins by code and name, with the profile’s credentials so an account keeps one place', async () => {
     http.answer = () => ({ status: 200, body: view() });
 
     await joinJam(auth, 'AB2CD3', 'Léa');
 
     const call = http.calls[0];
-    assert.equal(call.url, 'http://proxy.test/rest/navifind/jam/join');
+    assert.equal(call.url, 'http://proxy.test/rest/navifind/jam/join?u=gaetan&t=tok&s=salt');
     assert.deepEqual(call.body, { code: 'AB2CD3', name: 'Léa' });
     assert.equal(call.headers['X-Jam-Token'], undefined);
   });
