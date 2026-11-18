@@ -467,7 +467,11 @@ function enter(view: JamView, ownLevel?: number): void {
   const urls = profile ? (profile.urls ?? [profile.serverUrl]) : [];
   unsubAuth = useAuthStore.subscribe((s) => {
     const same = !!s.auth && s.auth.username === profile?.username && (s.auth.urls ?? [s.auth.serverUrl]).some((u) => urls.includes(u));
-    if (!same) stop(PROFILE_CHANGED);
+    if (!same) {
+      stop(PROFILE_CHANGED);
+      // Said, as every other way out of a session is: it used to just stop.
+      useToast.getState().show(tg('Left the Jam: the account changed'));
+    }
   });
   void poll(gen);
   let beats = 0;

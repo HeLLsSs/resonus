@@ -5,7 +5,7 @@
      `src/i18n/context.jsonc`, and where a string shows up is read off the
      code, so both are fixed at the source and this page follows. -->
 
-Every string the app can show, under the screen it shows up on. 1551 of them.
+Every string the app can show, under the screen it shows up on. 1552 of them.
 The second column is only filled in where the English is ambiguous on its own
 If one tripped you up and the column is empty, that is worth telling us, and
 the answer goes into `src/i18n/context.jsonc` where the next translator of the
@@ -510,6 +510,7 @@ you are actually typing into, which is easier than reading it here.
 | `Join a Jam` |  |
 | `Leave` |  |
 | `Leave the Jam` |  |
+| `Left the Jam: the account changed` |  |
 | `Listen together, everyone on their own device, all hearing the same thing at the same moment. Anyone can add songs, skip or pause. A browser can join with the code, no account needed.` |  |
 | `No Jam with that code` |  |
 | `Play on this phone` |  |
@@ -679,6 +680,7 @@ you are actually typing into, which is easier than reading it here.
 | `Join {name}'s Jam` |  |
 | `Keep pitch` |  |
 | `Kodi` |  |
+| `Left the Jam: the account changed` |  |
 | `LinkPlay` |  |
 | `Listen together` |  |
 | `Media volume` |  |
@@ -775,6 +777,7 @@ you are actually typing into, which is easier than reading it here.
 | `Get the server's queue` | Queue screen action: replace what is playing here with the queue the server has, which is the one left on another player |
 | `Jam needs a server account` |  |
 | `Jam of {date}` |  |
+| `Left the Jam: the account changed` |  |
 | `Next from {name}` | Heading on the queue screen: what is coming, and where it comes from. `{name}` is an album, a playlist or a mix |
 | `Next in queue` | Queue screen header: the track that plays next |
 | `None of these songs can be saved to a playlist` |  |

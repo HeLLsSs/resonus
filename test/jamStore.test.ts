@@ -23,6 +23,7 @@ import {
 
 import { http } from './stubs/expo-fetch';
 import { serverProfile, useAuthStore } from './stubs/store-auth';
+import { useToast } from './stubs/store-toast';
 
 const T0 = 1_700_000_000_000;
 
@@ -183,11 +184,12 @@ describe('which profile the session belongs to', () => {
     assert.equal(isJamActive(), true);
   });
 
-  it('leaves it for another account', async () => {
+  it('leaves it for another account, and says so', async () => {
     proxy('h');
     await startJam();
+    useToast.setState({ messages: [] });
     useAuthStore.setState({ auth: serverProfile({ username: 'lea' }) });
-    assert.equal(isJamActive(), false);
+    assert.deepEqual([isJamActive(), useToast.getState().messages], [false, ['Left the Jam: the account changed']]);
   });
 
   it('takes the session an account was already in as it is, without overwriting it', async () => {
