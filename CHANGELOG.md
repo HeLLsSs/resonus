@@ -9,7 +9,10 @@ Releases before 0.2.1 are only listed on the
 
 ## [Unreleased]
 
-## [1.19.1] - 2026-11-18
+## [1.19.2] - 2026-11-18
+
+The fixes below. 1.19.1 was tagged but never published: its build ran out
+of memory.
 
 ### Fixed
 
