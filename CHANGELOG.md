@@ -9,6 +9,20 @@ Releases before 0.2.1 are only listed on the
 
 ## [Unreleased]
 
+## [1.19.1] - 2026-11-18
+
+### Fixed
+
+- A Jam no longer ends, silently, when the app switches to another address
+  of the same server (home's and the domain, as the network changes, or
+  when a screen cannot reach the server).
+- One place per account in a Jam: joining again gives the account its place
+  back instead of a second one, joining another Jam leaves the first, and
+  starting a Jam while the account is already in one takes that one as it
+  is. Needs the Navifind proxy from 18/11/2026; with an older one the app
+  behaves as before.
+- Leaving a Jam because the account changed now says so.
+
 ## [1.19.0] - 2026-10-31
 
 ### Added
